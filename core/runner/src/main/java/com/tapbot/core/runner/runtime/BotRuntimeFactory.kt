@@ -10,6 +10,7 @@ object BotRuntimeFactory {
         return when {
             normalized.contains("music") -> MusicBotRuntime(botId)
             normalized.contains("ai") || normalized.contains("gemini") -> AIBotRuntime(botId)
+            normalized.contains("exon") -> ExonBotRuntime(botId)
             normalized.contains("util") || normalized.contains("diagnostic") -> UtilityBotRuntime(botId)
             normalized.contains("echo") -> UtilityBotRuntime(botId)
             else -> PingPongBotRuntime(botId)

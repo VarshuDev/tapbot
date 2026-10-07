@@ -96,6 +96,13 @@ class BotForegroundService : Service() {
         val targetInstallationId = intent?.getStringExtra(EXTRA_INSTALLATION_ID)
             ?: intent?.getStringExtra(EXTRA_BOT_ID)
 
+        if (action == ACTION_START_BOT || action == ACTION_RESTART_BOT) {
+            val count = maxOf(activeExecutions.size, 1)
+            val names = activeExecutions.values.map { it.botName }.ifEmpty { listOf(targetInstallationId ?: "Bot") }
+            val notification = notificationHelper.buildForegroundNotification(count, names)
+            startForeground(NotificationHelper.NOTIFICATION_ID, notification)
+        }
+
         when (action) {
             ACTION_START_BOT -> {
                 serviceScope.launch {

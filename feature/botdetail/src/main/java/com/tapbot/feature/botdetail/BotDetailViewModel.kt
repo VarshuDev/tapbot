@@ -323,8 +323,23 @@ class BotDetailViewModel(
         if (!validateCredentials()) {
             return
         }
-        saveCredentials()
-        botServiceController.startBot(botId)
+        viewModelScope.launch {
+            _uiState.value = current.copy(isSavingCredentials = true)
+            for ((key, value) in current.credentials) {
+                if (value.isNotBlank()) {
+                    credentialStore.saveCredential(botId, key, value)
+                    SecretRedactor.registerSecret(value)
+                }
+            }
+            _uiState.value = current.copy(
+                isSavingCredentials = false,
+                credentialSaveSuccess = true,
+                isConfiguring = false,
+                credentialErrors = emptyMap(),
+                generalCredentialError = null
+            )
+            botServiceController.startBot(botId)
+        }
     }
 
     fun stopBot() {

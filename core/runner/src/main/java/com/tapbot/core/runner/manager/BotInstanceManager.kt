@@ -645,7 +645,9 @@ class DefaultBotInstanceManager(
                 putExtra(BotForegroundService.EXTRA_INSTALLATION_ID, installationId)
             }
         }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        if (action == BotForegroundService.ACTION_STOP_BOT || action == BotForegroundService.ACTION_STOP_ALL) {
+            ctx.startService(intent)
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             ctx.startForegroundService(intent)
         } else {
             ctx.startService(intent)

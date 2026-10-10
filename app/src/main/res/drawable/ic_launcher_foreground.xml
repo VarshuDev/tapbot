@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Antenna -->
+    <path
+        android:strokeColor="#00E5FF"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:pathData="M54,28 L54,36" />
+    <path
+        android:fillColor="#00E5FF"
+        android:pathData="M54,28 m-3,0 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0" />
+
+    <!-- Robot Head Outline / Base -->
+    <path
+        android:fillColor="#161B22"
+        android:strokeColor="#00E5FF"
+        android:strokeWidth="3"
+        android:pathData="M34,36 L74,36 C77.3,36 80,38.7 80,42 L80,70 C80,73.3 77.3,76 74,76 L34,76 C30.7,76 28,73.3 28,70 L28,42 C28,38.7 30.7,36 34,36 Z" />
+
+    <!-- Robot Ears / Screws -->
+    <path
+        android:fillColor="#00E5FF"
+        android:pathData="M25,48 L28,48 L28,62 L25,62 Z" />
+    <path
+        android:fillColor="#00E5FF"
+        android:pathData="M80,48 L83,48 L83,62 L80,62 Z" />
+
+    <!-- Screen / Visor -->
+    <path
+        android:fillColor="#0D1117"
+        android:pathData="M34,44 L74,44 C75.5,44 76.5,45 76.5,46.5 L76.5,64 C76.5,65.5 75.5,66.5 74,66.5 L34,66.5 C32.5,66.5 31.5,65.5 31.5,64 L31.5,46.5 C31.5,45 32.5,44 34,44 Z" />
+
+    <!-- Glowing Cyan Eyes (Code / Tech Pulse) -->
+    <path
+        android:fillColor="#00E5FF"
+        android:pathData="M40,51 L48,51 C49.1,51 50,51.9 50,53 L50,59 C50,60.1 49.1,61 48,61 L40,61 C38.9,61 38,60.1 38,59 L38,53 C38,51.9 38.9,51 40,51 Z" />
+    <path
+        android:fillColor="#00E5FF"
+        android:pathData="M60,51 L68,51 C69.1,51 70,51.9 70,53 L70,59 C70,60.1 69.1,61 68,61 L60,61 C58.9,61 58,60.1 58,59 L58,53 C58,51.9 58.9,51 60,51 Z" />
+
+    <!-- Play/Power Bolt / Tap indicator on forehead -->
+    <path
+        android:fillColor="#00E5FF"
+        android:pathData="M52,38 L57,38 L54,41 L56,41 L52,44 L53,41 L52,41 Z" />
+</vector>

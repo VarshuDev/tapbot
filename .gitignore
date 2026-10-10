@@ -14,3 +14,8 @@ local.properties
 node_modules/
 .wrangler/
 dist/
+
+# Signing keys
+*.jks
+*.keystore
+keystore/

@@ -18,9 +18,25 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        create("release") {
+            val keystoreFile = rootProject.file("keystore/release.keystore")
+            if (keystoreFile.exists()) {
+                storeFile = keystoreFile
+                storePassword = System.getenv("TAPBOT_KEYSTORE_PASSWORD") ?: "tapbot_release_2026"
+                keyAlias = System.getenv("TAPBOT_KEY_ALIAS") ?: "tapbot"
+                keyPassword = System.getenv("TAPBOT_KEY_PASSWORD") ?: "tapbot_release_2026"
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
+            val releaseConfig = signingConfigs.getByName("release")
+            if (releaseConfig.storeFile?.exists() == true) {
+                signingConfig = releaseConfig
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

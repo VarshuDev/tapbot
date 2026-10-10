@@ -45,12 +45,18 @@ class OfflineFirstCatalogRepository(
                 cache.saveCatalog(remoteBots, categories)
             }
             .recoverCatching { error ->
-                // 3. If remote fails, fallback to local cache
+                // 3. If remote fails, fallback to local cache or built-in seed catalog
                 val cached = cache.getCachedBots()
                 if (!cached.isNullOrEmpty()) {
                     cached
                 } else {
-                    throw error
+                    val seedBots = MockCatalogApi().getBots().getOrNull()
+                    if (!seedBots.isNullOrEmpty()) {
+                        cache.saveCatalog(seedBots, listOf("All", "Automation", "Utilities", "Productivity", "Media"))
+                        seedBots
+                    } else {
+                        throw error
+                    }
                 }
             }
     }
@@ -73,7 +79,7 @@ class OfflineFirstCatalogRepository(
         }
 
         return remoteSource.getCategories().recoverCatching {
-            listOf("All", "Utilities", "Media", "Productivity", "Automation")
+            listOf("All", "Automation", "Utilities", "Productivity", "Media")
         }
     }
 
@@ -90,7 +96,7 @@ class OfflineFirstCatalogRepository(
                 cache.updateBot(freshBot)
             }
             .recoverCatching { error ->
-                val fallback = cache.getCachedBot(botId)
+                val fallback = cache.getCachedBot(botId) ?: MockCatalogApi().getBotDetails(botId).getOrNull()
                 fallback ?: throw error
             }
     }

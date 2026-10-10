@@ -177,6 +177,51 @@ class MockCatalogApi : CatalogApi {
                 runtimeType = "native_art"
             ),
             permissionsRequired = listOf("INTERNET", "FOREGROUND_SERVICE")
+        ),
+        BotMetadata(
+            id = "bot_1790084493920_n4l8lj",
+            name = "Exon Robot",
+            summary = "Advanced Telegram group management bot with ban, mute, pin, and moderation capabilities.",
+            description = "High-performance Telegram group management bot inspired by ExonRobot. Runs directly on your Android device via ART runtime with MTProto and Bot API support.",
+            author = "VarshuAi",
+            version = "1.0.0",
+            iconUrl = "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=200",
+            category = "Automation",
+            tags = listOf("management", "telegram", "moderation", "admin"),
+            isFeatured = true,
+            requiredCredentials = listOf(
+                BotCredentialSpec.TELEGRAM_BOT_TOKEN,
+                BotCredentialSpec(
+                    key = "app_api_id",
+                    label = "Telegram API ID (api_id)",
+                    description = "Your Telegram App API ID obtained from my.telegram.org",
+                    isSecret = false,
+                    isRequired = true,
+                    placeholder = "12345678"
+                ),
+                BotCredentialSpec(
+                    key = "app_api_hash",
+                    label = "Telegram API Hash (api_hash)",
+                    description = "Your Telegram App API Hash obtained from my.telegram.org",
+                    isSecret = true,
+                    isRequired = true,
+                    placeholder = "0123456789abcdef0123456789abcdef"
+                ),
+                BotCredentialSpec(
+                    key = "owner_id",
+                    label = "Bot Owner User ID",
+                    description = "Numeric Telegram user ID of the bot master / owner",
+                    isSecret = false,
+                    isRequired = true,
+                    placeholder = "7342044274"
+                )
+            ),
+            packageInfo = BotPackageInfo(
+                packageUrl = "packages/bot_exon_1.0.0.botpkg",
+                sha256Checksum = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                runtimeType = "native_art"
+            ),
+            permissionsRequired = listOf("INTERNET", "FOREGROUND_SERVICE")
         )
     )
 

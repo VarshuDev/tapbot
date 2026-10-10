@@ -91,6 +91,15 @@ class ExonBotRuntimeTest {
     }
 
     @Test
+    fun `factory creates ExonBotRuntime for published catalog ID and Name`() {
+        val runtimeById = BotRuntimeFactory.createRuntime("bot_1790084493920_n4l8lj")
+        assertTrue(runtimeById is ExonBotRuntime)
+
+        val runtimeByName = BotRuntimeFactory.createRuntime("random_id", "Exon Robot")
+        assertTrue(runtimeByName is ExonBotRuntime)
+    }
+
+    @Test
     fun `exon bot handles start command with signature styling`() = runBlocking {
         val fakeApi = FakeTelegramApiClient()
         val update = TelegramUpdate(

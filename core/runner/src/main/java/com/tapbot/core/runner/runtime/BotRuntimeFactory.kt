@@ -5,12 +5,12 @@ package com.tapbot.core.runner.runtime
  */
 object BotRuntimeFactory {
 
-    fun createRuntime(botId: String): BotRuntime {
-        val normalized = botId.lowercase().replace("-", "_")
+    fun createRuntime(botId: String, botName: String? = null): BotRuntime {
+        val normalized = (botId + " " + (botName ?: "")).lowercase().replace("-", "_")
         return when {
             normalized.contains("music") -> MusicBotRuntime(botId)
             normalized.contains("ai") || normalized.contains("gemini") -> AIBotRuntime(botId)
-            normalized.contains("exon") -> ExonBotRuntime(botId)
+            normalized.contains("exon") || botId.startsWith("bot_1790084493920") -> ExonBotRuntime(botId)
             normalized.contains("util") || normalized.contains("diagnostic") -> UtilityBotRuntime(botId)
             normalized.contains("echo") -> UtilityBotRuntime(botId)
             else -> PingPongBotRuntime(botId)

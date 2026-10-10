@@ -187,7 +187,7 @@ class BotForegroundService : Service() {
         _runtimeState.value = BotRuntimeState.Starting
         _botStates.update { it + (botId to BotRunState.Starting) }
 
-        val runtime = BotRuntimeFactory.createRuntime(botId)
+        val runtime = BotRuntimeFactory.createRuntime(botId, botName)
 
         // 3. Supervised Execution with CoroutineExceptionHandler for Crash Detection
         val crashHandler = CoroutineExceptionHandler { _, throwable ->

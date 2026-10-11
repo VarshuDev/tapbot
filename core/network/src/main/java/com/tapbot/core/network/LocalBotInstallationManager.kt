@@ -62,6 +62,11 @@ class DefaultLocalBotInstallationManager(
         val targetArchive: File
         if (installDir != null) {
             installDir.mkdirs()
+            val freeBytes = installDir.usableSpace
+            val requiredBytes = packageFile.length() + (5 * 1024 * 1024) // 5 MB safety margin
+            if (freeBytes < requiredBytes) {
+                throw java.io.IOException("Insufficient storage space: only ${freeBytes / (1024 * 1024)} MB available (required: ${requiredBytes / (1024 * 1024)} MB).")
+            }
             targetArchive = File(installDir, "${bot.id}_${bot.version}.botpkg")
             if (packageFile.absolutePath != targetArchive.absolutePath) {
                 packageFile.copyTo(targetArchive, overwrite = true)

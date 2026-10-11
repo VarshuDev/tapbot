@@ -60,8 +60,12 @@ class OkHttpBotPackageDownloader(
                 }
             }
 
-            // 2. Ensure target directories exist
+            // 2. Ensure target directories exist and verify disk space
             targetFile.parentFile?.mkdirs()
+            val freeBytes = targetFile.parentFile?.usableSpace ?: Long.MAX_VALUE
+            if (freeBytes < 10 * 1024 * 1024) { // 10 MB safety margin for low storage protection
+                throw IOException("Insufficient storage space: only ${freeBytes / (1024 * 1024)} MB free on device (minimum 10 MB required).")
+            }
             val tempFile = File(targetFile.parentFile, "${targetFile.name}.tmp_${System.currentTimeMillis()}")
 
             val request = Request.Builder()

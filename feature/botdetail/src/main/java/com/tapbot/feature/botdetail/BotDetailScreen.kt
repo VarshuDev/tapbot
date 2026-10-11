@@ -198,6 +198,9 @@ private fun BotDetailContent(
                 onStopBot = onStopBot
             )
 
+            // 6b. Background Execution & OEM Battery Saver Guidance
+            BackgroundExecutionNoticeCard()
+
             // 7. Live Console Log Viewer
             LiveConsoleLogViewer(
                 logs = state.logs,
@@ -532,6 +535,65 @@ private fun RunnerExecutionCard(
                         Text("START BOT")
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BackgroundExecutionNoticeCard() {
+    val context = LocalContext.current
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+        )
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Default.Info,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Background Execution & Battery Saver",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = "TapBot runs your bots using a Foreground Service. However, aggressive OEM battery savers (Samsung One UI, Xiaomi MIUI/HyperOS, OnePlus, Huawei) may suspend background polling during deep sleep. To guarantee 24/7 uptime, exclude TapBot from battery optimization.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+            Button(
+                onClick = {
+                    try {
+                        val intent = android.content.Intent(android.provider.Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+                        context.startActivity(intent)
+                    } catch (_: Exception) {
+                        try {
+                            val intent = android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                data = android.net.Uri.fromParts("package", context.packageName, null)
+                            }
+                            context.startActivity(intent)
+                        } catch (_: Exception) {}
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(10.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+            ) {
+                Text("Open Battery Optimization Settings", style = MaterialTheme.typography.labelMedium)
             }
         }
     }

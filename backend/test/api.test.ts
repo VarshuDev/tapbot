@@ -104,10 +104,18 @@ class MockPreparedStatement {
             return { results: [...this.db.categories] as any };
         }
 
-        if (q.includes("from bots where status = 'published'")) {
+        if (q.includes("from bots where status = 'published'") || (q.includes("from bots") && q.includes("status = 'published'"))) {
             let res = this.db.bots.filter(b => b.status === 'published');
             if (q.includes('and category = ?') && this.params.length > 0) {
                 res = res.filter(b => b.category === this.params[0]);
+            }
+            if (q.includes('order by downloads_count desc')) {
+                res = [...res].sort((a, b) => (b.downloads_count || 0) - (a.downloads_count || 0));
+            }
+            if (q.includes('limit ? offset ?')) {
+                const limit = this.params[this.params.length - 2];
+                const offset = this.params[this.params.length - 1];
+                res = res.slice(offset, offset + limit);
             }
             return { results: res as any };
         }
@@ -155,6 +163,21 @@ class MockPreparedStatement {
 
     async first<T = any>(): Promise<T | null> {
         const q = this.query.trim().toLowerCase();
+
+        if (q.includes('select count(*) as count from bots where status = \'published\'') ||
+            q.includes('select count(*) as total from bots where status = \'published\'')) {
+            const cnt = this.db.bots.filter(b => b.status === 'published').length;
+            return { total: cnt, count: cnt } as any;
+        }
+
+        if (q.includes('select sum(downloads_count) as total from bots')) {
+            const sum = this.db.bots.reduce((acc, b) => acc + (b.downloads_count || 0), 0);
+            return { total: sum } as any;
+        }
+
+        if (q.includes('select count(*) as count from categories')) {
+            return { count: this.db.categories.length } as any;
+        }
 
         if (q.includes('select count(*) as total from bots')) {
             return { total: this.db.bots.length } as any;
@@ -250,6 +273,15 @@ class MockPreparedStatement {
                 created_at: created,
                 updated_at: updated
             });
+            return { success: true };
+        }
+
+        if (q.includes('update bots set downloads_count')) {
+            const id = this.params[0];
+            const b = this.db.bots.find(x => x.id === id);
+            if (b) {
+                b.downloads_count = (b.downloads_count || 0) + 1;
+            }
             return { success: true };
         }
 
@@ -831,5 +863,65 @@ describe('TapBot Catalog Backend API & Admin Dashboard', () => {
         expect(downloadRes.status).toBe(200);
         const downloadedBytes = new Uint8Array(await downloadRes.arrayBuffer());
         expect(downloadedBytes.length).toBe(6);
+    });
+
+    // -------------------------------------------------------------
+    // Enterprise Backend Enhancements
+    // -------------------------------------------------------------
+    it('returns system health and diagnostics on GET /health and GET /api/v1/health', async () => {
+        const req = new Request('https://api.tapbot.internal/health');
+        const res = await worker.fetch(req, env);
+        expect(res.status).toBe(200);
+        const body: any = await res.json();
+        expect(body.success).toBe(true);
+        expect(body.data.status).toBe('healthy');
+        expect(body.data.database.status).toBe('connected');
+        expect(body.data.storage.status).toBe('bound');
+        expect(body.data.version).toBe('1.1.0');
+
+        // Also verify enterprise security headers
+        expect(res.headers.get('X-Content-Type-Options')).toBe('nosniff');
+        expect(res.headers.get('X-Frame-Options')).toBe('DENY');
+        expect(res.headers.get('Referrer-Policy')).toBe('strict-origin-when-cross-origin');
+    });
+
+    it('returns aggregate catalog metrics on GET /api/v1/stats', async () => {
+        const req = new Request('https://api.tapbot.internal/api/v1/stats');
+        const res = await worker.fetch(req, env);
+        expect(res.status).toBe(200);
+        const body: any = await res.json();
+        expect(body.success).toBe(true);
+        expect(body.data.publishedBots).toBe(1);
+        expect(body.data.categoriesCount).toBe(2);
+        expect(typeof body.data.totalDownloads).toBe('number');
+    });
+
+    it('supports pagination and sorting on GET /api/v1/bots', async () => {
+        const req = new Request('https://api.tapbot.internal/api/v1/bots?limit=1&offset=0&sort=popular');
+        const res = await worker.fetch(req, env);
+        expect(res.status).toBe(200);
+        const body: any = await res.json();
+        expect(body.success).toBe(true);
+        expect(body.data.length).toBe(1);
+        expect(body.pagination).toBeDefined();
+        expect(body.pagination.total).toBe(1);
+        expect(body.pagination.limit).toBe(1);
+        expect(body.pagination.offset).toBe(0);
+        expect(body.data[0].downloadsCount).toBeDefined();
+        expect(body.data[0].rating).toBeDefined();
+    });
+
+    it('increments bot install/download count on POST /api/v1/bots/:id/install', async () => {
+        const initialCount = mockDb.bots.find(b => b.id === 'bot_ping_pong')?.downloads_count || 0;
+
+        const req = new Request('https://api.tapbot.internal/api/v1/bots/bot_ping_pong/install', {
+            method: 'POST'
+        });
+        const res = await worker.fetch(req, env);
+        expect(res.status).toBe(200);
+        const body: any = await res.json();
+        expect(body.success).toBe(true);
+        expect(body.data.botId).toBe('bot_ping_pong');
+        expect(body.data.downloadsCount).toBe(initialCount + 1);
     });
 });

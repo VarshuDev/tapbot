@@ -32,6 +32,8 @@ export interface BotRow {
     runtime: string;
     current_version: string | null;
     status: BotLifecycleStatus;
+    downloads_count?: number;
+    rating?: number;
     created_at: string;
     updated_at: string;
 }
@@ -71,13 +73,17 @@ export interface AuditLogRow {
     created_at: string;
 }
 
-// -------------------------------------------------------------
-// API Request & Response DTOs
-// -------------------------------------------------------------
+export interface PaginationDto {
+    total: number;
+    limit: number;
+    offset: number;
+    hasMore: boolean;
+}
 
 export interface ApiResponse<T = any> {
     success: boolean;
     data?: T;
+    pagination?: PaginationDto;
     error?: {
         code: string;
         message: string;
@@ -119,11 +125,36 @@ export interface BotSummaryDto {
     runtime: string;
     currentVersion: string | null;
     status: string;
+    downloadsCount?: number;
+    rating?: number;
     createdAt: string;
     updatedAt: string;
     credentials?: BotCredentialDto[];
     currentVersionInfo?: BotVersionDto | null;
     versionsCount?: number;
+}
+
+export interface HealthStatusDto {
+    status: 'healthy' | 'degraded' | 'unhealthy';
+    timestamp: string;
+    environment: string;
+    version: string;
+    database: {
+        status: 'connected' | 'error';
+        botCount?: number;
+        error?: string;
+    };
+    storage: {
+        status: 'bound' | 'not_configured';
+    };
+}
+
+export interface PackageUploadResponseDto {
+    packageKey: string;
+    packageSize: number;
+    sha256: string;
+    contentType: string;
+    downloadUrl: string;
 }
 
 export interface BotDetailDto extends BotSummaryDto {
@@ -150,8 +181,9 @@ export interface AdminStatsDto {
     unpublishedBots: number;
     archivedBots: number;
     totalVersions: number;
-    downloads: string;
-    installs: string;
+    downloads: string | number;
+    installs: string | number;
+    totalDownloadsCount?: number;
     lifecycleBreakdown: {
         draft: number;
         review: number;

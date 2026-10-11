@@ -807,8 +807,8 @@ export function renderDashboardHtml(): string {
             </div>
             <div class="metric-card">
                 <div class="metric-title">Installs / Downloads</div>
-                <div class="metric-value" style="font-size: 1.15rem; color: var(--text-dim);" id="stat-downloads">Not available</div>
-                <div class="metric-subtitle">Analytics tracking not implemented</div>
+                <div class="metric-value mono" style="color: var(--accent-cyan);" id="stat-downloads">0</div>
+                <div class="metric-subtitle">Total bot downloads across catalog</div>
             </div>
         </section>
 
@@ -848,6 +848,8 @@ export function renderDashboardHtml(): string {
                                 <th>Category</th>
                                 <th>Runtime</th>
                                 <th>Version</th>
+                                <th>Downloads</th>
+                                <th>Rating</th>
                                 <th>Lifecycle State</th>
                                 <th>Credentials</th>
                                 <th style="text-align: right;">Actions</th>
@@ -855,7 +857,7 @@ export function renderDashboardHtml(): string {
                         </thead>
                         <tbody id="bots-table-body">
                             <tr>
-                                <td colspan="7" class="empty-state">
+                                <td colspan="9" class="empty-state">
                                     <div class="empty-icon">⏳</div>
                                     <div>Loading bot store records...</div>
                                 </td>
@@ -1364,7 +1366,7 @@ export function renderDashboardHtml(): string {
             });
 
             if (filtered.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><div class="empty-icon">📂</div><div>No bots found matching criteria.</div></td></tr>';
+                tbody.innerHTML = '<tr><td colspan="9" class="empty-state"><div class="empty-icon">📂</div><div>No bots found matching criteria.</div></td></tr>';
                 return;
             }
 
@@ -1379,6 +1381,8 @@ export function renderDashboardHtml(): string {
                     : '<span style="color: var(--text-dim);">None</span>';
 
                 const credCount = bot.credentials ? bot.credentials.length : 0;
+                const dlCount = (bot.downloadsCount || 0).toLocaleString();
+                const ratingText = bot.rating ? Number(bot.rating).toFixed(1) : '5.0';
 
                 return '<tr>' +
                     '<td>' +
@@ -1393,6 +1397,8 @@ export function renderDashboardHtml(): string {
                     '<td><span class="badge-tag">' + escapeHtml(bot.category) + '</span></td>' +
                     '<td><span class="badge-tag mono">' + escapeHtml(bot.runtime || 'native_art') + '</span></td>' +
                     '<td>' + verText + '</td>' +
+                    '<td><span class="mono font-semibold" style="color: var(--accent-cyan);">📥 ' + dlCount + '</span></td>' +
+                    '<td><span style="color: #f59e0b; font-weight: 600;">★ ' + ratingText + '</span></td>' +
                     '<td>' +
                         '<select class="lifecycle-select" onchange="changeLifecycle(\\'' + bot.id + '\\', this.value)">' +
                             '<option value="DRAFT"' + (status === 'draft' ? ' selected' : '') + '>DRAFT</option>' +

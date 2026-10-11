@@ -134,6 +134,11 @@ export async function handleAdminRoutes(request: Request, env: Env, url: URL): P
             }
         }
 
+        const downloadsSum = await env.DB.prepare(
+            'SELECT SUM(downloads_count) as total FROM bots'
+        ).first<{ total: number | null }>();
+        const totalDownloadsCount = downloadsSum?.total ?? 0;
+
         const stats: AdminStatsDto = {
             totalBots: botsCount?.total || 0,
             publishedBots: breakdown.published,
@@ -144,6 +149,7 @@ export async function handleAdminRoutes(request: Request, env: Env, url: URL): P
             totalVersions: versionsCount?.total || 0,
             downloads: 'Not available',
             installs: 'Not available',
+            totalDownloadsCount,
             lifecycleBreakdown: {
                 draft: breakdown.draft,
                 review: breakdown.review,

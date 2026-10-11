@@ -53,6 +53,66 @@ export async function handlePublicRoutes(request: Request, env: Env, url: URL): 
     const path = url.pathname;
     const baseUrl = url.origin;
 
+    // 0. GET /health or /api/v1/health - System Health & Diagnostics
+    if ((path === '/health' || path === '/api/v1/health') && request.method === 'GET') {
+        let dbStatus: 'connected' | 'error' = 'connected';
+        let botCount = 0;
+        let dbError: string | undefined;
+
+        try {
+            const countResult = await env.DB.prepare(
+                "SELECT COUNT(*) as count FROM bots WHERE status = 'published'"
+            ).first<{ count: number }>();
+            botCount = countResult?.count ?? 0;
+        } catch (err: any) {
+            dbStatus = 'error';
+            dbError = err.message || 'Database query failure';
+        }
+
+        const isHealthy = dbStatus === 'connected';
+        return jsonResponse({
+            success: isHealthy,
+            data: {
+                status: isHealthy ? 'healthy' : 'degraded',
+                timestamp: new Date().toISOString(),
+                environment: env.ENVIRONMENT || 'production',
+                version: '1.1.0',
+                database: {
+                    status: dbStatus,
+                    botCount,
+                    error: dbError
+                },
+                storage: {
+                    status: env.BUCKET ? 'bound' : 'not_configured'
+                }
+            }
+        }, isHealthy ? 200 : 503);
+    }
+
+    // 0b. GET /api/v1/stats - Public catalog analytics & totals
+    if (path === '/api/v1/stats' && request.method === 'GET') {
+        const botsCount = await env.DB.prepare(
+            "SELECT COUNT(*) as count FROM bots WHERE status = 'published'"
+        ).first<{ count: number }>();
+
+        const downloadsCount = await env.DB.prepare(
+            "SELECT SUM(downloads_count) as total FROM bots"
+        ).first<{ total: number | null }>();
+
+        const categoriesCount = await env.DB.prepare(
+            "SELECT COUNT(*) as count FROM categories"
+        ).first<{ count: number }>();
+
+        return jsonResponse({
+            success: true,
+            data: {
+                publishedBots: botsCount?.count ?? 0,
+                totalDownloads: downloadsCount?.total ?? 0,
+                categoriesCount: categoriesCount?.count ?? 0
+            }
+        });
+    }
+
     // 1. GET /api/v1/categories - List all catalog categories
     if (path === '/api/v1/categories' && request.method === 'GET') {
         const { results } = await env.DB.prepare(
@@ -65,37 +125,62 @@ export async function handlePublicRoutes(request: Request, env: Env, url: URL): 
         });
     }
 
-    // 2. GET /api/v1/bots - List published bots
+    // 2. GET /api/v1/bots - List published bots with pagination and sorting
     if (path === '/api/v1/bots' && request.method === 'GET') {
         const categoryFilter = url.searchParams.get('category');
         const searchQuery = url.searchParams.get('search')?.trim().toLowerCase();
+        const sortParam = url.searchParams.get('sort')?.trim().toLowerCase() || 'recent';
+        const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') || '50', 10), 1), 100);
+        const offset = Math.max(parseInt(url.searchParams.get('offset') || '0', 10), 0);
 
-        let query = "SELECT * FROM bots WHERE status = 'published'";
+        let whereClause = " WHERE status = 'published'";
         const params: any[] = [];
 
         if (categoryFilter && categoryFilter !== 'all') {
-            query += ' AND category = ?';
+            whereClause += ' AND category = ?';
             params.push(categoryFilter);
         }
 
         if (searchQuery) {
-            query += ' AND (LOWER(name) LIKE ? OR LOWER(description) LIKE ? OR LOWER(slug) LIKE ?)';
+            whereClause += ' AND (LOWER(name) LIKE ? OR LOWER(description) LIKE ? OR LOWER(slug) LIKE ?)';
             const wildcard = `%${searchQuery}%`;
             params.push(wildcard, wildcard, wildcard);
         }
 
-        query += ' ORDER BY updated_at DESC';
+        // Count total for pagination
+        const countQuery = `SELECT COUNT(*) as total FROM bots${whereClause}`;
+        const countStmt = params.length > 0
+            ? env.DB.prepare(countQuery).bind(...params)
+            : env.DB.prepare(countQuery);
+        const totalResult = await countStmt.first<{ total: number }>();
+        const total = totalResult?.total ?? 0;
 
-        const stmt = params.length > 0
-            ? env.DB.prepare(query).bind(...params)
-            : env.DB.prepare(query);
+        // Sorting
+        let orderBy = ' ORDER BY updated_at DESC';
+        if (sortParam === 'popular' || sortParam === 'downloads') {
+            orderBy = ' ORDER BY downloads_count DESC, updated_at DESC';
+        } else if (sortParam === 'recent') {
+            orderBy = ' ORDER BY created_at DESC';
+        } else if (sortParam === 'name') {
+            orderBy = ' ORDER BY name ASC';
+        } else if (sortParam === 'rating') {
+            orderBy = ' ORDER BY rating DESC, downloads_count DESC';
+        }
 
-        const { results: bots } = await stmt.all<BotRow>();
+        const dataQuery = `SELECT * FROM bots${whereClause}${orderBy} LIMIT ? OFFSET ?`;
+        const dataParams = [...params, limit, offset];
+        const { results: bots } = await env.DB.prepare(dataQuery).bind(...dataParams).all<BotRow>();
 
         if (!bots || bots.length === 0) {
             return jsonResponse({
                 success: true,
-                data: []
+                data: [],
+                pagination: {
+                    total,
+                    limit,
+                    offset,
+                    hasMore: false
+                }
             });
         }
 
@@ -129,6 +214,8 @@ export async function handlePublicRoutes(request: Request, env: Env, url: URL): 
                     runtime: bot.runtime,
                     currentVersion: bot.current_version,
                     status: bot.status,
+                    downloadsCount: bot.downloads_count ?? 0,
+                    rating: bot.rating ?? 5.0,
                     createdAt: bot.created_at,
                     updatedAt: bot.updated_at,
                     credentials: (credRows || []).map(mapCredentialRow),
@@ -139,7 +226,13 @@ export async function handlePublicRoutes(request: Request, env: Env, url: URL): 
 
         return jsonResponse({
             success: true,
-            data: botSummaries
+            data: botSummaries,
+            pagination: {
+                total,
+                limit,
+                offset,
+                hasMore: offset + bots.length < total
+            }
         });
     }
 
@@ -261,6 +354,8 @@ export async function handlePublicRoutes(request: Request, env: Env, url: URL): 
             runtime: bot.runtime,
             currentVersion: bot.current_version,
             status: bot.status,
+            downloadsCount: bot.downloads_count ?? 0,
+            rating: bot.rating ?? 5.0,
             createdAt: bot.created_at,
             updatedAt: bot.updated_at,
             credentials: (credRows || []).map(mapCredentialRow),
@@ -270,6 +365,39 @@ export async function handlePublicRoutes(request: Request, env: Env, url: URL): 
         return jsonResponse({
             success: true,
             data: detail
+        });
+    }
+
+    // 4b. POST /api/v1/bots/:id/install or /download - Record install/download event
+    const installMatch = path.match(/^\/api\/v1\/bots\/([^/]+)\/(install|download)$/);
+    if (installMatch && request.method === 'POST') {
+        const idOrSlug = decodeURIComponent(installMatch[1]);
+
+        const bot = await env.DB.prepare(
+            'SELECT id, downloads_count FROM bots WHERE id = ? OR slug = ?'
+        ).bind(idOrSlug, idOrSlug).first<BotRow>();
+
+        if (!bot) {
+            return jsonResponse({
+                success: false,
+                error: {
+                    code: 'NOT_FOUND',
+                    message: `Bot not found with identifier: ${idOrSlug}`
+                }
+            }, 404);
+        }
+
+        const newCount = (bot.downloads_count ?? 0) + 1;
+        await env.DB.prepare(
+            'UPDATE bots SET downloads_count = COALESCE(downloads_count, 0) + 1 WHERE id = ?'
+        ).bind(bot.id).run();
+
+        return jsonResponse({
+            success: true,
+            data: {
+                botId: bot.id,
+                downloadsCount: newCount
+            }
         });
     }
 
@@ -287,6 +415,17 @@ export async function handlePublicRoutes(request: Request, env: Env, url: URL): 
                     message: `Package not found in storage: ${rawKey}`
                 }
             }, 404);
+        }
+
+        // Auto-increment downloads count for this package's bot asynchronously
+        if (request.method === 'GET') {
+            try {
+                await env.DB.prepare(
+                    'UPDATE bots SET downloads_count = COALESCE(downloads_count, 0) + 1 WHERE id = (SELECT bot_id FROM bot_versions WHERE package_key = ? LIMIT 1)'
+                ).bind(rawKey).run();
+            } catch (err) {
+                console.error('Failed to auto-increment package download count:', err);
+            }
         }
 
         const headers = new Headers();

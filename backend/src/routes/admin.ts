@@ -90,9 +90,19 @@ function normalizeLifecycle(status: string): BotLifecycleStatus | null {
     return null;
 }
 
+function resolveBaseUrl(request: Request, url: URL): string {
+    const forwardedProto = request.headers.get('x-forwarded-proto');
+    const isHttps = forwardedProto === 'https' ||
+                    url.protocol === 'https:' ||
+                    url.hostname.includes('trycloudflare.com') ||
+                    url.hostname.includes('workers.dev');
+    const scheme = isHttps ? 'https' : 'http';
+    return `${scheme}://${url.host}`;
+}
+
 export async function handleAdminRoutes(request: Request, env: Env, url: URL): Promise<Response | null> {
     const path = url.pathname;
-    const baseUrl = url.origin;
+    const baseUrl = resolveBaseUrl(request, url);
 
     // Fast check if path belongs to admin API
     if (!path.startsWith('/api/v1/admin')) {

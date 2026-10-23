@@ -62,7 +62,11 @@ internal data class CloudflareBotDto(
                 listOf(BotCredentialSpec.TELEGRAM_BOT_TOKEN)
             },
             packageInfo = BotPackageInfo(
-                packageUrl = currentVersionInfo?.downloadUrl ?: "",
+                packageUrl = (currentVersionInfo?.downloadUrl ?: "").let { url ->
+                    if (url.startsWith("http://") && (url.contains("trycloudflare.com") || url.contains("workers.dev"))) {
+                        url.replaceFirst("http://", "https://")
+                    } else url
+                },
                 sha256Checksum = currentVersionInfo?.sha256 ?: "",
                 runtimeType = runtime,
                 packageSizeBytes = currentVersionInfo?.packageSize ?: 0L
@@ -115,7 +119,11 @@ internal data class CloudflareVersionDto(
             id = id,
             botId = botId,
             version = version,
-            packageUrl = downloadUrl ?: "",
+            packageUrl = (downloadUrl ?: "").let { url ->
+                if (url.startsWith("http://") && (url.contains("trycloudflare.com") || url.contains("workers.dev"))) {
+                    url.replaceFirst("http://", "https://")
+                } else url
+            },
             sha256 = sha256,
             packageSize = packageSize,
             releaseNotes = releaseNotes,

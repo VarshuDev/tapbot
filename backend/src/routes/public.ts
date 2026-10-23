@@ -49,9 +49,19 @@ function mapVersionRow(row: BotVersionRow, baseUrl: string): BotVersionDto {
     };
 }
 
+function resolveBaseUrl(request: Request, url: URL): string {
+    const forwardedProto = request.headers.get('x-forwarded-proto');
+    const isHttps = forwardedProto === 'https' ||
+                    url.protocol === 'https:' ||
+                    url.hostname.includes('trycloudflare.com') ||
+                    url.hostname.includes('workers.dev');
+    const scheme = isHttps ? 'https' : 'http';
+    return `${scheme}://${url.host}`;
+}
+
 export async function handlePublicRoutes(request: Request, env: Env, url: URL): Promise<Response | null> {
     const path = url.pathname;
-    const baseUrl = url.origin;
+    const baseUrl = resolveBaseUrl(request, url);
 
     // 0. GET /health or /api/v1/health - System Health & Diagnostics
     if ((path === '/health' || path === '/api/v1/health') && request.method === 'GET') {

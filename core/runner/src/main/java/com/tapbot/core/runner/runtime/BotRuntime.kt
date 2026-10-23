@@ -1,5 +1,6 @@
 package com.tapbot.core.runner.runtime
 
+import android.content.Context
 import com.tapbot.core.model.LogLevel
 import com.tapbot.core.network.TelegramApiClient
 import kotlinx.coroutines.CoroutineScope
@@ -15,7 +16,9 @@ data class RuntimeContext(
     val log: (level: LogLevel, tag: String, message: String) -> Unit,
     val scope: CoroutineScope,
     val isNetworkAvailable: () -> Boolean = { true },
-    val networkState: StateFlow<Boolean>? = null
+    val networkState: StateFlow<Boolean>? = null,
+    val androidContext: Context? = null,
+    val credentials: Map<String, String> = emptyMap()
 )
 
 /**

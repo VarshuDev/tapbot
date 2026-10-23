@@ -83,6 +83,7 @@ class BotForegroundService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        ServiceLocator.appContext = applicationContext
         notificationHelper = NotificationHelper(this)
         notificationHelper.createNotificationChannel()
 
@@ -247,6 +248,7 @@ class BotForegroundService : Service() {
         )
         activeExecutions[installationId] = execution
 
+        val allCreds = credStore?.getAllCredentials(botId) ?: emptyMap()
         val context = RuntimeContext(
             botId = botId,
             token = token,
@@ -261,7 +263,9 @@ class BotForegroundService : Service() {
             },
             scope = serviceScope,
             isNetworkAvailable = { _networkState.value },
-            networkState = _networkState.asStateFlow()
+            networkState = _networkState.asStateFlow(),
+            androidContext = this,
+            credentials = allCreds
         )
 
         try {
@@ -448,6 +452,7 @@ class BotForegroundService : Service() {
  * ServiceLocator hook for injecting modules into Android Service.
  */
 object ServiceLocator {
+    var appContext: Context? = null
     var pocCredentialStore: CredentialStore? = null
     var credentialStore: CredentialStore? = null
     var logRepository: BotLogRepository? = null

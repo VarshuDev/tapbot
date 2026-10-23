@@ -125,4 +125,31 @@ class CloudflareCatalogApiTest {
         val bots = result.getOrThrow()
         assertTrue(bots.isNotEmpty())
     }
+
+    @Test
+    fun mockCatalogApi_includesTapBotCommanderAsFeatured() = runBlocking {
+        val mockApi = MockCatalogApi()
+        val bots = mockApi.getBots().getOrThrow()
+        val commander = bots.find { it.id == "bot_commander" }
+        assertNotNull("TapBot Commander must be present in sampleBots", commander)
+        assertEquals("TapBot Commander", commander!!.name)
+        assertTrue("TapBot Commander must be marked featured", commander.isFeatured)
+        assertEquals("Automation", commander.category)
+        assertEquals("native_art", commander.packageInfo.runtimeType)
+
+        // Check details by id or alias
+        val details = mockApi.getBotDetails("bot_commander").getOrThrow()
+        assertEquals("TapBot Commander", details.name)
+        val aliasDetails = mockApi.getBotDetails("bot_commander_flagship").getOrThrow()
+        assertEquals("TapBot Commander", aliasDetails.name)
+
+        // Check version
+        val versions = mockApi.getBotVersions("bot_commander").getOrThrow()
+        assertTrue(versions.isNotEmpty())
+        assertEquals("1.0.0", versions.first().version)
+
+        val latest = mockApi.getLatestVersion("bot_commander").getOrThrow()
+        assertNotNull(latest)
+        assertEquals("1.0.0", latest!!.version)
+    }
 }

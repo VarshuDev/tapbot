@@ -58,7 +58,11 @@ class LocalCatalogCache(
         if (index >= 0) {
             current[index] = bot
         } else {
-            current.add(bot)
+            if (bot.isFeatured) {
+                current.add(0, bot)
+            } else {
+                current.add(bot)
+            }
         }
         inMemoryBots = current
         if (cacheFile != null) {

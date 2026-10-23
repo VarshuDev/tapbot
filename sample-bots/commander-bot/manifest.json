@@ -1,0 +1,56 @@
+{
+  "$schema": "https://tapbot.dev/schemas/v1/manifest.json",
+  "id": "tapbot-commander",
+  "name": "TapBot Commander",
+  "version": "1.0.0",
+  "description": "Flagship remote controller, watchdog, and fleet manager for your Android phone and TapBot APK.",
+  "longDescription": "TapBot Commander runs natively inside the TapBot Android ART runtime. It provides remote Telegram commands to monitor device telemetry (battery, RAM, disk, network, uptime), manage installed bot instances, export logs, ring phone at full volume, toggle flashlight, sync clipboard, deliver the latest APK with SHA-256 integrity check, and push autonomous alerts on low battery or bot crashes.",
+  "category": "automation",
+  "icon": "assets/icon.png",
+  "runtime": "native_art",
+  "entrypoint": "com.tapbot.core.runner.runtime.CommanderBotRuntime",
+  "minimumRuntimeVersion": "1.0.0",
+  "minimumAppVersion": 1,
+  "credentials": [
+    {
+      "key": "bot_token",
+      "label": "Telegram Bot Token",
+      "description": "API token obtained from @BotFather on Telegram.",
+      "required": true,
+      "secret": true,
+      "inputType": "password",
+      "placeholder": "123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ",
+      "helpUrl": "https://t.me/BotFather"
+    },
+    {
+      "key": "owner_id",
+      "label": "Bot Owner User ID",
+      "description": "Your numeric Telegram user ID from @userinfobot to restrict sensitive commands.",
+      "required": false,
+      "secret": false,
+      "inputType": "text",
+      "placeholder": "123456789",
+      "helpUrl": "https://t.me/userinfobot"
+    },
+    {
+      "key": "low_battery_threshold",
+      "label": "Low Battery Alert Threshold (%)",
+      "description": "Battery percentage threshold that triggers an urgent Telegram alert.",
+      "required": false,
+      "secret": false,
+      "inputType": "number",
+      "placeholder": "15"
+    }
+  ],
+  "permissions": [
+    "INTERNET",
+    "FOREGROUND_SERVICE",
+    "NOTIFICATIONS"
+  ],
+  "packageMetadata": {
+    "author": "TapBot Team",
+    "license": "Apache-2.0",
+    "repository": "https://github.com/tapbot/tapbot",
+    "createdAt": "2026-10-22T00:00:00Z"
+  }
+}

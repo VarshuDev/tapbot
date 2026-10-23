@@ -8,27 +8,38 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
-private val DarkColorScheme = darkColorScheme(
-    primary = Purple80,
-    secondary = PurpleGrey80,
-    tertiary = Pink80,
-    background = DarkBackground,
-    surface = DarkSurface,
-    surfaceVariant = DarkSurfaceVariant
+private val BotHubDarkColorScheme = darkColorScheme(
+    primary = BotHubColors.PrimaryBlue,
+    onPrimary = Color.White,
+    primaryContainer = BotHubColors.SecondarySurface,
+    onPrimaryContainer = BotHubColors.PrimaryText,
+    secondary = BotHubColors.Info,
+    onSecondary = Color.Black,
+    secondaryContainer = BotHubColors.ElevatedSurface,
+    onSecondaryContainer = BotHubColors.PrimaryText,
+    tertiary = BotHubColors.Success,
+    onTertiary = Color.Black,
+    background = BotHubColors.Background,
+    onBackground = BotHubColors.PrimaryText,
+    surface = BotHubColors.PrimarySurface,
+    onSurface = BotHubColors.PrimaryText,
+    surfaceVariant = BotHubColors.ElevatedSurface,
+    onSurfaceVariant = BotHubColors.SecondaryText,
+    outline = BotHubColors.Border,
+    outlineVariant = BotHubColors.BorderSubtle,
+    error = BotHubColors.Error,
+    onError = Color.White
 )
 
-private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40
-)
+private val BotHubLightColorScheme = BotHubDarkColorScheme // BotHub is intentionally dark-first for the developer utility aesthetic
 
 @Composable
 fun TapBotTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    dynamicColor: Boolean = true,
+    dynamicColor: Boolean = false, // Disabled by default to preserve the BotHub dark navy identity
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {
@@ -36,8 +47,7 @@ fun TapBotTheme(
             val context = LocalContext.current
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
+        else -> BotHubDarkColorScheme
     }
 
     MaterialTheme(

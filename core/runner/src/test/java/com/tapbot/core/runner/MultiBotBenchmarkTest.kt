@@ -104,6 +104,8 @@ class MultiBotBenchmarkTest {
 
     @Before
     fun setUp() {
+        fakeApi.pollCounts.clear()
+        fakeApi.sentMessages.clear()
         System.gc()
         Thread.sleep(100)
     }

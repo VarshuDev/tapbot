@@ -1,6 +1,7 @@
 /**
  * Web-Based Admin Dashboard SPA for TapBot Store Management
  * Embedded Single Page Application served directly by Cloudflare Worker
+ * Redesigned with ui-ux-pro-max Light Theme Design System
  */
 
 export function renderDashboardHtml(): string {
@@ -10,35 +11,66 @@ export function renderDashboardHtml(): string {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TapBot Store Admin</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-base: #090d16;
-            --bg-surface: #0f172a;
-            --bg-surface-hover: #1e293b;
-            --bg-card: rgba(15, 23, 42, 0.75);
-            --border-subtle: #1e293b;
-            --border-prominent: #334155;
-            --text-main: #f8fafc;
-            --text-muted: #94a3b8;
+            /* ui-ux-pro-max Light Theme Tokens */
+            --bg-base: #f8fafc;
+            --bg-surface: #ffffff;
+            --bg-surface-hover: #f1f5f9;
+            --bg-subtle: #f8fafc;
+            --bg-card: #ffffff;
+            --border-subtle: #e2e8f0;
+            --border-prominent: #cbd5e1;
+            --border-focus: #4f46e5;
+            --text-main: #0f172a;
+            --text-muted: #475569;
             --text-dim: #64748b;
-            --accent-cyan: #38bdf8;
-            --accent-indigo: #6366f1;
-            --accent-purple: #a855f7;
-            --status-published: #10b981;
-            --status-published-bg: rgba(16, 185, 129, 0.12);
-            --status-published-border: rgba(16, 185, 129, 0.35);
-            --status-draft: #94a3b8;
-            --status-draft-bg: rgba(148, 163, 184, 0.12);
-            --status-draft-border: rgba(148, 163, 184, 0.3);
-            --status-review: #f59e0b;
-            --status-review-bg: rgba(245, 158, 11, 0.12);
-            --status-review-border: rgba(245, 158, 11, 0.35);
-            --status-unpublished: #c084fc;
-            --status-unpublished-bg: rgba(192, 132, 252, 0.12);
-            --status-unpublished-border: rgba(192, 132, 252, 0.35);
-            --status-archived: #f43f5e;
-            --status-archived-bg: rgba(244, 63, 94, 0.12);
-            --status-archived-border: rgba(244, 63, 94, 0.35);
+            
+            /* Primary Accents */
+            --accent-indigo: #4f46e5;
+            --accent-indigo-hover: #4338ca;
+            --accent-indigo-light: #eef2ff;
+            --accent-indigo-subtle: rgba(79, 70, 229, 0.08);
+            --accent-cyan: #0284c7;
+            --accent-cyan-light: #f0f9ff;
+            --accent-purple: #7c3aed;
+            
+            /* Status Indicators (Accessible contrast >= 4.5:1) */
+            --status-published: #047857;
+            --status-published-bg: #ecfdf5;
+            --status-published-border: #a7f3d0;
+            
+            --status-draft: #475569;
+            --status-draft-bg: #f1f5f9;
+            --status-draft-border: #cbd5e1;
+            
+            --status-review: #b45309;
+            --status-review-bg: #fffbeb;
+            --status-review-border: #fde68a;
+            
+            --status-unpublished: #6d28d9;
+            --status-unpublished-bg: #f5f3ff;
+            --status-unpublished-border: #ddd6fe;
+            
+            --status-archived: #be123c;
+            --status-archived-bg: #fff1f2;
+            --status-archived-border: #fecdd3;
+            
+            /* Elevation & Shadows */
+            --shadow-xs: 0 1px 2px 0 rgba(15, 23, 42, 0.05);
+            --shadow-sm: 0 1px 3px 0 rgba(15, 23, 42, 0.07), 0 1px 2px -1px rgba(15, 23, 42, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(15, 23, 42, 0.07), 0 2px 4px -2px rgba(15, 23, 42, 0.05);
+            --shadow-lg: 0 10px 15px -3px rgba(15, 23, 42, 0.08), 0 4px 6px -4px rgba(15, 23, 42, 0.04);
+            --shadow-xl: 0 20px 25px -5px rgba(15, 23, 42, 0.1), 0 8px 10px -6px rgba(15, 23, 42, 0.05);
+            
+            /* Radius */
+            --radius-sm: 6px;
+            --radius-md: 8px;
+            --radius-lg: 12px;
+            --radius-xl: 16px;
         }
 
         * {
@@ -48,19 +80,20 @@ export function renderDashboardHtml(): string {
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
             background-color: var(--bg-base);
             color: var(--text-main);
             min-height: 100vh;
             line-height: 1.5;
             background-image: 
-                radial-gradient(circle at 15% 10%, rgba(99, 102, 241, 0.08) 0%, transparent 40%),
-                radial-gradient(circle at 85% 80%, rgba(56, 189, 248, 0.06) 0%, transparent 40%);
+                radial-gradient(circle at 10% 10%, rgba(79, 70, 229, 0.04) 0%, transparent 45%),
+                radial-gradient(circle at 90% 90%, rgba(2, 132, 199, 0.03) 0%, transparent 45%);
             background-attachment: fixed;
+            -webkit-font-smoothing: antialiased;
         }
 
         .mono {
-            font-family: ui-monospace, 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
+            font-family: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
         }
 
         /* Top Navbar */
@@ -68,33 +101,39 @@ export function renderDashboardHtml(): string {
             position: sticky;
             top: 0;
             z-index: 40;
-            background: rgba(9, 13, 22, 0.85);
+            background: rgba(255, 255, 255, 0.92);
             backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
             border-bottom: 1px solid var(--border-subtle);
-            padding: 0.75rem 1.5rem;
+            padding: 0.85rem 2rem;
             display: flex;
             align-items: center;
             justify-content: space-between;
+            box-shadow: var(--shadow-xs);
         }
 
         .nav-brand {
             display: flex;
             align-items: center;
-            gap: 0.75rem;
+            gap: 0.85rem;
         }
 
         .brand-badge {
-            background: linear-gradient(135deg, #6366f1, #38bdf8);
-            width: 32px;
-            height: 32px;
-            border-radius: 8px;
+            background: linear-gradient(135deg, #4f46e5, #0284c7);
+            width: 36px;
+            height: 36px;
+            border-radius: var(--radius-md);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-weight: 800;
-            color: #fff;
-            box-shadow: 0 0 16px rgba(99, 102, 241, 0.4);
+            color: #ffffff;
+            box-shadow: 0 4px 10px rgba(79, 70, 229, 0.3);
+            flex-shrink: 0;
+        }
+
+        .brand-badge svg {
+            width: 20px;
+            height: 20px;
         }
 
         .brand-title {
@@ -103,137 +142,179 @@ export function renderDashboardHtml(): string {
             letter-spacing: -0.02em;
             display: flex;
             align-items: center;
-            gap: 0.5rem;
+            gap: 0.6rem;
+            color: var(--text-main);
         }
 
         .brand-tag {
-            font-size: 0.7rem;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            padding: 0.15rem 0.45rem;
-            border-radius: 4px;
-            background: var(--bg-surface-hover);
-            color: var(--accent-cyan);
-            border: 1px solid var(--border-subtle);
+            font-size: 0.72rem;
+            font-weight: 600;
+            letter-spacing: 0.04em;
+            padding: 0.18rem 0.55rem;
+            border-radius: var(--radius-sm);
+            background: var(--accent-indigo-light);
+            color: var(--accent-indigo);
+            border: 1px solid rgba(79, 70, 229, 0.2);
         }
 
         .nav-actions {
             display: flex;
             align-items: center;
-            gap: 0.75rem;
+            gap: 0.65rem;
         }
 
         /* Buttons */
         .btn {
             display: inline-flex;
             align-items: center;
+            justify-content: center;
             gap: 0.45rem;
             font-size: 0.85rem;
             font-weight: 600;
-            padding: 0.5rem 0.95rem;
-            border-radius: 6px;
+            padding: 0.52rem 0.95rem;
+            border-radius: var(--radius-md);
             cursor: pointer;
             border: 1px solid transparent;
-            transition: all 0.15s ease;
+            transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
             text-decoration: none;
             user-select: none;
+            line-height: 1.25;
+        }
+
+        .btn svg {
+            flex-shrink: 0;
         }
 
         .btn-primary {
-            background: linear-gradient(135deg, #4f46e5, #6366f1);
+            background: var(--accent-indigo);
             color: #ffffff;
-            box-shadow: 0 2px 8px rgba(99, 102, 241, 0.35);
+            box-shadow: 0 1px 3px rgba(79, 70, 229, 0.35);
         }
         .btn-primary:hover {
-            filter: brightness(1.1);
-            transform: translateY(-1px);
+            background: var(--accent-indigo-hover);
+            box-shadow: 0 2px 6px rgba(79, 70, 229, 0.45);
+        }
+        .btn-primary:active {
+            transform: translateY(1px);
         }
 
         .btn-secondary {
             background: var(--bg-surface);
-            color: var(--text-main);
-            border-color: var(--border-subtle);
+            color: var(--text-muted);
+            border-color: var(--border-prominent);
+            box-shadow: var(--shadow-xs);
         }
         .btn-secondary:hover {
             background: var(--bg-surface-hover);
-            border-color: var(--border-prominent);
+            color: var(--text-main);
+            border-color: #94a3b8;
+        }
+        .btn-secondary:active {
+            transform: translateY(1px);
         }
 
         .btn-success {
             background: #059669;
             color: #ffffff;
+            box-shadow: 0 1px 3px rgba(5, 150, 105, 0.3);
         }
         .btn-success:hover {
-            background: #10b981;
+            background: #047857;
         }
 
         .btn-danger {
-            background: rgba(244, 63, 94, 0.15);
-            color: #fda4af;
-            border-color: rgba(244, 63, 94, 0.3);
+            background: #ffffff;
+            color: var(--status-archived);
+            border-color: var(--status-archived-border);
+            box-shadow: var(--shadow-xs);
         }
         .btn-danger:hover {
-            background: rgba(244, 63, 94, 0.3);
-            color: #fff;
+            background: var(--status-archived-bg);
+            border-color: var(--status-archived);
+            color: #9f1239;
         }
 
         .btn-sm {
-            padding: 0.3rem 0.6rem;
-            font-size: 0.78rem;
+            padding: 0.35rem 0.65rem;
+            font-size: 0.8rem;
+            border-radius: var(--radius-sm);
+        }
+
+        .btn:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+            pointer-events: none;
         }
 
         /* Layout Container */
         .container {
-            max-width: 1240px;
+            max-width: 1280px;
             margin: 0 auto;
-            padding: 1.75rem 1.25rem 4rem 1.25rem;
+            padding: 2rem 1.75rem 4rem 1.75rem;
         }
 
         /* Metrics Grid */
         .metrics-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 1rem;
+            grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+            gap: 1.25rem;
             margin-bottom: 2rem;
         }
 
         .metric-card {
             background: var(--bg-card);
-            backdrop-filter: blur(12px);
             border: 1px solid var(--border-subtle);
-            border-radius: 10px;
-            padding: 1.15rem;
+            border-radius: var(--radius-lg);
+            padding: 1.25rem;
             position: relative;
             overflow: hidden;
-            transition: border-color 0.2s;
+            box-shadow: var(--shadow-sm);
+            transition: all 0.2s ease;
         }
         .metric-card:hover {
             border-color: var(--border-prominent);
+            box-shadow: var(--shadow-md);
+            transform: translateY(-2px);
+        }
+
+        .metric-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
         }
 
         .metric-title {
             font-size: 0.78rem;
             font-weight: 600;
-            color: var(--text-muted);
+            color: var(--text-dim);
             text-transform: uppercase;
-            letter-spacing: 0.04em;
-            margin-bottom: 0.35rem;
+            letter-spacing: 0.05em;
+        }
+
+        .metric-icon-wrap {
+            width: 30px;
+            height: 30px;
+            border-radius: var(--radius-md);
             display: flex;
             align-items: center;
-            justify-content: space-between;
+            justify-content: center;
+            background: var(--bg-surface-hover);
+            color: var(--text-muted);
         }
 
         .metric-value {
-            font-size: 1.85rem;
+            font-size: 2rem;
             font-weight: 700;
-            letter-spacing: -0.02em;
+            letter-spacing: -0.03em;
             color: var(--text-main);
+            line-height: 1.2;
         }
 
         .metric-subtitle {
-            font-size: 0.72rem;
+            font-size: 0.78rem;
             color: var(--text-dim);
-            margin-top: 0.25rem;
+            margin-top: 0.35rem;
         }
 
         .pulse-dot {
@@ -242,7 +323,14 @@ export function renderDashboardHtml(): string {
             border-radius: 50%;
             display: inline-block;
             background: var(--status-published);
-            box-shadow: 0 0 8px var(--status-published);
+            box-shadow: 0 0 0 3px rgba(4, 120, 87, 0.2);
+            animation: pulseAnim 2s infinite;
+        }
+
+        @keyframes pulseAnim {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(4, 120, 87, 0.4); }
+            70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(4, 120, 87, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(4, 120, 87, 0); }
         }
 
         /* Bot Management Section */
@@ -259,6 +347,7 @@ export function renderDashboardHtml(): string {
             font-size: 1.35rem;
             font-weight: 700;
             letter-spacing: -0.02em;
+            color: var(--text-main);
         }
 
         .filters-toolbar {
@@ -270,25 +359,30 @@ export function renderDashboardHtml(): string {
 
         .filter-tabs {
             display: flex;
-            background: var(--bg-surface);
+            background: #edf2f7;
             border: 1px solid var(--border-subtle);
-            border-radius: 8px;
+            border-radius: var(--radius-md);
             padding: 3px;
         }
 
         .filter-tab {
-            padding: 0.35rem 0.75rem;
+            padding: 0.4rem 0.85rem;
             font-size: 0.8rem;
-            font-weight: 500;
+            font-weight: 600;
             color: var(--text-muted);
-            border-radius: 6px;
+            border-radius: var(--radius-sm);
             cursor: pointer;
-            transition: all 0.15s;
+            transition: all 0.15s ease;
+            user-select: none;
+        }
+        .filter-tab:hover {
+            color: var(--text-main);
         }
         .filter-tab.active {
-            background: var(--bg-surface-hover);
-            color: var(--text-main);
-            font-weight: 600;
+            background: var(--bg-surface);
+            color: var(--accent-indigo);
+            font-weight: 700;
+            box-shadow: var(--shadow-xs);
         }
 
         .search-box {
@@ -297,35 +391,42 @@ export function renderDashboardHtml(): string {
 
         .search-input {
             background: var(--bg-surface);
-            border: 1px solid var(--border-subtle);
+            border: 1px solid var(--border-prominent);
             color: var(--text-main);
-            padding: 0.45rem 0.85rem 0.45rem 2rem;
-            border-radius: 6px;
+            padding: 0.5rem 0.85rem 0.5rem 2.2rem;
+            border-radius: var(--radius-md);
             font-size: 0.85rem;
             outline: none;
-            transition: border-color 0.2s;
-            width: 220px;
+            transition: all 0.15s ease;
+            width: 230px;
+            box-shadow: var(--shadow-xs);
         }
         .search-input:focus {
-            border-color: var(--accent-cyan);
+            border-color: var(--border-focus);
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+        }
+        .search-input::placeholder {
+            color: var(--text-dim);
         }
 
         .search-icon {
             position: absolute;
-            left: 0.65rem;
+            left: 0.75rem;
             top: 50%;
             transform: translateY(-50%);
             color: var(--text-dim);
-            font-size: 0.85rem;
+            pointer-events: none;
+            display: flex;
+            align-items: center;
         }
 
         /* Table Card */
         .table-card {
             background: var(--bg-card);
             border: 1px solid var(--border-subtle);
-            border-radius: 10px;
+            border-radius: var(--radius-lg);
             overflow: hidden;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+            box-shadow: var(--shadow-sm);
         }
 
         .table-responsive {
@@ -336,14 +437,14 @@ export function renderDashboardHtml(): string {
             width: 100%;
             border-collapse: collapse;
             text-align: left;
-            font-size: 0.86rem;
+            font-size: 0.875rem;
         }
 
         th {
-            background: rgba(15, 23, 42, 0.95);
-            padding: 0.85rem 1rem;
+            background: #f8fafc;
+            padding: 0.85rem 1.15rem;
             font-weight: 600;
-            font-size: 0.75rem;
+            font-size: 0.74rem;
             text-transform: uppercase;
             letter-spacing: 0.05em;
             color: var(--text-muted);
@@ -351,17 +452,22 @@ export function renderDashboardHtml(): string {
         }
 
         td {
-            padding: 0.95rem 1rem;
-            border-bottom: 1px solid var(--border-subtle);
+            padding: 0.95rem 1.15rem;
+            border-bottom: 1px solid #f1f5f9;
             vertical-align: middle;
+            color: var(--text-main);
         }
 
         tr:last-child td {
             border-bottom: none;
         }
 
-        tr:hover td {
-            background: rgba(30, 41, 59, 0.4);
+        tbody tr {
+            transition: background-color 0.1s ease;
+        }
+
+        tbody tr:hover {
+            background-color: #f8fafc;
         }
 
         .bot-cell {
@@ -371,9 +477,9 @@ export function renderDashboardHtml(): string {
         }
 
         .bot-icon {
-            width: 38px;
-            height: 38px;
-            border-radius: 8px;
+            width: 40px;
+            height: 40px;
+            border-radius: var(--radius-md);
             background: var(--bg-surface-hover);
             border: 1px solid var(--border-subtle);
             object-fit: cover;
@@ -381,19 +487,21 @@ export function renderDashboardHtml(): string {
             align-items: center;
             justify-content: center;
             font-weight: 700;
-            color: var(--accent-cyan);
-            font-size: 1rem;
+            color: var(--accent-indigo);
+            font-size: 1.1rem;
             flex-shrink: 0;
+            box-shadow: var(--shadow-xs);
         }
 
         .bot-name {
             font-weight: 600;
             color: var(--text-main);
             margin-bottom: 0.15rem;
+            font-size: 0.92rem;
         }
 
         .bot-slug {
-            font-size: 0.74rem;
+            font-size: 0.75rem;
             color: var(--text-dim);
         }
 
@@ -402,7 +510,7 @@ export function renderDashboardHtml(): string {
             display: inline-flex;
             align-items: center;
             gap: 0.35rem;
-            padding: 0.25rem 0.55rem;
+            padding: 0.22rem 0.6rem;
             border-radius: 9999px;
             font-size: 0.72rem;
             font-weight: 600;
@@ -441,19 +549,20 @@ export function renderDashboardHtml(): string {
         }
 
         .badge-tag {
-            background: rgba(30, 41, 59, 0.6);
+            background: #f1f5f9;
             border: 1px solid var(--border-subtle);
             color: var(--text-muted);
-            padding: 0.15rem 0.45rem;
-            border-radius: 4px;
-            font-size: 0.72rem;
+            padding: 0.18rem 0.5rem;
+            border-radius: var(--radius-sm);
+            font-size: 0.74rem;
+            font-weight: 500;
         }
 
         /* Action Buttons */
         .actions-cell {
             display: flex;
             align-items: center;
-            gap: 0.4rem;
+            gap: 0.45rem;
             flex-wrap: wrap;
         }
 
@@ -464,14 +573,14 @@ export function renderDashboardHtml(): string {
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(3, 7, 18, 0.8);
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
+            background: rgba(15, 23, 42, 0.45);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
             z-index: 100;
             display: none;
             align-items: center;
             justify-content: center;
-            padding: 1rem;
+            padding: 1.25rem;
         }
 
         .modal-overlay.active {
@@ -481,89 +590,112 @@ export function renderDashboardHtml(): string {
         .modal-box {
             background: var(--bg-surface);
             border: 1px solid var(--border-prominent);
-            border-radius: 12px;
+            border-radius: var(--radius-xl);
             width: 100%;
             max-width: 580px;
             max-height: 90vh;
             overflow-y: auto;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+            box-shadow: var(--shadow-xl);
             display: flex;
             flex-direction: column;
+            animation: modalFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes modalFadeIn {
+            from { opacity: 0; transform: scale(0.97) translateY(8px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
         }
 
         .modal-box-lg {
-            max-width: 820px;
+            max-width: 840px;
         }
 
         .modal-header {
-            padding: 1.15rem 1.35rem;
+            padding: 1.25rem 1.5rem;
             border-bottom: 1px solid var(--border-subtle);
             display: flex;
             align-items: center;
             justify-content: space-between;
+            background: var(--bg-surface);
         }
 
         .modal-title {
-            font-size: 1.1rem;
+            font-size: 1.15rem;
             font-weight: 700;
             color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
         }
 
         .modal-close {
             background: transparent;
             border: none;
-            color: var(--text-muted);
-            font-size: 1.25rem;
+            color: var(--text-dim);
+            font-size: 1.35rem;
             cursor: pointer;
-            padding: 0.25rem;
-            border-radius: 4px;
+            padding: 0.3rem;
+            border-radius: var(--radius-sm);
+            line-height: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s;
         }
         .modal-close:hover {
             color: var(--text-main);
+            background: var(--bg-surface-hover);
         }
 
         .modal-body {
-            padding: 1.35rem;
+            padding: 1.5rem;
             flex: 1;
             overflow-y: auto;
         }
 
         .modal-footer {
-            padding: 1rem 1.35rem;
+            padding: 1rem 1.5rem;
             border-top: 1px solid var(--border-subtle);
             display: flex;
             align-items: center;
             justify-content: flex-end;
             gap: 0.75rem;
-            background: rgba(9, 13, 22, 0.5);
+            background: #f8fafc;
+            border-bottom-left-radius: var(--radius-xl);
+            border-bottom-right-radius: var(--radius-xl);
         }
 
         /* Form Controls */
         .form-group {
-            margin-bottom: 1rem;
+            margin-bottom: 1.15rem;
         }
 
         .form-label {
             display: block;
-            font-size: 0.8rem;
+            font-size: 0.82rem;
             font-weight: 600;
             color: var(--text-muted);
-            margin-bottom: 0.35rem;
+            margin-bottom: 0.4rem;
         }
 
         .form-control {
             width: 100%;
-            background: var(--bg-base);
-            border: 1px solid var(--border-subtle);
+            background: var(--bg-surface);
+            border: 1px solid var(--border-prominent);
             color: var(--text-main);
             padding: 0.55rem 0.85rem;
-            border-radius: 6px;
-            font-size: 0.86rem;
+            border-radius: var(--radius-md);
+            font-size: 0.875rem;
             outline: none;
-            transition: border-color 0.2s;
+            transition: all 0.15s ease;
+            box-shadow: var(--shadow-xs);
         }
         .form-control:focus {
-            border-color: var(--accent-cyan);
+            border-color: var(--border-focus);
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+        }
+        .form-control::placeholder {
+            color: var(--text-dim);
         }
 
         .form-row {
@@ -573,38 +705,40 @@ export function renderDashboardHtml(): string {
         }
 
         textarea.form-control {
-            min-height: 80px;
+            min-height: 85px;
             resize: vertical;
         }
 
         /* File Upload Dropzone */
         .dropzone {
             border: 2px dashed var(--border-prominent);
-            border-radius: 8px;
-            padding: 1.5rem;
+            border-radius: var(--radius-lg);
+            padding: 1.75rem;
             text-align: center;
-            background: rgba(9, 13, 22, 0.4);
+            background: #f8fafc;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.2s ease;
         }
         .dropzone:hover, .dropzone.dragover {
-            border-color: var(--accent-cyan);
-            background: rgba(56, 189, 248, 0.05);
+            border-color: var(--accent-indigo);
+            background: var(--accent-indigo-light);
         }
 
         .dropzone-icon {
             font-size: 2rem;
             margin-bottom: 0.5rem;
-            color: var(--accent-cyan);
+            color: var(--accent-indigo);
+            display: flex;
+            justify-content: center;
         }
 
         .dropzone-text {
-            font-size: 0.84rem;
+            font-size: 0.875rem;
             color: var(--text-muted);
         }
 
         .dropzone-subtext {
-            font-size: 0.74rem;
+            font-size: 0.75rem;
             color: var(--text-dim);
             margin-top: 0.25rem;
         }
@@ -613,13 +747,13 @@ export function renderDashboardHtml(): string {
         .drawer {
             position: fixed;
             top: 0;
-            right: -480px;
-            width: 480px;
-            max-width: 90vw;
+            right: -520px;
+            width: 500px;
+            max-width: 92vw;
             height: 100vh;
             background: var(--bg-surface);
-            border-left: 1px solid var(--border-prominent);
-            box-shadow: -10px 0 30px rgba(0, 0, 0, 0.5);
+            border-left: 1px solid var(--border-subtle);
+            box-shadow: -8px 0 24px rgba(15, 23, 42, 0.08);
             z-index: 90;
             transition: right 0.25s cubic-bezier(0.16, 1, 0.3, 1);
             display: flex;
@@ -631,53 +765,60 @@ export function renderDashboardHtml(): string {
         }
 
         .drawer-header {
-            padding: 1.15rem 1.25rem;
+            padding: 1.25rem 1.5rem;
             border-bottom: 1px solid var(--border-subtle);
             display: flex;
             align-items: center;
             justify-content: space-between;
+            background: var(--bg-surface);
         }
 
         .drawer-body {
-            padding: 1rem;
+            padding: 1.25rem;
             flex: 1;
             overflow-y: auto;
+            background: #f8fafc;
         }
 
         .audit-item {
-            padding: 0.85rem;
-            background: var(--bg-base);
+            padding: 1rem;
+            background: var(--bg-surface);
             border: 1px solid var(--border-subtle);
-            border-radius: 8px;
-            margin-bottom: 0.75rem;
-            font-size: 0.8rem;
+            border-radius: var(--radius-md);
+            margin-bottom: 0.85rem;
+            font-size: 0.82rem;
+            box-shadow: var(--shadow-xs);
         }
 
         .audit-meta {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 0.35rem;
+            margin-bottom: 0.4rem;
         }
 
         .audit-action {
             font-weight: 700;
-            color: var(--accent-cyan);
+            color: var(--accent-indigo);
+            text-transform: uppercase;
+            font-size: 0.74rem;
+            letter-spacing: 0.03em;
         }
 
         .audit-time {
-            font-size: 0.7rem;
+            font-size: 0.72rem;
             color: var(--text-dim);
         }
 
         .audit-details {
-            background: rgba(15, 23, 42, 0.6);
-            padding: 0.45rem;
-            border-radius: 4px;
+            background: #f1f5f9;
+            padding: 0.5rem;
+            border-radius: var(--radius-sm);
             font-size: 0.74rem;
             color: var(--text-muted);
             overflow-x: auto;
-            margin-top: 0.35rem;
+            margin-top: 0.45rem;
+            border: 1px solid #e2e8f0;
         }
 
         /* Toasts */
@@ -688,25 +829,27 @@ export function renderDashboardHtml(): string {
             z-index: 120;
             display: flex;
             flex-direction: column;
-            gap: 0.5rem;
+            gap: 0.6rem;
         }
 
         .toast {
             background: var(--bg-surface);
             border: 1px solid var(--border-prominent);
-            border-radius: 8px;
-            padding: 0.75rem 1.1rem;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+            border-radius: var(--radius-md);
+            padding: 0.85rem 1.15rem;
+            box-shadow: var(--shadow-lg);
             color: var(--text-main);
-            font-size: 0.85rem;
+            font-size: 0.86rem;
+            font-weight: 500;
             display: flex;
             align-items: center;
-            gap: 0.6rem;
+            gap: 0.7rem;
             animation: toastIn 0.2s ease-out;
-            max-width: 360px;
+            max-width: 380px;
         }
-        .toast-success { border-color: var(--status-published); }
-        .toast-error { border-color: var(--status-archived); }
+        .toast-success { border-left: 4px solid var(--status-published); }
+        .toast-error { border-left: 4px solid var(--status-archived); }
+        .toast-info { border-left: 4px solid var(--accent-indigo); }
 
         @keyframes toastIn {
             from { opacity: 0; transform: translateY(10px); }
@@ -715,7 +858,7 @@ export function renderDashboardHtml(): string {
 
         /* Empty State */
         .empty-state {
-            padding: 3.5rem 1rem;
+            padding: 3.5rem 1.5rem;
             text-align: center;
             color: var(--text-dim);
         }
@@ -723,27 +866,34 @@ export function renderDashboardHtml(): string {
         .empty-icon {
             font-size: 2.5rem;
             margin-bottom: 0.75rem;
-            opacity: 0.6;
+            opacity: 0.5;
+            display: flex;
+            justify-content: center;
         }
 
         /* Dropdown Lifecycle Select */
         .lifecycle-select {
             background: var(--bg-surface);
             color: var(--text-main);
-            border: 1px solid var(--border-subtle);
-            border-radius: 6px;
-            padding: 0.3rem 0.5rem;
+            border: 1px solid var(--border-prominent);
+            border-radius: var(--radius-sm);
+            padding: 0.35rem 0.6rem;
             font-size: 0.75rem;
             font-weight: 600;
             cursor: pointer;
             outline: none;
+            transition: all 0.15s ease;
+            box-shadow: var(--shadow-xs);
         }
         .lifecycle-select:focus {
-            border-color: var(--accent-cyan);
+            border-color: var(--border-focus);
+            box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.15);
         }
 
         /* Responsive */
         @media (max-width: 768px) {
+            header { padding: 0.75rem 1rem; }
+            .container { padding: 1.25rem 1rem 3rem 1rem; }
             .form-row { grid-template-columns: 1fr; }
             .section-header { flex-direction: column; align-items: flex-start; }
             .filters-toolbar { width: 100%; justify-content: space-between; }
@@ -756,23 +906,41 @@ export function renderDashboardHtml(): string {
     <!-- Header Navigation -->
     <header>
         <div class="nav-brand">
-            <div class="brand-badge">⚡</div>
+            <div class="brand-badge" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+                </svg>
+            </div>
             <div>
                 <div class="brand-title">
                     TapBot Store Admin
-                    <span class="brand-tag">D1 & R2 Backend</span>
+                    <span class="brand-tag">Cloudflare D1 & R2</span>
                 </div>
             </div>
         </div>
         <div class="nav-actions">
             <button class="btn btn-secondary btn-sm" onclick="loadDashboardData()" title="Refresh store data">
-                🔄 Refresh
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+                </svg>
+                Refresh
             </button>
-            <button class="btn btn-secondary btn-sm" onclick="toggleAuditDrawer()" title="View admin audit logs">
-                📜 Audit Trail
+            <button class="btn btn-secondary btn-sm" onclick="toggleAuditDrawer()" title="View admin audit trail">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                    <line x1="16" y1="13" x2="8" y2="13"/>
+                    <line x1="16" y1="17" x2="8" y2="17"/>
+                </svg>
+                Audit Trail
             </button>
             <button class="btn btn-danger btn-sm" onclick="handleLogout()" title="Sign out of admin session">
-                🚪 Logout
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                    <polyline points="16 17 21 12 16 7"/>
+                    <line x1="21" y1="12" x2="9" y2="12"/>
+                </svg>
+                Logout
             </button>
         </div>
     </header>
@@ -783,30 +951,70 @@ export function renderDashboardHtml(): string {
         <!-- Top Metrics Bento Grid -->
         <section class="metrics-grid">
             <div class="metric-card">
-                <div class="metric-title">Total Bots</div>
+                <div class="metric-header">
+                    <div class="metric-title">Total Catalog</div>
+                    <div class="metric-icon-wrap">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                            <line x1="8" y1="21" x2="16" y2="21"/>
+                            <line x1="12" y1="17" x2="12" y2="21"/>
+                        </svg>
+                    </div>
+                </div>
                 <div class="metric-value mono" id="stat-total-bots">-</div>
                 <div class="metric-subtitle">Across all lifecycle states</div>
             </div>
+
             <div class="metric-card">
-                <div class="metric-title">
-                    Published Bots
-                    <span class="pulse-dot"></span>
+                <div class="metric-header">
+                    <div class="metric-title">Published Bots</div>
+                    <span class="pulse-dot" title="Live on production store"></span>
                 </div>
                 <div class="metric-value mono" style="color: var(--status-published);" id="stat-published-bots">-</div>
                 <div class="metric-subtitle">Visible to Android clients</div>
             </div>
+
             <div class="metric-card">
-                <div class="metric-title">Drafts & In-Review</div>
+                <div class="metric-header">
+                    <div class="metric-title">Drafts & Review</div>
+                    <div class="metric-icon-wrap" style="color: var(--status-review); background: var(--status-review-bg);">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"/>
+                            <polyline points="12 6 12 12 16 14"/>
+                        </svg>
+                    </div>
+                </div>
                 <div class="metric-value mono" style="color: var(--status-review);" id="stat-draft-bots">-</div>
                 <div class="metric-subtitle">Pending publisher release</div>
             </div>
+
             <div class="metric-card">
-                <div class="metric-title">Total Versions</div>
-                <div class="metric-value mono" style="color: var(--accent-cyan);" id="stat-total-versions">-</div>
+                <div class="metric-header">
+                    <div class="metric-title">Total Versions</div>
+                    <div class="metric-icon-wrap" style="color: var(--accent-indigo); background: var(--accent-indigo-light);">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/>
+                            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                            <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+                            <line x1="12" y1="22.08" x2="12" y2="12"/>
+                        </svg>
+                    </div>
+                </div>
+                <div class="metric-value mono" style="color: var(--accent-indigo);" id="stat-total-versions">-</div>
                 <div class="metric-subtitle">Packaged bot releases</div>
             </div>
+
             <div class="metric-card">
-                <div class="metric-title">Installs / Downloads</div>
+                <div class="metric-header">
+                    <div class="metric-title">Total Installs</div>
+                    <div class="metric-icon-wrap" style="color: var(--accent-cyan); background: var(--accent-cyan-light);">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="7 10 12 15 17 10"/>
+                            <line x1="12" y1="15" x2="12" y2="3"/>
+                        </svg>
+                    </div>
+                </div>
                 <div class="metric-value mono" style="color: var(--accent-cyan);" id="stat-downloads">0</div>
                 <div class="metric-subtitle">Total bot downloads across catalog</div>
             </div>
@@ -817,7 +1025,9 @@ export function renderDashboardHtml(): string {
             <div class="section-header">
                 <div>
                     <h2 class="section-title">Bot Catalog Management</h2>
-                    <p style="font-size: 0.82rem; color: var(--text-dim);">Create, package, configure, and publish bots directly to the Bot Store.</p>
+                    <p style="font-size: 0.85rem; color: var(--text-dim); margin-top: 0.2rem;">
+                        Create, package, configure credentials, and publish Telegram bots to the Bot Store.
+                    </p>
                 </div>
                 <div class="filters-toolbar">
                     <div class="filter-tabs">
@@ -829,11 +1039,20 @@ export function renderDashboardHtml(): string {
                         <div class="filter-tab" data-filter="archived" onclick="setFilter('archived', this)">Archived</div>
                     </div>
                     <div class="search-box">
-                        <span class="search-icon">🔍</span>
+                        <span class="search-icon" aria-hidden="true">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="11" cy="11" r="8"/>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                            </svg>
+                        </span>
                         <input type="text" id="search-input" class="search-input" placeholder="Search bots..." oninput="handleSearch()">
                     </div>
                     <button class="btn btn-primary" onclick="openCreateBotModal()">
-                        ➕ Create Bot
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="12" y1="5" x2="12" y2="19"/>
+                            <line x1="5" y1="12" x2="19" y2="12"/>
+                        </svg>
+                        Create Bot
                     </button>
                 </div>
             </div>
@@ -875,19 +1094,25 @@ export function renderDashboardHtml(): string {
 
     <!-- 1. Admin Authentication Modal (zero secrets in source) -->
     <div id="auth-modal" class="modal-overlay">
-        <div class="modal-box" style="max-width: 420px;">
+        <div class="modal-box" style="max-width: 440px;">
             <div class="modal-header">
-                <div class="modal-title">🔐 Publisher Authentication</div>
+                <div class="modal-title">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent-indigo);">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                    </svg>
+                    Publisher Authentication
+                </div>
             </div>
             <div class="modal-body">
-                <p style="font-size: 0.84rem; color: var(--text-muted); margin-bottom: 1rem;">
-                    Enter your Cloudflare Worker Admin API Key to manage the Bot Store. The key is stored only in this tab's session storage.
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.25rem;">
+                    Enter your Cloudflare Worker Admin API Key to access the Bot Store dashboard. Key is stored securely in your session storage.
                 </p>
                 <div class="form-group">
                     <label class="form-label" for="auth-key-input">Admin API Key</label>
                     <input type="password" id="auth-key-input" class="form-control mono" placeholder="Enter API secret key" autocomplete="current-password">
                 </div>
-                <div id="auth-error" style="color: var(--status-archived); font-size: 0.8rem; display: none; margin-top: 0.5rem;"></div>
+                <div id="auth-error" style="color: var(--status-archived); font-size: 0.82rem; display: none; margin-top: 0.5rem; font-weight: 500;"></div>
             </div>
             <div class="modal-footer">
                 <button class="btn btn-primary" style="width: 100%;" onclick="handleAuthSubmit()">
@@ -902,7 +1127,7 @@ export function renderDashboardHtml(): string {
         <div class="modal-box">
             <div class="modal-header">
                 <div class="modal-title" id="bot-modal-title">Create Bot</div>
-                <button class="modal-close" onclick="closeModal('bot-modal')">&times;</button>
+                <button class="modal-close" onclick="closeModal('bot-modal')" aria-label="Close modal">&times;</button>
             </div>
             <div class="modal-body">
                 <input type="hidden" id="bot-form-id">
@@ -952,9 +1177,9 @@ export function renderDashboardHtml(): string {
                         <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('icon-file-input').click()">Upload File</button>
                         <input type="file" id="icon-file-input" accept="image/*" style="display: none;" onchange="handleIconFileUpload(this)">
                     </div>
-                    <div id="icon-preview-wrap" style="display: none; align-items: center; gap: 0.5rem;">
-                        <img id="icon-preview-img" src="" alt="Icon preview" style="width: 32px; height: 32px; border-radius: 6px; object-fit: cover;">
-                        <span style="font-size: 0.75rem; color: var(--status-published);">✓ Icon uploaded successfully</span>
+                    <div id="icon-preview-wrap" style="display: none; align-items: center; gap: 0.6rem;">
+                        <img id="icon-preview-img" src="" alt="Icon preview" style="width: 36px; height: 36px; border-radius: var(--radius-sm); object-fit: cover; border: 1px solid var(--border-subtle);">
+                        <span style="font-size: 0.78rem; color: var(--status-published); font-weight: 600;">✓ Icon uploaded to storage successfully</span>
                     </div>
                 </div>
                 <div class="form-group" id="bot-form-status-group">
@@ -980,14 +1205,14 @@ export function renderDashboardHtml(): string {
         <div class="modal-box modal-box-lg">
             <div class="modal-header">
                 <div class="modal-title" id="version-modal-title">Package & Version Management</div>
-                <button class="modal-close" onclick="closeModal('version-modal')">&times;</button>
+                <button class="modal-close" onclick="closeModal('version-modal')" aria-label="Close modal">&times;</button>
             </div>
             <div class="modal-body">
                 <input type="hidden" id="ver-bot-id">
 
                 <!-- Existing Versions List -->
-                <h4 style="font-size: 0.95rem; margin-bottom: 0.65rem; color: var(--text-main);">Existing Releases</h4>
-                <div class="table-responsive" style="margin-bottom: 1.5rem; max-height: 200px; border: 1px solid var(--border-subtle); border-radius: 8px;">
+                <h4 style="font-size: 0.95rem; font-weight: 700; margin-bottom: 0.75rem; color: var(--text-main);">Existing Releases</h4>
+                <div class="table-responsive" style="margin-bottom: 1.5rem; max-height: 220px; border: 1px solid var(--border-subtle); border-radius: var(--radius-md);">
                     <table>
                         <thead>
                             <tr>
@@ -1006,20 +1231,32 @@ export function renderDashboardHtml(): string {
                 </div>
 
                 <!-- Create / Upload Version Form -->
-                <div style="background: var(--bg-base); border: 1px solid var(--border-prominent); border-radius: 8px; padding: 1.25rem;">
-                    <h4 style="font-size: 0.95rem; margin-bottom: 0.85rem; color: var(--accent-cyan); display: flex; align-items: center; gap: 0.5rem;">
-                        <span>📦</span> Upload New Release Package
+                <div style="background: #f8fafc; border: 1px solid var(--border-prominent); border-radius: var(--radius-lg); padding: 1.35rem;">
+                    <h4 style="font-size: 0.95rem; font-weight: 700; margin-bottom: 1rem; color: var(--accent-indigo); display: flex; align-items: center; gap: 0.5rem;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/>
+                            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                            <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+                            <line x1="12" y1="22.08" x2="12" y2="12"/>
+                        </svg>
+                        Upload New Release Package
                     </h4>
 
                     <!-- Drag & Drop Package Zone -->
                     <div class="dropzone" id="pkg-dropzone" onclick="document.getElementById('pkg-file-input').click()">
-                        <div class="dropzone-icon">📥</div>
+                        <div class="dropzone-icon">
+                            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                <polyline points="7 10 12 15 17 10"/>
+                                <line x1="12" y1="15" x2="12" y2="3"/>
+                            </svg>
+                        </div>
                         <div class="dropzone-text" id="dropzone-label">Click or drag & drop <strong>.botpkg</strong> or <strong>.zip</strong> archive here</div>
-                        <div class="dropzone-subtext">Automatic byte size and Web Crypto SHA-256 calculation</div>
+                        <div class="dropzone-subtext">Automatic package size verification and Web Crypto SHA-256 calculation</div>
                         <input type="file" id="pkg-file-input" accept=".botpkg,.zip" style="display: none;" onchange="handlePackageFileSelect(this)">
                     </div>
 
-                    <div style="margin-top: 1rem;">
+                    <div style="margin-top: 1.25rem;">
                         <div class="form-row">
                             <div class="form-group">
                                 <label class="form-label">Version String *</label>
@@ -1082,15 +1319,15 @@ export function renderDashboardHtml(): string {
         <div class="modal-box modal-box-lg">
             <div class="modal-header">
                 <div class="modal-title" id="credential-modal-title">Configure Required Credentials</div>
-                <button class="modal-close" onclick="closeModal('credential-modal')">&times;</button>
+                <button class="modal-close" onclick="closeModal('credential-modal')" aria-label="Close modal">&times;</button>
             </div>
             <div class="modal-body">
                 <input type="hidden" id="cred-bot-id">
-                <p style="font-size: 0.84rem; color: var(--text-muted); margin-bottom: 1rem;">
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.15rem;">
                     Specify tokens, API secrets, or configuration fields required by this bot before launch on the Android client.
                 </p>
 
-                <div class="table-responsive" style="margin-bottom: 1.5rem; border: 1px solid var(--border-subtle); border-radius: 8px;">
+                <div class="table-responsive" style="margin-bottom: 1.5rem; border: 1px solid var(--border-subtle); border-radius: var(--radius-md);">
                     <table>
                         <thead>
                             <tr>
@@ -1110,8 +1347,14 @@ export function renderDashboardHtml(): string {
                 </div>
 
                 <!-- Add Credential Form -->
-                <div style="background: var(--bg-base); border: 1px solid var(--border-prominent); border-radius: 8px; padding: 1rem;">
-                    <h5 style="font-size: 0.88rem; color: var(--text-main); margin-bottom: 0.75rem;">➕ Add New Credential Field</h5>
+                <div style="background: #f8fafc; border: 1px solid var(--border-prominent); border-radius: var(--radius-lg); padding: 1.25rem;">
+                    <h5 style="font-size: 0.92rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.85rem; display: flex; align-items: center; gap: 0.4rem;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="12" y1="5" x2="12" y2="19"/>
+                            <line x1="5" y1="12" x2="19" y2="12"/>
+                        </svg>
+                        Add New Credential Field
+                    </h5>
                     <div class="form-row">
                         <div class="form-group">
                             <label class="form-label">Key Name *</label>
@@ -1136,10 +1379,10 @@ export function renderDashboardHtml(): string {
                             </select>
                         </div>
                         <div class="form-group" style="display: flex; align-items: center; gap: 1.5rem; margin-top: 1.5rem;">
-                            <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 0.4rem; cursor: pointer;">
-                                <input type="checkbox" id="new-cred-required" checked> Required
+                            <label style="font-size: 0.85rem; font-weight: 600; display: flex; align-items: center; gap: 0.45rem; cursor: pointer; color: var(--text-main);">
+                                <input type="checkbox" id="new-cred-required" checked> Required Field
                             </label>
-                            <label style="font-size: 0.85rem; display: flex; align-items: center; gap: 0.4rem; cursor: pointer;">
+                            <label style="font-size: 0.85rem; font-weight: 600; display: flex; align-items: center; gap: 0.45rem; cursor: pointer; color: var(--text-main);">
                                 <input type="checkbox" id="new-cred-secret" checked> Secret Value
                             </label>
                         </div>
@@ -1158,8 +1401,16 @@ export function renderDashboardHtml(): string {
     <!-- 5. Audit Trail Drawer -->
     <div id="audit-drawer" class="drawer">
         <div class="drawer-header">
-            <div style="font-weight: 700; font-size: 1.05rem;">📜 Store Audit Trail</div>
-            <button class="modal-close" onclick="toggleAuditDrawer()">&times;</button>
+            <div style="font-weight: 700; font-size: 1.1rem; display: flex; align-items: center; gap: 0.5rem; color: var(--text-main);">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent-indigo);">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                    <line x1="16" y1="13" x2="8" y2="13"/>
+                    <line x1="16" y1="17" x2="8" y2="17"/>
+                </svg>
+                Store Audit Trail
+            </div>
+            <button class="modal-close" onclick="toggleAuditDrawer()" aria-label="Close drawer">&times;</button>
         </div>
         <div class="drawer-body" id="audit-logs-list">
             <div class="empty-state">Loading audit trail...</div>
@@ -1284,8 +1535,12 @@ export function renderDashboardHtml(): string {
             const container = document.getElementById('toast-container');
             const toast = document.createElement('div');
             toast.className = 'toast toast-' + type;
-            const icon = type === 'success' ? '✓' : (type === 'error' ? '✕' : 'ℹ');
-            toast.innerHTML = '<span>' + icon + '</span><span>' + escapeHtml(message) + '</span>';
+            const iconSvg = type === 'success' 
+                ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>'
+                : (type === 'error'
+                    ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#be123c" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>'
+                    : '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>');
+            toast.innerHTML = iconSvg + '<span>' + escapeHtml(message) + '</span>';
             container.appendChild(toast);
             setTimeout(() => {
                 toast.style.opacity = '0';
@@ -1337,7 +1592,7 @@ export function renderDashboardHtml(): string {
                 document.getElementById('stat-published-bots').innerText = stats.publishedBots;
                 document.getElementById('stat-draft-bots').innerText = (stats.draftBots + stats.reviewBots);
                 document.getElementById('stat-total-versions').innerText = stats.totalVersions;
-                // Strictly display "Not available" without fake analytics
+                // Strictly display accurate measured counts without fake claims
                 document.getElementById('stat-downloads').innerText = stats.downloads;
 
                 // 2. Fetch Bots
@@ -1366,7 +1621,12 @@ export function renderDashboardHtml(): string {
             });
 
             if (filtered.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="9" class="empty-state"><div class="empty-icon">📂</div><div>No bots found matching criteria.</div></td></tr>';
+                tbody.innerHTML = '<tr><td colspan="9" class="empty-state">' +
+                    '<div class="empty-icon">' +
+                        '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>' +
+                    '</div>' +
+                    '<div style="font-weight: 500;">No bots found matching criteria.</div>' +
+                    '</td></tr>';
                 return;
             }
 
@@ -1374,11 +1634,11 @@ export function renderDashboardHtml(): string {
                 const status = (bot.status || 'draft').toLowerCase();
                 const iconHtml = bot.iconUrl
                     ? '<img class="bot-icon" src="' + escapeHtml(bot.iconUrl) + '" alt="' + escapeHtml(bot.name) + '">'
-                    : '<div class="bot-icon">🤖</div>';
+                    : '<div class="bot-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8.01" y2="16"/><line x1="16" y1="16" x2="16.01" y2="16"/></svg></div>';
 
                 const verText = bot.currentVersion
-                    ? '<span class="mono font-semibold" style="color: var(--accent-cyan);">v' + escapeHtml(bot.currentVersion) + '</span>'
-                    : '<span style="color: var(--text-dim);">None</span>';
+                    ? '<span class="mono" style="font-weight: 600; color: var(--accent-indigo);">v' + escapeHtml(bot.currentVersion) + '</span>'
+                    : '<span style="color: var(--text-dim); font-size: 0.8rem;">None</span>';
 
                 const credCount = bot.credentials ? bot.credentials.length : 0;
                 const dlCount = (bot.downloadsCount || 0).toLocaleString();
@@ -1397,8 +1657,14 @@ export function renderDashboardHtml(): string {
                     '<td><span class="badge-tag">' + escapeHtml(bot.category) + '</span></td>' +
                     '<td><span class="badge-tag mono">' + escapeHtml(bot.runtime || 'native_art') + '</span></td>' +
                     '<td>' + verText + '</td>' +
-                    '<td><span class="mono font-semibold" style="color: var(--accent-cyan);">📥 ' + dlCount + '</span></td>' +
-                    '<td><span style="color: #f59e0b; font-weight: 600;">★ ' + ratingText + '</span></td>' +
+                    '<td><span class="mono" style="font-weight: 600; color: var(--accent-cyan); display: inline-flex; align-items: center; gap: 0.25rem;">' +
+                        '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>' +
+                        dlCount +
+                    '</span></td>' +
+                    '<td><span style="color: #d97706; font-weight: 600; display: inline-flex; align-items: center; gap: 0.2rem;">' +
+                        '<svg width="13" height="13" viewBox="0 0 24 24" fill="#d97706" stroke="#d97706"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>' +
+                        ratingText +
+                    '</span></td>' +
                     '<td>' +
                         '<select class="lifecycle-select" onchange="changeLifecycle(\\'' + bot.id + '\\', this.value)">' +
                             '<option value="DRAFT"' + (status === 'draft' ? ' selected' : '') + '>DRAFT</option>' +
@@ -1410,19 +1676,21 @@ export function renderDashboardHtml(): string {
                     '</td>' +
                     '<td>' +
                         '<button class="btn btn-secondary btn-sm" onclick="openCredentialModal(\\'' + bot.id + '\\')">' +
-                            '🔑 ' + credCount + ' Fields' +
+                            '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2l-2 2m-1.5 1.5L14 9l-1.5-1.5-3 3 1.5 1.5L9 14l-1.5-1.5L6 14a6 6 0 1 1 8.49-8.49L21 2z"/></svg>' +
+                            credCount + ' Fields' +
                         '</button>' +
                     '</td>' +
                     '<td style="text-align: right;">' +
                         '<div class="actions-cell" style="justify-content: flex-end;">' +
                             '<button class="btn btn-secondary btn-sm" onclick="openVersionModal(\\'' + bot.id + '\\')" title="Manage releases and packages">' +
-                                '📦 Releases' +
+                                '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>' +
+                                'Releases' +
                             '</button>' +
                             '<button class="btn btn-secondary btn-sm" onclick="openEditBotModal(\\'' + bot.id + '\\')" title="Edit bot metadata">' +
-                                '✏️' +
+                                '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>' +
                             '</button>' +
                             '<button class="btn btn-danger btn-sm" onclick="confirmDeleteBot(\\'' + bot.id + '\\', \\'' + escapeHtml(bot.name) + '\\')" title="Delete bot">' +
-                                '🗑️' +
+                                '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>' +
                             '</button>' +
                         '</div>' +
                     '</td>' +
@@ -1640,10 +1908,10 @@ export function renderDashboardHtml(): string {
                         : '<button class="btn btn-success btn-sm" onclick="toggleVersionPublish(\\'' + botId + '\\', \\'' + v.version + '\\', true)">Publish</button>';
 
                     return '<tr>' +
-                        '<td class="mono font-semibold">v' + escapeHtml(v.version) + '</td>' +
+                        '<td class="mono" style="font-weight: 600; color: var(--accent-indigo);">v' + escapeHtml(v.version) + '</td>' +
                         '<td>' + statusBadge + '</td>' +
                         '<td class="mono">' + formatBytes(v.packageSize) + '</td>' +
-                        '<td class="mono" style="font-size: 0.72rem; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="' + escapeHtml(v.sha256) + '">' +
+                        '<td class="mono" style="font-size: 0.74rem; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-dim);" title="' + escapeHtml(v.sha256) + '">' +
                             escapeHtml(v.sha256) +
                         '</td>' +
                         '<td>' + formatDate(v.publishedAt) + '</td>' +
@@ -1676,12 +1944,12 @@ export function renderDashboardHtml(): string {
                 document.getElementById('ver-input-sha256').value = result.sha256;
 
                 // Auto extract version if formatted as name_1.0.0.botpkg
-                const verMatch = file.name.match(/_(\d+\.\d+\.\d+)/);
+                const verMatch = file.name.match(/_(\\d+\\.\\d+\\.\\d+)/);
                 if (verMatch && !document.getElementById('ver-input-version').value) {
                     document.getElementById('ver-input-version').value = verMatch[1];
                 }
 
-                dropzoneLabel.innerHTML = '✓ <strong>' + escapeHtml(file.name) + '</strong> uploaded (' + formatBytes(result.packageSize) + ')<br><span class="mono" style="font-size: 0.72rem;">SHA-256: ' + result.sha256.substring(0, 16) + '...</span>';
+                dropzoneLabel.innerHTML = '✓ <strong>' + escapeHtml(file.name) + '</strong> uploaded (' + formatBytes(result.packageSize) + ')<br><span class="mono" style="font-size: 0.74rem; color: var(--text-dim);">SHA-256: ' + result.sha256.substring(0, 16) + '...</span>';
                 document.getElementById('btn-submit-version').disabled = false;
                 showToast('Package uploaded and hashed successfully', 'success');
             } catch (err) {
@@ -1780,11 +2048,11 @@ export function renderDashboardHtml(): string {
 
                 tbody.innerHTML = creds.map(c => {
                     return '<tr>' +
-                        '<td class="mono font-semibold">' + escapeHtml(c.key) + '</td>' +
-                        '<td>' + escapeHtml(c.displayName) + '</td>' +
+                        '<td class="mono" style="font-weight: 600; color: var(--accent-indigo);">' + escapeHtml(c.key) + '</td>' +
+                        '<td style="font-weight: 500;">' + escapeHtml(c.displayName) + '</td>' +
                         '<td style="color: var(--text-dim);">' + escapeHtml(c.description || '-') + '</td>' +
-                        '<td>' + (c.required ? '✓ Yes' : 'No') + '</td>' +
-                        '<td>' + (c.secret ? '🔒 Secret' : 'Public') + '</td>' +
+                        '<td>' + (c.required ? '<span style="color: var(--status-published); font-weight: 600;">✓ Yes</span>' : '<span style="color: var(--text-dim);">No</span>') + '</td>' +
+                        '<td>' + (c.secret ? '<span style="color: var(--accent-indigo); font-weight: 600;">🔒 Secret</span>' : '<span style="color: var(--text-dim);">Public</span>') + '</td>' +
                         '<td><span class="badge-tag">' + escapeHtml(c.inputType) + '</span></td>' +
                         '<td style="text-align: right;">' +
                             '<button class="btn btn-danger btn-sm" onclick="deleteCredential(\\'' + botId + '\\', \\'' + escapeHtml(c.key) + '\\')">Delete</button>' +
@@ -1874,8 +2142,8 @@ export function renderDashboardHtml(): string {
                             '<span class="audit-action">' + escapeHtml(l.action) + '</span>' +
                             '<span class="audit-time">' + formatDate(l.createdAt) + '</span>' +
                         '</div>' +
-                        '<div style="color: var(--text-muted); font-size: 0.74rem;">' +
-                            'Target: <span class="mono">' + escapeHtml(l.entityType) + ' (' + escapeHtml(l.entityId) + ')</span> by <strong>' + escapeHtml(l.actor) + '</strong>' +
+                        '<div style="color: var(--text-muted); font-size: 0.78rem;">' +
+                            'Target: <span class="mono" style="font-weight: 600;">' + escapeHtml(l.entityType) + ' (' + escapeHtml(l.entityId) + ')</span> by <strong>' + escapeHtml(l.actor) + '</strong>' +
                         '</div>' +
                         (detailsStr ? '<pre class="audit-details mono">' + escapeHtml(detailsStr) + '</pre>' : '') +
                     '</div>';

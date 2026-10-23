@@ -9,9 +9,12 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
+import java.io.File
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 
@@ -345,6 +348,76 @@ open class TelegramApiClient(
                 apiResponse.result.orEmpty()
             } else {
                 throw IOException(apiResponse.description ?: "getChatAdministrators error")
+            }
+        }
+    }
+
+    /**
+     * Uploads and sends a document (e.g. APK, log file, botpkg) to a chat or channel.
+     */
+    open suspend fun sendDocument(
+        token: String,
+        chatId: Long,
+        file: File,
+        caption: String? = null,
+        parseMode: String? = null
+    ): Result<Boolean> = runCatching {
+        withContext(Dispatchers.IO) {
+            val url = "$BASE_URL/bot$token/sendDocument"
+            val mediaType = "application/octet-stream".toMediaType()
+            val fileBody = file.asRequestBody(mediaType)
+
+            val multipartBuilder = MultipartBody.Builder()
+                .setType(MultipartBody.FORM)
+                .addFormDataPart("chat_id", chatId.toString())
+                .addFormDataPart("document", file.name, fileBody)
+
+            if (!caption.isNullOrBlank()) {
+                multipartBuilder.addFormDataPart("caption", caption)
+            }
+            if (!parseMode.isNullOrBlank()) {
+                multipartBuilder.addFormDataPart("parse_mode", parseMode)
+            }
+
+            val request = Request.Builder()
+                .url(url)
+                .post(multipartBuilder.build())
+                .build()
+
+            val body = client.newCall(request).execute().use { response ->
+                response.body?.string().orEmpty()
+            }
+            val apiResponse = json.decodeFromString<TelegramApiResponse<kotlinx.serialization.json.JsonElement>>(body)
+            if (apiResponse.ok) {
+                true
+            } else {
+                throw IOException(apiResponse.description ?: "sendDocument error")
+            }
+        }
+    }
+
+    /**
+     * Broadcasts a chat action status (e.g. "typing", "upload_document") to the chat.
+     */
+    open suspend fun sendChatAction(
+        token: String,
+        chatId: Long,
+        action: String = "typing"
+    ): Result<Boolean> = runCatching {
+        withContext(Dispatchers.IO) {
+            val url = "$BASE_URL/bot$token/sendChatAction"
+            val payload = mapOf("chat_id" to chatId.toString(), "action" to action)
+            val requestBody = json.encodeToString(payload).toRequestBody(jsonMediaType)
+            val request = Request.Builder().url(url).post(requestBody).build()
+
+            val body = client.newCall(request).execute().use { response ->
+                response.body?.string().orEmpty()
+            }
+            val apiResponse = json.decodeFromString<TelegramApiResponse<Boolean>>(body)
+            if (apiResponse.ok) {
+                apiResponse.result ?: true
+            } else {
+                throw IOException(apiResponse.description ?: "sendChatAction error")
             }
         }
     }

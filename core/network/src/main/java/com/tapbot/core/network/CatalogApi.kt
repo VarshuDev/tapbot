@@ -23,6 +23,43 @@ class MockCatalogApi : CatalogApi {
 
     private val sampleBots = listOf(
         BotMetadata(
+            id = "bot_commander",
+            name = "TapBot Commander",
+            summary = "Flagship on-device remote controller, device watchdog, and fleet manager for your Android phone.",
+            description = "The premier flagship on-device Telegram bot for TapBot. Runs natively on Android ART to provide real-time hardware telemetry (battery, RAM, disk, network, uptime), bot fleet management (/bots, /startbot, /stopbot, /restartbot, /logs), remote phone controls (ring phone, flashlight, notifications, clipboard, vibrate), APK delivery directly in chat with SHA-256 integrity verification, and autonomous watchdog alerts for low battery and bot crashes.",
+            author = "TapBot Core Team",
+            version = "1.0.0",
+            iconUrl = "https://images.unsplash.com/photo-1518770660439-4636190af475?w=200",
+            category = "Automation",
+            tags = listOf("flagship", "commander", "telemetry", "fleet", "watchdog", "remote"),
+            isFeatured = true,
+            requiredCredentials = listOf(
+                BotCredentialSpec.TELEGRAM_BOT_TOKEN,
+                BotCredentialSpec(
+                    key = "owner_id",
+                    label = "Bot Owner User ID",
+                    description = "Numeric Telegram user ID from @userinfobot to authorize sensitive device commands (e.g. 7342044274)",
+                    isSecret = false,
+                    isRequired = false,
+                    placeholder = "7342044274"
+                ),
+                BotCredentialSpec(
+                    key = "low_battery_threshold",
+                    label = "Low Battery Threshold (%)",
+                    description = "Battery percentage that triggers an urgent Telegram alert (default 15)",
+                    isSecret = false,
+                    isRequired = false,
+                    placeholder = "15"
+                )
+            ),
+            packageInfo = BotPackageInfo(
+                packageUrl = "packages/tapbot-commander_1.0.0.botpkg",
+                sha256Checksum = "51dd47dec8e9bbc0c88b094887c1a05da4c6835c2894f350986e25684edeb7f3",
+                runtimeType = "native_art"
+            ),
+            permissionsRequired = listOf("INTERNET", "FOREGROUND_SERVICE", "POST_NOTIFICATIONS", "VIBRATE", "FLASHLIGHT")
+        ),
+        BotMetadata(
             id = "bot_echo",
             name = "Echo Assistant Bot",
             summary = "A lightweight Telegram bot that responds back with structured diagnostics and echoes user messages.",
@@ -226,6 +263,36 @@ class MockCatalogApi : CatalogApi {
     )
 
     private val sampleVersions = mapOf(
+        "bot_commander" to listOf(
+            BotVersion(
+                id = "ver_commander_100",
+                botId = "bot_commander",
+                version = "1.0.0",
+                packageUrl = "packages/tapbot-commander_1.0.0.botpkg",
+                sha256 = "51dd47dec8e9bbc0c88b094887c1a05da4c6835c2894f350986e25684edeb7f3",
+                packageSize = 1703L,
+                releaseNotes = "• Flagship on-device remote controller & fleet manager\n• Real-time hardware telemetry (/status, /battery, /ram, /disk)\n• Remote phone controls (/ring, /torch, /notify, /clipboard, /vibrate)\n• Direct APK document delivery via Telegram (/apk, /download)\n• Autonomous background watchdog with low battery & crash alerts",
+                minimumAppVersion = 1,
+                minimumRuntimeVersion = "1.0.0",
+                isPublished = true,
+                publishedAt = "2026-10-22T00:00:00Z"
+            )
+        ),
+        "bot_commander_flagship" to listOf(
+            BotVersion(
+                id = "ver_commander_100",
+                botId = "bot_commander_flagship",
+                version = "1.0.0",
+                packageUrl = "packages/tapbot-commander_1.0.0.botpkg",
+                sha256 = "51dd47dec8e9bbc0c88b094887c1a05da4c6835c2894f350986e25684edeb7f3",
+                packageSize = 1703L,
+                releaseNotes = "• Flagship on-device remote controller & fleet manager\n• Real-time hardware telemetry (/status, /battery, /ram, /disk)\n• Remote phone controls (/ring, /torch, /notify, /clipboard, /vibrate)\n• Direct APK document delivery via Telegram (/apk, /download)\n• Autonomous background watchdog with low battery & crash alerts",
+                minimumAppVersion = 1,
+                minimumRuntimeVersion = "1.0.0",
+                isPublished = true,
+                publishedAt = "2026-10-22T00:00:00Z"
+            )
+        ),
         "bot_music" to listOf(
             BotVersion(
                 id = "ver_music_140",
@@ -299,12 +366,17 @@ class MockCatalogApi : CatalogApi {
         )
     )
 
+    fun getBuiltInBots(): List<BotMetadata> = sampleBots
+
     override suspend fun getBots(): Result<List<BotMetadata>> {
         return Result.success(sampleBots)
     }
 
     override suspend fun getBotDetails(botId: String): Result<BotMetadata> {
-        val bot = sampleBots.find { it.id == botId }
+        val bot = sampleBots.find { 
+            it.id == botId || 
+            (it.id == "bot_commander" && (botId == "bot_commander_flagship" || botId == "tapbot-commander" || botId == "tapbot_commander"))
+        }
         return if (bot != null) {
             Result.success(bot)
         } else {
@@ -313,12 +385,14 @@ class MockCatalogApi : CatalogApi {
     }
 
     override suspend fun getBotVersions(botId: String): Result<List<BotVersion>> {
-        val list = sampleVersions[botId] ?: emptyList()
+        val resolvedId = if (botId == "bot_commander_flagship" || botId == "tapbot-commander" || botId == "tapbot_commander") "bot_commander" else botId
+        val list = sampleVersions[resolvedId] ?: emptyList()
         return Result.success(list.filter { it.isPublished })
     }
 
     override suspend fun getLatestVersion(botId: String): Result<BotVersion?> {
-        val list = sampleVersions[botId]?.filter { it.isPublished }
+        val resolvedId = if (botId == "bot_commander_flagship" || botId == "tapbot-commander" || botId == "tapbot_commander") "bot_commander" else botId
+        val list = sampleVersions[resolvedId]?.filter { it.isPublished }
         return Result.success(list?.firstOrNull())
     }
 }

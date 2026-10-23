@@ -1,0 +1,4 @@
+# TapBot Commander Entrypoint
+class=com.tapbot.core.runner.runtime.CommanderBotRuntime
+runtime=native_art
+version=1.0.0

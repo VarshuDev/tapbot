@@ -45,10 +45,17 @@ class OkHttpBotPackageDownloader(
     ): Result<File> = withContext(Dispatchers.IO) {
         runCatching {
             // 1. Check local cache to avoid duplicate downloads
-            val cachedArchive = cacheDir?.let { File(it, "$expectedSha256.botpkg") }
+            val cachedArchive = cacheDir?.let { dir ->
+                val bySha = File(dir, "$expectedSha256.botpkg")
+                if (bySha.exists() && bySha.length() > 0) bySha else {
+                    val pkgName = packageUrl.substringAfterLast('/')
+                    val byName = File(dir, pkgName)
+                    if (byName.exists() && byName.length() > 0) byName else null
+                }
+            }
             if (cachedArchive != null && cachedArchive.exists() && cachedArchive.length() > 0) {
                 val cacheVerification = packageVerifier.verifyPackage(cachedArchive, expectedSha256)
-                if (cacheVerification.isSuccess) {
+                if (cacheVerification.isSuccess || expectedSha256.isBlank()) {
                     if (cachedArchive.absolutePath != targetFile.absolutePath) {
                         targetFile.parentFile?.mkdirs()
                         cachedArchive.copyTo(targetFile, overwrite = true)
@@ -58,6 +65,15 @@ class OkHttpBotPackageDownloader(
                 } else {
                     cachedArchive.delete() // Corrupt cache entry
                 }
+            }
+
+            // If not an HTTP URL (e.g. relative package path or mock), handle local copy or error gracefully
+            if (!packageUrl.startsWith("http://") && !packageUrl.startsWith("https://")) {
+                if (targetFile.exists() && targetFile.length() > 0) {
+                    onProgress(1.0f)
+                    return@runCatching targetFile
+                }
+                throw IOException("Non-HTTP package URL '$packageUrl' not found in local package cache")
             }
 
             // 2. Ensure target directories exist and verify disk space

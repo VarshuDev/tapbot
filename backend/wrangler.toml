@@ -6,7 +6,7 @@ compatibility_flags = ["nodejs_compat"]
 [[d1_databases]]
 binding = "DB"
 database_name = "tapbot_catalog"
-database_id = "tapbot-catalog-d1-id"
+database_id = "224755cd-4178-4395-b8b7-255049197ca5"
 migrations_dir = "migrations"
 
 [[r2_buckets]]

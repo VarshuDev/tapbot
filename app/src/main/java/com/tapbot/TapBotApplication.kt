@@ -86,6 +86,15 @@ class TapBotApplication : Application() {
         val backendUrl = if (isDebug) CloudflareCatalogApi.DEFAULT_LOCAL_URL else CloudflareCatalogApi.DEFAULT_BASE_URL
         remoteBotDataSource = CloudflareRemoteBotDataSource(baseUrl = backendUrl, client = okHttpClient)
         localCatalogCache = LocalCatalogCache(cacheFile = File(cacheDir, "catalog_cache.json"))
+        // Ensure catalog cache includes flagship built-in bots (e.g. TapBot Commander)
+        val cachedBots = localCatalogCache.getCachedBots()
+        if (cachedBots != null && cachedBots.none { it.id == "bot_commander" || it.id.contains("commander") }) {
+            val cmdBot = MockCatalogApi().getBuiltInBots().find { it.id == "bot_commander" }
+            if (cmdBot != null) {
+                localCatalogCache.updateBot(cmdBot)
+            }
+        }
+
         catalogRepository = OfflineFirstCatalogRepository(
             remoteSource = remoteBotDataSource,
             cache = localCatalogCache
@@ -93,9 +102,11 @@ class TapBotApplication : Application() {
         catalogApi = CloudflareCatalogApi(baseUrl = backendUrl, fallback = MockCatalogApi())
 
         // 4. Initialize package downloader and local installation manager
+        val packageCacheDir = File(cacheDir, "package_cache")
+        seedBundledPackages(packageCacheDir)
         botPackageDownloader = OkHttpBotPackageDownloader(
             client = okHttpClient,
-            cacheDir = File(cacheDir, "package_cache")
+            cacheDir = packageCacheDir
         )
         localBotInstallationManager = DefaultLocalBotInstallationManager(
             storageFile = File(filesDir, "installed_bots.json"),
@@ -118,10 +129,32 @@ class TapBotApplication : Application() {
         )
 
         // 8. Connect ServiceLocator hooks for BotForegroundService
+        ServiceLocator.appContext = this
         ServiceLocator.botInstanceManager = botInstanceManager
         ServiceLocator.credentialStore = credentialStore
         ServiceLocator.pocCredentialStore = pocCredentialStore
         ServiceLocator.logRepository = logRepository
         ServiceLocator.telegramApiClient = telegramApiClient
+    }
+
+    private fun seedBundledPackages(targetDir: File) {
+        try {
+            targetDir.mkdirs()
+            val packageFiles = assets.list("packages") ?: return
+            for (filename in packageFiles) {
+                if (filename.endsWith(".botpkg")) {
+                    val dest = File(targetDir, filename)
+                    if (!dest.exists() || dest.length() == 0L) {
+                        assets.open("packages/$filename").use { input ->
+                            dest.outputStream().use { output ->
+                                input.copyTo(output)
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (_: Exception) {
+            // Ignore asset seeding errors
+        }
     }
 }

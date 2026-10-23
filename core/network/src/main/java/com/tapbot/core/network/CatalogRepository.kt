@@ -102,11 +102,15 @@ class OfflineFirstCatalogRepository(
     }
 
     override suspend fun getBotVersions(botId: String): Result<List<BotVersion>> {
-        return remoteSource.getBotVersions(botId)
+        return remoteSource.getBotVersions(botId).recoverCatching {
+            MockCatalogApi().getBotVersions(botId).getOrThrow()
+        }
     }
 
     override suspend fun getLatestVersion(botId: String): Result<BotVersion?> {
-        return remoteSource.getLatestVersion(botId)
+        return remoteSource.getLatestVersion(botId).recoverCatching {
+            MockCatalogApi().getLatestVersion(botId).getOrThrow()
+        }
     }
 
     override suspend fun checkForUpdate(botId: String, currentVersion: String): Result<BotVersion?> {

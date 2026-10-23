@@ -53,6 +53,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tapbot.feature.catalog.ui.BotHubTheme
+import com.tapbot.feature.catalog.ui.premiumCardBorder
 
 @Composable
 fun SettingsScreen(
@@ -176,9 +177,9 @@ private fun SettingsItemCard(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(BotHubTheme.RadiusMd))
+            .clip(RoundedCornerShape(BotHubTheme.RadiusLg))
             .background(BotHubTheme.PrimarySurface)
-            .border(1.dp, BotHubTheme.Border, RoundedCornerShape(BotHubTheme.RadiusMd))
+            .premiumCardBorder()
             .clickable(onClick = onClick)
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically

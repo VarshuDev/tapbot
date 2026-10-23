@@ -43,6 +43,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -55,6 +56,7 @@ import com.tapbot.feature.catalog.ui.CategoryChip
 import com.tapbot.feature.catalog.ui.FeaturedBotCard
 import com.tapbot.feature.catalog.ui.SearchField
 import com.tapbot.feature.catalog.ui.SectionHeader
+import com.tapbot.feature.catalog.ui.premiumCardBorder
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -75,10 +77,10 @@ fun CatalogScreen(
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Box(
                         modifier = Modifier
-                            .size(72.dp)
-                            .clip(RoundedCornerShape(18.dp))
+                            .size(76.dp)
+                            .clip(RoundedCornerShape(20.dp))
                             .background(BotHubTheme.ElevatedSurface)
-                            .border(1.dp, BotHubTheme.Border, RoundedCornerShape(18.dp)),
+                            .border(1.dp, BotHubTheme.Border, RoundedCornerShape(20.dp)),
                         contentAlignment = Alignment.Center
                     ) {
                         CircularProgressIndicator(
@@ -89,9 +91,10 @@ fun CatalogScreen(
                     }
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = "Loading Bot Store...",
+                        text = "Loading Store...",
                         color = BotHubTheme.SecondaryText,
-                        fontSize = 14.sp
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium
                     )
                 }
             }
@@ -110,13 +113,13 @@ fun CatalogScreen(
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(BotHubTheme.RadiusLg))
                         .background(BotHubTheme.PrimarySurface)
-                        .border(1.dp, BotHubTheme.Border, RoundedCornerShape(BotHubTheme.RadiusLg))
+                        .premiumCardBorder()
                         .padding(24.dp)
                 ) {
                     Text(
-                        text = "Unable to load store",
+                        text = "Unable to connect to store",
                         color = BotHubTheme.Error,
-                        fontSize = 16.sp,
+                        fontSize = 17.sp,
                         fontWeight = FontWeight.Bold
                     )
                     Spacer(modifier = Modifier.height(8.dp))
@@ -130,6 +133,7 @@ fun CatalogScreen(
                     Spacer(modifier = Modifier.height(20.dp))
                     Button(
                         onClick = { viewModel.loadCatalog(forceRefresh = true) },
+                        modifier = Modifier.height(48.dp),
                         shape = RoundedCornerShape(BotHubTheme.RadiusMd),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = BotHubTheme.PrimaryBlue,
@@ -149,16 +153,27 @@ fun CatalogScreen(
                 topBar = {
                     TopAppBar(
                         title = {
-                            Text(
-                                text = when (state.selectedTab) {
-                                    1 -> "My Bots"
-                                    2 -> "Settings"
-                                    else -> "Bot Store"
-                                },
-                                color = BotHubTheme.PrimaryText,
-                                fontSize = 20.sp,
-                                fontWeight = FontWeight.Bold
-                            )
+                            Column {
+                                Text(
+                                    text = when (state.selectedTab) {
+                                        1 -> "My Fleet"
+                                        2 -> "Settings"
+                                        else -> "Bot Store"
+                                    },
+                                    color = BotHubTheme.PrimaryText,
+                                    fontSize = 20.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = when (state.selectedTab) {
+                                        1 -> "Local On-Device Execution"
+                                        2 -> "Security & Storage"
+                                        else -> "Cloudflare Edge Verified"
+                                    },
+                                    color = BotHubTheme.SecondaryText,
+                                    fontSize = 11.sp
+                                )
+                            }
                         },
                         actions = {
                             if (state.selectedTab == 0) {
@@ -184,6 +199,11 @@ fun CatalogScreen(
                         },
                         colors = TopAppBarDefaults.topAppBarColors(
                             containerColor = BotHubTheme.Background
+                        ),
+                        modifier = Modifier.border(
+                            width = 1.dp,
+                            color = BotHubTheme.BorderSubtle,
+                            shape = RoundedCornerShape(0.dp)
                         )
                     )
                 },
@@ -248,7 +268,7 @@ private fun CatalogStoreContent(
         modifier = Modifier
             .fillMaxSize()
             .background(BotHubTheme.Background),
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         // Search Field
@@ -256,7 +276,7 @@ private fun CatalogStoreContent(
             SearchField(
                 query = state.searchQuery,
                 onQueryChange = onSearchQueryChanged,
-                placeholderText = "Search bots..."
+                placeholderText = "Search bots, runtimes, tags..."
             )
         }
 
@@ -297,7 +317,7 @@ private fun CatalogStoreContent(
         // Popular Bots Section Header
         item {
             SectionHeader(
-                title = if (state.searchQuery.isNotBlank()) "Search Results" else "Popular Bots",
+                title = if (state.searchQuery.isNotBlank()) "Search Results" else "Explore Bots",
                 actionText = if (state.searchQuery.isBlank() && state.bots.size > 3) "See All" else null,
                 onActionClick = {}
             )
@@ -309,7 +329,7 @@ private fun CatalogStoreContent(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 32.dp),
+                        .padding(vertical = 40.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
@@ -334,10 +354,7 @@ private fun CatalogStoreContent(
 }
 
 /**
- * Bottom Navigation Bar matching the BotHub 3-destination specification:
- * 1. Home (Bot Store)
- * 2. My Bots
- * 3. Settings
+ * Bottom Navigation Bar with illuminated active tab indicator.
  */
 @Composable
 private fun BotHubBottomNavigationBar(
@@ -349,25 +366,25 @@ private fun BotHubBottomNavigationBar(
     Surface(
         modifier = modifier.fillMaxWidth(),
         color = BotHubTheme.PrimarySurface,
-        border = BorderStroke(1.dp, BotHubTheme.Border)
+        border = BorderStroke(1.dp, BotHubTheme.BorderSubtle)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 8.dp),
+                .padding(vertical = 6.dp),
             horizontalArrangement = Arrangement.SpaceAround,
             verticalAlignment = Alignment.CenterVertically
         ) {
             BotHubNavItem(
                 icon = Icons.Default.Home,
-                label = "Home",
+                label = "Store",
                 isSelected = selectedTab == 0,
                 onClick = { onTabSelected(0) }
             )
 
             BotHubNavItem(
                 icon = Icons.Default.SmartToy,
-                label = "My Bots",
+                label = "Fleet",
                 isSelected = selectedTab == 1,
                 badgeCount = if (installedCount > 0) installedCount else null,
                 onClick = { onTabSelected(1) }
@@ -394,11 +411,19 @@ private fun BotHubNavItem(
     val tint = if (isSelected) BotHubTheme.PrimaryBlue else BotHubTheme.MutedText
     val textColor = if (isSelected) BotHubTheme.PrimaryBlue else BotHubTheme.SecondaryText
 
+    val backgroundModifier = if (isSelected) {
+        Modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(BotHubTheme.BlueSubtle)
+    } else {
+        Modifier.clip(RoundedCornerShape(12.dp))
+    }
+
     Column(
         modifier = Modifier
-            .clip(RoundedCornerShape(8.dp))
+            .then(backgroundModifier)
             .clickable(onClick = onClick)
-            .padding(horizontal = 18.dp, vertical = 6.dp),
+            .padding(horizontal = 20.dp, vertical = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Box {
@@ -412,8 +437,8 @@ private fun BotHubNavItem(
                 Box(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
-                        .padding(start = 12.dp, top = (-4).dp)
-                        .size(14.dp)
+                        .padding(start = 14.dp, top = (-4).dp)
+                        .size(16.dp)
                         .clip(CircleShape)
                         .background(BotHubTheme.PrimaryBlue),
                     contentAlignment = Alignment.Center
@@ -427,12 +452,12 @@ private fun BotHubNavItem(
                 }
             }
         }
-        Spacer(modifier = Modifier.height(3.dp))
+        Spacer(modifier = Modifier.height(2.dp))
         Text(
             text = label,
             color = textColor,
             fontSize = 11.sp,
-            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
         )
     }
 }

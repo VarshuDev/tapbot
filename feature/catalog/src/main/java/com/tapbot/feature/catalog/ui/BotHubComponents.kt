@@ -1,5 +1,10 @@
 package com.tapbot.feature.catalog.ui
 
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -40,16 +45,18 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
@@ -60,44 +67,66 @@ import com.tapbot.core.model.BotInstanceStatus
 import com.tapbot.core.model.BotMetadata
 
 /**
- * BotHub Centralized Design Tokens
+ * BotHub Centralized Design Tokens (ui-ux-pro-max OLED Dark Theme)
  */
 object BotHubTheme {
-    val Background = Color(0xFF070D18)
-    val PrimarySurface = Color(0xFF0D1728)
-    val ElevatedSurface = Color(0xFF111F33)
-    val SecondarySurface = Color(0xFF16263D)
+    // True OLED Deep Canvas & Surface Hierarchy
+    val Background = Color(0xFF030712)
+    val PrimarySurface = Color(0xFF0B132B)
+    val ElevatedSurface = Color(0xFF111E38)
+    val SecondarySurface = Color(0xFF162544)
 
-    val PrimaryBlue = Color(0xFF3988FF)
-    val BluePressed = Color(0xFF2674E8)
-    val BlueSubtle = Color(0xFF1A3866)
-    val BlueBorder = Color(0xFF27436B)
+    // Vibrant Electric Primary & Accents
+    val PrimaryBlue = Color(0xFF3B82F6)
+    val PrimaryBlueDark = Color(0xFF1D4ED8)
+    val BluePressed = Color(0xFF2563EB)
+    val BlueSubtle = Color(0xFF1E3A5F)
+    val BlueBorder = Color(0xFF2D4B75)
 
-    val PrimaryText = Color(0xFFF3F6FC)
-    val SecondaryText = Color(0xFF9AAAC0)
-    val MutedText = Color(0xFF6E819B)
+    // Content & Typography
+    val PrimaryText = Color(0xFFF8FAFC)
+    val SecondaryText = Color(0xFF94A3B8)
+    val MutedText = Color(0xFF64748B)
 
-    val Border = Color(0xFF22334B)
-    val BorderSubtle = Color(0xFF1A2A40)
+    // Hairline & Structural Borders
+    val Border = Color(0xFF1F3252)
+    val BorderSubtle = Color(0xFF152238)
+    val BorderHighlight = Color(0xFF2E466E)
 
-    val Success = Color(0xFF27D995)
-    val Warning = Color(0xFFFFB84D)
-    val Error = Color(0xFFFF647C)
-    val Info = Color(0xFF65B7FF)
+    // Semantic Status Colors
+    val Success = Color(0xFF10B981)
+    val Warning = Color(0xFFF59E0B)
+    val Error = Color(0xFFEF4444)
+    val Info = Color(0xFF06B6D4)
 
-    val SuccessSurface = Color(0xFF0D2E24)
-    val SuccessBorder = Color(0xFF1B5E4A)
-    val ErrorSurface = Color(0xFF33141E)
-    val ErrorBorder = Color(0xFF631C2D)
-    val WarningSurface = Color(0xFF332612)
-    val WarningBorder = Color(0xFF5E431B)
+    // Semantic Surface Tints
+    val SuccessSurface = Color(0xFF06281E)
+    val SuccessBorder = Color(0xFF0F5640)
+    val ErrorSurface = Color(0xFF2E0D15)
+    val ErrorBorder = Color(0xFF6B1D2F)
+    val WarningSurface = Color(0xFF2E1F0A)
+    val WarningBorder = Color(0xFF6B4512)
 
+    // Corner Radii
     val RadiusSm = 8.dp
     val RadiusMd = 12.dp
     val RadiusLg = 16.dp
     val RadiusXl = 20.dp
     val RadiusPill = 50.dp
 }
+
+/**
+ * Extension modifier applying a hairline gradient border that gives cards a subtle light-source reflection.
+ */
+fun Modifier.premiumCardBorder(
+    cornerRadius: Dp = BotHubTheme.RadiusLg,
+    borderColorTop: Color = Color(0xFF2C3E5D),
+    borderColorBottom: Color = Color(0xFF142033)
+): Modifier = this.border(
+    width = 1.dp,
+    brush = Brush.verticalGradient(listOf(borderColorTop, borderColorBottom)),
+    shape = RoundedCornerShape(cornerRadius)
+)
 
 /**
  * Resolves distinctive visual theme (color gradient and icon) for a bot based on category and name.
@@ -113,16 +142,16 @@ fun resolveBotVisualIdentity(category: String, name: String): Pair<Brush, ImageV
             Brush.linearGradient(listOf(Color(0xFF8B5CF6), Color(0xFF6D28D9))) to Icons.Default.AutoAwesome
         }
         lowerCat.contains("util") || lowerCat.contains("tool") || lowerName.contains("utility") -> {
-            Brush.linearGradient(listOf(Color(0xFF059669), Color(0xFF047857))) to Icons.Default.Handyman
+            Brush.linearGradient(listOf(Color(0xFF10B981), Color(0xFF047857))) to Icons.Default.Handyman
         }
         lowerCat.contains("product") || lowerCat.contains("task") || lowerName.contains("productivity") -> {
-            Brush.linearGradient(listOf(Color(0xFFD97706), Color(0xFFB45309))) to Icons.Default.TaskAlt
+            Brush.linearGradient(listOf(Color(0xFFF59E0B), Color(0xFFB45309))) to Icons.Default.TaskAlt
         }
         lowerCat.contains("game") || lowerName.contains("game") -> {
-            Brush.linearGradient(listOf(Color(0xFFDB2777), Color(0xFFBE185D))) to Icons.Default.SportsEsports
+            Brush.linearGradient(listOf(Color(0xFFEC4899), Color(0xFFBE185D))) to Icons.Default.SportsEsports
         }
         lowerCat.contains("weather") || lowerName.contains("weather") -> {
-            Brush.linearGradient(listOf(Color(0xFF0284C7), Color(0xFF0369A1))) to Icons.Default.Cloud
+            Brush.linearGradient(listOf(Color(0xFF06B6D4), Color(0xFF0369A1))) to Icons.Default.Cloud
         }
         else -> {
             Brush.linearGradient(listOf(Color(0xFF3B82F6), Color(0xFF1D4ED8))) to Icons.Default.SmartToy
@@ -131,7 +160,7 @@ fun resolveBotVisualIdentity(category: String, name: String): Pair<Brush, ImageV
 }
 
 /**
- * Reusable BotIcon squircle component with distinctive color, clipping, and accessible description.
+ * Reusable squircle icon with ambient border ring.
  */
 @Composable
 fun BotIcon(
@@ -139,7 +168,7 @@ fun BotIcon(
     category: String,
     modifier: Modifier = Modifier,
     size: Dp = 48.dp,
-    cornerRadius: Dp = if (size >= 64.dp) 18.dp else 12.dp
+    cornerRadius: Dp = if (size >= 64.dp) 20.dp else 12.dp
 ) {
     val (brush, vector) = resolveBotVisualIdentity(category, name)
     val iconSize = (size.value * 0.52f).dp
@@ -148,7 +177,8 @@ fun BotIcon(
         modifier = modifier
             .size(size)
             .clip(RoundedCornerShape(cornerRadius))
-            .background(brush),
+            .background(brush)
+            .border(1.dp, Color.White.copy(alpha = 0.18f), RoundedCornerShape(cornerRadius)),
         contentAlignment = Alignment.Center
     ) {
         Icon(
@@ -161,13 +191,26 @@ fun BotIcon(
 }
 
 /**
- * StatusBadge pill component for bot operational states.
+ * StatusBadge pill component with live pulsing animation for running instances.
  */
 @Composable
 fun StatusBadge(
     status: BotInstanceStatus,
     modifier: Modifier = Modifier
 ) {
+    val isLive = status is BotInstanceStatus.Running || status is BotInstanceStatus.Starting
+
+    val infiniteTransition = rememberInfiniteTransition(label = "pulseTransitionCat")
+    val pulseAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.4f,
+        targetValue = 1.0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 800),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pulseAlphaCat"
+    )
+
     val (bgColor, borderColor, textColor, dotColor, label) = when (status) {
         is BotInstanceStatus.Running -> Tuple5(
             BotHubTheme.SuccessSurface,
@@ -217,9 +260,10 @@ fun StatusBadge(
     ) {
         Box(
             modifier = Modifier
-                .size(6.dp)
+                .size(7.dp)
                 .clip(CircleShape)
                 .background(dotColor)
+                .alpha(if (isLive) pulseAlpha else 1.0f)
         )
         Spacer(modifier = Modifier.width(6.dp))
         Text(
@@ -234,7 +278,7 @@ fun StatusBadge(
 private data class Tuple5<A, B, C, D, E>(val a: A, val b: B, val c: C, val d: D, val e: E)
 
 /**
- * CategoryChip pill component for catalog filtering.
+ * CategoryChip pill component with high-contrast active state and subtle glow.
  */
 @Composable
 fun CategoryChip(
@@ -243,28 +287,31 @@ fun CategoryChip(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val bgColor = if (isSelected) BotHubTheme.PrimaryBlue else BotHubTheme.PrimarySurface
-    val textColor = if (isSelected) BotHubTheme.PrimaryText else BotHubTheme.SecondaryText
-    val borderStroke = if (isSelected) null else BorderStroke(1.dp, BotHubTheme.Border)
+    val backgroundBrush = if (isSelected) {
+        Brush.horizontalGradient(listOf(Color(0xFF2563EB), Color(0xFF3B82F6)))
+    } else {
+        Brush.horizontalGradient(listOf(BotHubTheme.ElevatedSurface, BotHubTheme.ElevatedSurface))
+    }
 
-    Surface(
-        onClick = onClick,
-        modifier = modifier.height(36.dp),
-        shape = RoundedCornerShape(BotHubTheme.RadiusPill),
-        color = bgColor,
-        border = borderStroke
+    val textColor = if (isSelected) Color.White else BotHubTheme.SecondaryText
+    val borderColor = if (isSelected) Color.Transparent else BotHubTheme.Border
+
+    Box(
+        modifier = modifier
+            .height(36.dp)
+            .clip(RoundedCornerShape(BotHubTheme.RadiusPill))
+            .background(backgroundBrush)
+            .border(1.dp, borderColor, RoundedCornerShape(BotHubTheme.RadiusPill))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp),
+        contentAlignment = Alignment.Center
     ) {
-        Box(
-            modifier = Modifier.padding(horizontal = 16.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = text,
-                color = textColor,
-                fontSize = 13.sp,
-                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium
-            )
-        }
+        Text(
+            text = text,
+            color = textColor,
+            fontSize = 13.sp,
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+        )
     }
 }
 
@@ -276,12 +323,12 @@ fun SearchField(
     query: String,
     onQueryChange: (String) -> Unit,
     modifier: Modifier = Modifier,
-    placeholderText: String = "Search bots..."
+    placeholderText: String = "Search bots, runtimes, tags..."
 ) {
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .height(48.dp)
+            .height(50.dp)
             .clip(RoundedCornerShape(BotHubTheme.RadiusMd))
             .background(BotHubTheme.ElevatedSurface)
             .border(1.dp, BotHubTheme.Border, RoundedCornerShape(BotHubTheme.RadiusMd))
@@ -334,7 +381,7 @@ fun SearchField(
 }
 
 /**
- * FeaturedBotCard matching the reference hero card with subtle electric blue border.
+ * FeaturedBotCard with hairline gradient border and category micro-pill.
  */
 @Composable
 fun FeaturedBotCard(
@@ -346,31 +393,54 @@ fun FeaturedBotCard(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(BotHubTheme.RadiusLg))
-            .background(BotHubTheme.ElevatedSurface)
-            .border(1.dp, BotHubTheme.BlueBorder, RoundedCornerShape(BotHubTheme.RadiusLg))
+            .background(BotHubTheme.PrimarySurface)
+            .premiumCardBorder(borderColorTop = Color(0xFF3B82F6), borderColorBottom = Color(0xFF1E3A5F))
             .clickable(onClick = onClick)
-            .padding(16.dp)
+            .padding(18.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "Featured",
-                    color = BotHubTheme.PrimaryBlue,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 0.5.sp
-                )
-                Spacer(modifier = Modifier.height(4.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(BotHubTheme.RadiusPill))
+                            .background(BotHubTheme.BlueSubtle)
+                            .border(1.dp, BotHubTheme.BlueBorder, RoundedCornerShape(BotHubTheme.RadiusPill))
+                            .padding(horizontal = 8.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = "FEATURED BOT",
+                            color = BotHubTheme.Info,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 0.5.sp
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    Text(
+                        text = "v${bot.version}",
+                        color = BotHubTheme.SecondaryText,
+                        fontSize = 11.sp,
+                        fontFamily = FontFamily.Monospace
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(6.dp))
+
                 Text(
                     text = bot.name,
                     color = BotHubTheme.PrimaryText,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold
                 )
+
                 Spacer(modifier = Modifier.height(4.dp))
+
                 Text(
                     text = bot.description,
                     color = BotHubTheme.SecondaryText,
@@ -380,19 +450,30 @@ fun FeaturedBotCard(
                     overflow = TextOverflow.Ellipsis
                 )
             }
-            Spacer(modifier = Modifier.width(12.dp))
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                contentDescription = "View featured bot",
-                tint = BotHubTheme.MutedText,
-                modifier = Modifier.size(20.dp)
-            )
+
+            Spacer(modifier = Modifier.width(14.dp))
+
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(BotHubTheme.ElevatedSurface)
+                    .border(1.dp, BotHubTheme.Border, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                    contentDescription = "View featured bot",
+                    tint = BotHubTheme.PrimaryBlue,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
         }
     }
 }
 
 /**
- * BotCard list item matching the reference "Popular Bots" row.
+ * BotCard list item with elevated styling, category badge, and tactile action button.
  */
 @Composable
 fun BotCard(
@@ -405,58 +486,84 @@ fun BotCard(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(BotHubTheme.RadiusMd))
+            .clip(RoundedCornerShape(BotHubTheme.RadiusLg))
             .background(BotHubTheme.PrimarySurface)
-            .border(1.dp, BotHubTheme.Border, RoundedCornerShape(BotHubTheme.RadiusMd))
+            .premiumCardBorder()
             .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 12.dp),
+            .padding(horizontal = 14.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         BotIcon(
             name = bot.name,
             category = bot.category,
-            size = 46.dp
+            size = 48.dp
         )
+
         Spacer(modifier = Modifier.width(12.dp))
+
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = bot.name,
                 color = BotHubTheme.PrimaryText,
                 fontSize = 15.sp,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Bold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            Spacer(modifier = Modifier.height(2.dp))
-            Text(
-                text = "${bot.category} • v${bot.version}",
-                color = BotHubTheme.SecondaryText,
-                fontSize = 12.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-        Spacer(modifier = Modifier.width(12.dp))
 
-        // Action button (Install or Open)
-        Surface(
-            onClick = onActionClick,
-            modifier = Modifier.height(34.dp),
-            shape = RoundedCornerShape(BotHubTheme.RadiusPill),
-            color = if (isInstalled) BotHubTheme.SecondarySurface else BotHubTheme.PrimaryBlue,
-            border = if (isInstalled) BorderStroke(1.dp, BotHubTheme.Border) else null
-        ) {
-            Box(
-                modifier = Modifier.padding(horizontal = 16.dp),
-                contentAlignment = Alignment.Center
-            ) {
+            Spacer(modifier = Modifier.height(3.dp))
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = if (isInstalled) "Open" else "Install",
-                    color = if (isInstalled) BotHubTheme.PrimaryText else Color.White,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold
+                    text = bot.category,
+                    color = BotHubTheme.SecondaryText,
+                    fontSize = 12.sp
+                )
+                Text(
+                    text = " • ",
+                    color = BotHubTheme.MutedText,
+                    fontSize = 12.sp
+                )
+                Text(
+                    text = "v${bot.version}",
+                    color = BotHubTheme.Info,
+                    fontSize = 11.sp,
+                    fontFamily = FontFamily.Monospace,
+                    fontWeight = FontWeight.Medium
                 )
             }
+        }
+
+        Spacer(modifier = Modifier.width(12.dp))
+
+        // Action button (INSTALL or OPEN)
+        val buttonBrush = if (isInstalled) {
+            Brush.horizontalGradient(listOf(BotHubTheme.SecondarySurface, BotHubTheme.SecondarySurface))
+        } else {
+            Brush.horizontalGradient(listOf(Color(0xFF2563EB), Color(0xFF3B82F6)))
+        }
+
+        Box(
+            modifier = Modifier
+                .height(36.dp)
+                .clip(RoundedCornerShape(BotHubTheme.RadiusPill))
+                .background(buttonBrush)
+                .border(
+                    width = 1.dp,
+                    color = if (isInstalled) BotHubTheme.Border else Color.Transparent,
+                    shape = RoundedCornerShape(BotHubTheme.RadiusPill)
+                )
+                .clickable(onClick = onActionClick)
+                .padding(horizontal = 16.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = if (isInstalled) "Open" else "Install",
+                color = if (isInstalled) BotHubTheme.PrimaryText else Color.White,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 0.3.sp
+            )
         }
     }
 }
@@ -474,7 +581,7 @@ fun SectionHeader(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp),
+            .padding(vertical = 6.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -500,7 +607,7 @@ fun SectionHeader(
 }
 
 /**
- * Primary action button with 48dp minimum touch target.
+ * Primary action button with 50dp height (>=48dp touch target) and subtle gradient fill.
  */
 @Composable
 fun PrimaryButton(
@@ -511,17 +618,25 @@ fun PrimaryButton(
     isLoading: Boolean = false,
     icon: ImageVector? = null
 ) {
+    val buttonBrush = if (enabled && !isLoading) {
+        Brush.horizontalGradient(listOf(Color(0xFF2563EB), Color(0xFF3B82F6)))
+    } else {
+        Brush.horizontalGradient(listOf(BotHubTheme.SecondarySurface, BotHubTheme.SecondarySurface))
+    }
+
     Button(
         onClick = onClick,
         enabled = enabled && !isLoading,
         modifier = modifier
             .fillMaxWidth()
-            .height(48.dp),
+            .height(50.dp)
+            .clip(RoundedCornerShape(BotHubTheme.RadiusMd))
+            .background(buttonBrush),
         shape = RoundedCornerShape(BotHubTheme.RadiusMd),
         colors = ButtonDefaults.buttonColors(
-            containerColor = BotHubTheme.PrimaryBlue,
+            containerColor = Color.Transparent,
             contentColor = Color.White,
-            disabledContainerColor = BotHubTheme.SecondarySurface,
+            disabledContainerColor = Color.Transparent,
             disabledContentColor = BotHubTheme.MutedText
         )
     ) {
@@ -536,13 +651,18 @@ fun PrimaryButton(
                 Icon(imageVector = icon, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(8.dp))
             }
-            Text(text = text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+            Text(
+                text = text,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 0.3.sp
+            )
         }
     }
 }
 
 /**
- * Secondary action button with 48dp minimum touch target.
+ * Secondary action button with 50dp height.
  */
 @Composable
 fun SecondaryButton(
@@ -556,7 +676,7 @@ fun SecondaryButton(
     OutlinedButton(
         onClick = onClick,
         enabled = enabled,
-        modifier = modifier.height(48.dp),
+        modifier = modifier.height(50.dp),
         shape = RoundedCornerShape(BotHubTheme.RadiusMd),
         border = BorderStroke(1.dp, borderColor),
         colors = ButtonDefaults.outlinedButtonColors(
@@ -571,5 +691,32 @@ fun SecondaryButton(
             Spacer(modifier = Modifier.width(8.dp))
         }
         Text(text = text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+    }
+}
+
+/**
+ * Developer Monospace Badge for versions, hashes, or sizes.
+ */
+@Composable
+fun MonospaceBadge(
+    text: String,
+    modifier: Modifier = Modifier,
+    color: Color = BotHubTheme.Info,
+    backgroundColor: Color = BotHubTheme.ElevatedSurface
+) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(6.dp))
+            .background(backgroundColor)
+            .border(1.dp, color.copy(alpha = 0.3f), RoundedCornerShape(6.dp))
+            .padding(horizontal = 8.dp, vertical = 3.dp)
+    ) {
+        Text(
+            text = text,
+            color = color,
+            fontSize = 11.sp,
+            fontFamily = FontFamily.Monospace,
+            fontWeight = FontWeight.Medium
+        )
     }
 }

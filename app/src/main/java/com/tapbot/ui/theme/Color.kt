@@ -3,51 +3,53 @@ package com.tapbot.ui.theme
 import androidx.compose.ui.graphics.Color
 
 /**
- * BotHub Centralized Design Tokens
- * Premium, polished Telegram Bot Store palette matching the reference specification.
+ * BotHub Centralized Design Tokens (ui-ux-pro-max OLED Dark Theme)
  */
 object BotHubColors {
-    // Canvas & Surfaces
-    val Background = Color(0xFF070D18)
-    val PrimarySurface = Color(0xFF0D1728)
-    val ElevatedSurface = Color(0xFF111F33)
-    val SecondarySurface = Color(0xFF16263D)
+    // True OLED Deep Canvas & Surface Hierarchy
+    val Background = Color(0xFF030712)
+    val PrimarySurface = Color(0xFF0B132B)
+    val ElevatedSurface = Color(0xFF111E38)
+    val SecondarySurface = Color(0xFF162544)
 
-    // Primary Accents
-    val PrimaryBlue = Color(0xFF3988FF)
-    val BluePressed = Color(0xFF2674E8)
-    val BlueSubtle = Color(0xFF1A3866)
+    // Vibrant Electric Primary & Accents
+    val PrimaryBlue = Color(0xFF3B82F6)
+    val PrimaryBlueDark = Color(0xFF1D4ED8)
+    val BluePressed = Color(0xFF2563EB)
+    val BlueSubtle = Color(0xFF1E3A5F)
+    val BlueBorder = Color(0xFF2D4B75)
 
-    // Typography & Content
-    val PrimaryText = Color(0xFFF3F6FC)
-    val SecondaryText = Color(0xFF9AAAC0)
-    val MutedText = Color(0xFF6E819B)
+    // Content & Typography
+    val PrimaryText = Color(0xFFF8FAFC)
+    val SecondaryText = Color(0xFF94A3B8)
+    val MutedText = Color(0xFF64748B)
 
-    // Dividers & Outlines
-    val Border = Color(0xFF22334B)
-    val BorderSubtle = Color(0xFF1A2A40)
+    // Hairline & Structural Borders
+    val Border = Color(0xFF1F3252)
+    val BorderSubtle = Color(0xFF152238)
+    val BorderHighlight = Color(0xFF2E466E)
 
-    // Semantic States
-    val Success = Color(0xFF27D995)
-    val Warning = Color(0xFFFFB84D)
-    val Error = Color(0xFFFF647C)
-    val Info = Color(0xFF65B7FF)
+    // Semantic Status Colors
+    val Success = Color(0xFF10B981)
+    val Warning = Color(0xFFF59E0B)
+    val Error = Color(0xFFEF4444)
+    val Info = Color(0xFF06B6D4)
 
-    // Surface Status Tints
-    val SuccessSurface = Color(0xFF0D2E24)
-    val SuccessBorder = Color(0xFF1B5E4A)
-    val ErrorSurface = Color(0xFF33141E)
-    val ErrorBorder = Color(0xFF631C2D)
-    val WarningSurface = Color(0xFF332612)
-    val WarningBorder = Color(0xFF5E431B)
+    // Semantic Surface Tints
+    val SuccessSurface = Color(0xFF06281E)
+    val SuccessBorder = Color(0xFF0F5640)
+    val ErrorSurface = Color(0xFF2E0D15)
+    val ErrorBorder = Color(0xFF6B1D2F)
+    val WarningSurface = Color(0xFF2E1F0A)
+    val WarningBorder = Color(0xFF6B4512)
 
-    // Bot Category Gradients / Backgrounds
-    val CategoryMusic = Color(0xFF2563EB)
-    val CategoryAI = Color(0xFF7C3AED)
-    val CategoryUtility = Color(0xFF059669)
-    val CategoryProductivity = Color(0xFFD97706)
-    val CategoryGames = Color(0xFFDB2777)
-    val CategoryWeather = Color(0xFF0284C7)
+    // Category Color Accents
+    val CategoryMusic = Color(0xFF3B82F6)
+    val CategoryAI = Color(0xFF8B5CF6)
+    val CategoryUtility = Color(0xFF10B981)
+    val CategoryProductivity = Color(0xFFF59E0B)
+    val CategoryGames = Color(0xFFEC4899)
+    val CategoryWeather = Color(0xFF06B6D4)
 }
 
 // Backward-compatibility aliases for legacy code

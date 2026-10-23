@@ -22,11 +22,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Terminal
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -41,6 +38,7 @@ import androidx.compose.ui.unit.sp
 import com.tapbot.core.model.BotLogEntry
 import com.tapbot.core.model.LogLevel
 import com.tapbot.feature.botdetail.ui.BotHubTheme
+import com.tapbot.feature.botdetail.ui.premiumCardBorder
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -65,57 +63,84 @@ fun LiveConsoleLogViewer(
             .fillMaxWidth()
             .clip(RoundedCornerShape(BotHubTheme.RadiusLg))
             .background(BotHubTheme.PrimarySurface)
-            .border(1.dp, BotHubTheme.Border, RoundedCornerShape(BotHubTheme.RadiusLg))
-            .padding(14.dp)
+            .premiumCardBorder()
+            .padding(16.dp)
     ) {
+        // Terminal Window Header Bar
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
+                // macOS / Linux Terminal Window Controls (Red, Amber, Green dots)
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(modifier = Modifier.size(9.dp).clip(CircleShape).background(Color(0xFFEF4444)))
+                    Box(modifier = Modifier.size(9.dp).clip(CircleShape).background(Color(0xFFF59E0B)))
+                    Box(modifier = Modifier.size(9.dp).clip(CircleShape).background(Color(0xFF10B981)))
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
                 Icon(
                     imageVector = Icons.Default.Terminal,
                     contentDescription = null,
                     tint = BotHubTheme.Success,
-                    modifier = Modifier.size(18.dp)
+                    modifier = Modifier.size(16.dp)
                 )
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(6.dp))
                 Text(
                     text = "Live Execution Console",
                     color = BotHubTheme.PrimaryText,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.Monospace
                 )
             }
 
-            IconButton(
-                onClick = onClearLogs,
-                modifier = Modifier.size(28.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Clear,
-                    contentDescription = "Clear logs",
-                    tint = BotHubTheme.MutedText,
-                    modifier = Modifier.size(16.dp)
-                )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (logs.isNotEmpty()) {
+                    Text(
+                        text = "${logs.size} lines",
+                        color = BotHubTheme.MutedText,
+                        fontSize = 11.sp,
+                        fontFamily = FontFamily.Monospace
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
+
+                IconButton(
+                    onClick = onClearLogs,
+                    modifier = Modifier.size(28.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Clear,
+                        contentDescription = "Clear logs",
+                        tint = BotHubTheme.SecondaryText,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
             }
         }
 
-        Spacer(modifier = Modifier.height(10.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
+        // Terminal Output Screen
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = 120.dp, max = 220.dp)
+                .heightIn(min = 130.dp, max = 240.dp)
                 .clip(RoundedCornerShape(BotHubTheme.RadiusMd))
-                .background(BotHubTheme.Background)
+                .background(Color(0xFF02040A))
                 .border(1.dp, BotHubTheme.Border, RoundedCornerShape(BotHubTheme.RadiusMd))
-                .padding(10.dp)
+                .padding(12.dp)
         ) {
             if (logs.isEmpty()) {
                 Text(
-                    text = "No runtime logs captured yet. Start the bot to stream logs.",
+                    text = "❯ Standby. Start the bot to stream telemetry and runtime logs.",
                     color = BotHubTheme.MutedText,
                     fontSize = 12.sp,
                     fontFamily = FontFamily.Monospace,
@@ -125,7 +150,7 @@ fun LiveConsoleLogViewer(
                 LazyColumn(
                     state = listState,
                     modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                    verticalArrangement = Arrangement.spacedBy(5.dp)
                 ) {
                     items(logs) { entry ->
                         Row(
@@ -139,19 +164,19 @@ fun LiveConsoleLogViewer(
                                 fontFamily = FontFamily.Monospace
                             )
                             Spacer(modifier = Modifier.width(8.dp))
-                            Box(
-                                modifier = Modifier
-                                    .padding(top = 5.dp)
-                                    .size(5.dp)
-                                    .clip(CircleShape)
-                                    .background(
-                                        when (entry.level) {
-                                            LogLevel.ERROR -> BotHubTheme.Error
-                                            LogLevel.WARN -> BotHubTheme.Warning
-                                            LogLevel.INFO -> BotHubTheme.Success
-                                            LogLevel.DEBUG -> BotHubTheme.Info
-                                        }
-                                    )
+                            // Level indicator badge
+                            val levelColor = when (entry.level) {
+                                LogLevel.ERROR -> BotHubTheme.Error
+                                LogLevel.WARN -> BotHubTheme.Warning
+                                LogLevel.INFO -> BotHubTheme.Success
+                                LogLevel.DEBUG -> BotHubTheme.Info
+                            }
+                            Text(
+                                text = "[${entry.level.name.take(4)}]",
+                                color = levelColor,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = FontFamily.Monospace
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(

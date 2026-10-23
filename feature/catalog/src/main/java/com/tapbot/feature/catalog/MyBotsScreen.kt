@@ -24,7 +24,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
@@ -32,15 +34,13 @@ import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.SystemUpdate
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -49,6 +49,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -60,11 +61,13 @@ import com.tapbot.core.model.BotVersion
 import com.tapbot.core.model.UpdateState
 import com.tapbot.feature.catalog.ui.BotHubTheme
 import com.tapbot.feature.catalog.ui.BotIcon
+import com.tapbot.feature.catalog.ui.MonospaceBadge
 import com.tapbot.feature.catalog.ui.StatusBadge
+import com.tapbot.feature.catalog.ui.premiumCardBorder
 
 /**
- * "MY BOTS" Screen displaying real-time independent state for all locally installed bots.
- * Styled for BotHub's dark navy developer aesthetic.
+ * "MY FLEET" Screen displaying real-time independent state for all locally installed bots.
+ * Styled for BotHub's dark OLED developer aesthetic.
  */
 @Composable
 fun MyBotsContent(
@@ -89,7 +92,7 @@ fun MyBotsContent(
             modifier = modifier
                 .fillMaxSize()
                 .background(BotHubTheme.Background),
-            contentPadding = PaddingValues(16.dp),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             item {
@@ -100,7 +103,7 @@ fun MyBotsContent(
                 ) {
                     Column {
                         Text(
-                            text = "Installed Bots",
+                            text = "Installed Fleet",
                             color = BotHubTheme.PrimaryText,
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold
@@ -108,8 +111,9 @@ fun MyBotsContent(
                         val runningCount = instances.count { it.status.isRunning }
                         Text(
                             text = "$runningCount of ${instances.size} running locally",
-                            color = BotHubTheme.SecondaryText,
-                            fontSize = 12.sp
+                            color = if (runningCount > 0) BotHubTheme.Success else BotHubTheme.SecondaryText,
+                            fontSize = 12.sp,
+                            fontFamily = FontFamily.Monospace
                         )
                     }
 
@@ -185,10 +189,10 @@ fun BotInstanceCard(
             .fillMaxWidth()
             .clip(RoundedCornerShape(BotHubTheme.RadiusLg))
             .background(BotHubTheme.PrimarySurface)
-            .border(1.dp, BotHubTheme.Border, RoundedCornerShape(BotHubTheme.RadiusLg))
+            .premiumCardBorder()
             .padding(16.dp)
     ) {
-        // Header Row: BotIcon, Name, Version & Status Badge
+        // Header Row: BotIcon, Name, Version & Status Badge with animated pulse
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
@@ -209,18 +213,22 @@ fun BotInstanceCard(
                     fontWeight = FontWeight.Bold
                 )
                 Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = "v${instance.version} • ${instance.runtimeType}",
-                    color = BotHubTheme.SecondaryText,
-                    fontSize = 12.sp
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    MonospaceBadge(text = "v${instance.version}")
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = instance.runtimeType,
+                        color = BotHubTheme.SecondaryText,
+                        fontSize = 12.sp
+                    )
+                }
             }
 
             StatusBadge(status = instance.status)
         }
 
         // Real State Diagnostic Detail
-        Spacer(modifier = Modifier.height(10.dp))
+        Spacer(modifier = Modifier.height(12.dp))
         StatusDiagnosticDetail(status = instance.status, startedAt = instance.startedAt)
 
         // Version Update Banner / Active Progress Tracker
@@ -256,7 +264,7 @@ fun BotInstanceCard(
                         ),
                         border = BorderStroke(1.dp, BotHubTheme.ErrorBorder),
                         shape = RoundedCornerShape(BotHubTheme.RadiusSm),
-                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)
                     ) {
                         Icon(Icons.Default.Stop, contentDescription = null, modifier = Modifier.size(15.dp))
                         Spacer(modifier = Modifier.width(6.dp))
@@ -271,7 +279,7 @@ fun BotInstanceCard(
                             contentColor = if (isCrashed) BotHubTheme.Error else Color.White
                         ),
                         border = if (isCrashed) BorderStroke(1.dp, BotHubTheme.ErrorBorder) else null,
-                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)
                     ) {
                         Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(15.dp))
                         Spacer(modifier = Modifier.width(6.dp))
@@ -286,7 +294,7 @@ fun BotInstanceCard(
                     border = BorderStroke(1.dp, BotHubTheme.Border)
                 ) {
                     Box(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
@@ -299,7 +307,7 @@ fun BotInstanceCard(
                 }
             }
 
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Surface(
                     onClick = onConfigure,
                     shape = RoundedCornerShape(BotHubTheme.RadiusSm),
@@ -307,7 +315,7 @@ fun BotInstanceCard(
                     border = BorderStroke(1.dp, BotHubTheme.Border)
                 ) {
                     Box(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
@@ -326,7 +334,7 @@ fun BotInstanceCard(
                     border = BorderStroke(1.dp, BotHubTheme.Border)
                 ) {
                     Box(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
@@ -355,22 +363,24 @@ private fun StatusDiagnosticDetail(status: BotInstanceStatus, startedAt: Long?) 
                 "${uptimeSeconds}s"
             }
             Text(
-                text = "⚡ Polling active • ${status.pollCount} polls • ${status.messageCount} msgs • Uptime: $uptimeFormatted",
-                fontSize = 12.sp,
+                text = "Polling active • ${status.pollCount} polls • ${status.messageCount} msgs • Uptime: $uptimeFormatted",
+                fontSize = 11.sp,
+                fontFamily = FontFamily.Monospace,
                 color = BotHubTheme.Success
             )
         }
         is BotInstanceStatus.Crashed -> {
             Text(
-                text = "⚠️ Crash Reason: ${status.reason} (Count: ${status.crashCount})",
-                fontSize = 12.sp,
+                text = "Crash: ${status.reason} (Count: ${status.crashCount})",
+                fontSize = 11.sp,
+                fontFamily = FontFamily.Monospace,
                 color = BotHubTheme.Error,
                 fontWeight = FontWeight.SemiBold
             )
         }
         is BotInstanceStatus.Starting -> {
             Text(
-                text = "Connecting to Telegram Bot API...",
+                text = "Connecting to Telegram Bot API loop...",
                 fontSize = 12.sp,
                 color = BotHubTheme.Warning
             )
@@ -426,7 +436,7 @@ private fun EmptyMyBotsView(onBrowseStoreClick: () -> Unit, modifier: Modifier =
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "You haven't installed any bots yet. Browse the Bot Store to install Music Bot, AI Assistant, or Utility Bot.",
+                text = "You haven't deployed any bots yet. Browse the Bot Store to install Gemini AI Assistant, Music Bot, or Utility Bot.",
                 color = BotHubTheme.SecondaryText,
                 fontSize = 13.sp,
                 lineHeight = 18.sp,
@@ -545,33 +555,57 @@ private fun UpdateProgressBanner(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = when (updateProgress.state) {
-                    UpdateState.CHECKING -> "🔍 Checking Compatibility"
-                    UpdateState.DOWNLOADING -> "📥 Downloading v${updateProgress.targetVersion}"
-                    UpdateState.VERIFYING -> "🛡️ Verifying SHA-256 Checksum"
-                    UpdateState.INSTALLING -> "📦 Staging & Replacing Package"
-                    UpdateState.STARTING -> "🚀 Starting v${updateProgress.targetVersion} & Health Check"
-                    UpdateState.SUCCESS -> "✅ Successfully Updated to v${updateProgress.targetVersion}"
-                    UpdateState.ROLLING_BACK -> "⚠️ Startup Failed — Rolling Back to v${updateProgress.currentVersion}"
-                    UpdateState.FAILED -> "❌ Update Failed"
-                    UpdateState.IDLE -> ""
-                },
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                color = when {
-                    isSuccess -> BotHubTheme.Success
-                    isFailed -> BotHubTheme.Error
-                    isRollback -> BotHubTheme.Warning
-                    else -> BotHubTheme.PrimaryBlue
-                }
-            )
+            val statusLabel = when (updateProgress.state) {
+                UpdateState.CHECKING -> "Checking Compatibility"
+                UpdateState.DOWNLOADING -> "Downloading v${updateProgress.targetVersion}"
+                UpdateState.VERIFYING -> "Verifying SHA-256 Checksum"
+                UpdateState.INSTALLING -> "Staging & Replacing Package"
+                UpdateState.STARTING -> "Starting v${updateProgress.targetVersion}"
+                UpdateState.SUCCESS -> "Successfully Updated to v${updateProgress.targetVersion}"
+                UpdateState.ROLLING_BACK -> "Startup Failed — Rolling Back to v${updateProgress.currentVersion}"
+                UpdateState.FAILED -> "Update Failed"
+                UpdateState.IDLE -> ""
+            }
+
+            val statusIcon = when {
+                isSuccess -> Icons.Default.CheckCircle
+                isFailed -> Icons.Default.Error
+                isRollback -> Icons.Default.Warning
+                else -> Icons.Default.Sync
+            }
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = statusIcon,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                    tint = when {
+                        isSuccess -> BotHubTheme.Success
+                        isFailed -> BotHubTheme.Error
+                        isRollback -> BotHubTheme.Warning
+                        else -> BotHubTheme.PrimaryBlue
+                    }
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = statusLabel,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = when {
+                        isSuccess -> BotHubTheme.Success
+                        isFailed -> BotHubTheme.Error
+                        isRollback -> BotHubTheme.Warning
+                        else -> BotHubTheme.PrimaryBlue
+                    }
+                )
+            }
 
             if (updateProgress.state == UpdateState.DOWNLOADING) {
                 Text(
                     text = "${(updateProgress.progress * 100).toInt()}%",
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.Monospace,
                     color = BotHubTheme.PrimaryText
                 )
             }
@@ -579,26 +613,15 @@ private fun UpdateProgressBanner(
 
         if (updateProgress.isInProgress) {
             Spacer(modifier = Modifier.height(8.dp))
-            if (updateProgress.state == UpdateState.DOWNLOADING) {
-                LinearProgressIndicator(
-                    progress = { updateProgress.progress },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(4.dp)
-                        .clip(RoundedCornerShape(2.dp)),
-                    color = BotHubTheme.PrimaryBlue,
-                    trackColor = BotHubTheme.SecondarySurface
-                )
-            } else {
-                LinearProgressIndicator(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(4.dp)
-                        .clip(RoundedCornerShape(2.dp)),
-                    color = BotHubTheme.PrimaryBlue,
-                    trackColor = BotHubTheme.SecondarySurface
-                )
-            }
+            LinearProgressIndicator(
+                progress = { if (updateProgress.state == UpdateState.DOWNLOADING) updateProgress.progress else 0.5f },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(4.dp)
+                    .clip(RoundedCornerShape(2.dp)),
+                color = BotHubTheme.PrimaryBlue,
+                trackColor = BotHubTheme.SecondarySurface
+            )
         }
 
         updateProgress.message?.let { msg ->

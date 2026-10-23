@@ -160,8 +160,8 @@ class CloudflareCatalogApi(
     }
 
     companion object {
-        // Default local development URL for Android Emulator (10.0.2.2 maps to host 127.0.0.1:8787)
+        // Live hosted public URL via Cloudflare
         const val DEFAULT_LOCAL_URL = "http://10.0.2.2:8787"
-        const val DEFAULT_BASE_URL = "https://tapbot-catalog.workers.dev"
+        const val DEFAULT_BASE_URL = "https://bunny-mailing-newman-cod.trycloudflare.com"
     }
 }

@@ -23,10 +23,10 @@ export default {
         try {
             // 2. Serve Web-Based Admin Dashboard SPA (/admin)
             if (
-                request.method === 'GET' &&
+                (request.method === 'GET' || request.method === 'HEAD') &&
                 (url.pathname === '/admin' || url.pathname === '/admin/' || url.pathname === '/admin.html')
             ) {
-                const html = renderDashboardHtml();
+                const html = request.method === 'HEAD' ? '' : renderDashboardHtml();
                 return new Response(html, {
                     status: 200,
                     headers: {

@@ -83,7 +83,7 @@ class TapBotApplication : Application() {
         // 3. Initialize Catalog data source, cache, and repository connecting to Cloudflare Workers / D1 API
         val okHttpClient = OkHttpClient()
         val isDebug = (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
-        val backendUrl = if (isDebug) CloudflareCatalogApi.DEFAULT_LOCAL_URL else CloudflareCatalogApi.DEFAULT_BASE_URL
+        val backendUrl = CloudflareCatalogApi.DEFAULT_BASE_URL
         remoteBotDataSource = CloudflareRemoteBotDataSource(baseUrl = backendUrl, client = okHttpClient)
         localCatalogCache = LocalCatalogCache(cacheFile = File(cacheDir, "catalog_cache.json"))
         // Ensure catalog cache includes flagship built-in bots (e.g. TapBot Commander)

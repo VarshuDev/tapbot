@@ -1015,7 +1015,7 @@ export function renderDashboardHtml(): string {
                         </svg>
                     </div>
                 </div>
-                <div class="metric-value mono" style="color: var(--accent-cyan);" id="stat-downloads">0</div>
+                <div class="metric-value mono" style="color: var(--accent-cyan);" id="stat-downloads">Not available</div>
                 <div class="metric-subtitle">Total bot downloads across catalog</div>
             </div>
         </section>

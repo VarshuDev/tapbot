@@ -42,3 +42,11 @@
 - Detects and deduplicates bot fleet crash events via `checkCrashes(instances)`, alerting the configured owner with bot name, ID, crash reason, and recovery actions (`/logs`, `/restartbot`).
 - Delegated watchdog execution in `CommanderBotRuntime.kt` to `DeviceWatchdog`.
 - Created comprehensive unit tests in `DeviceWatchdogTest.kt`. All 55 tests passed.
+
+## 2026-10-28 - US-005: In-Chat Direct APK Document Delivery (/apk)
+- Created `ApkDeliveryService` in `com.tapbot.core.runner.delivery`.
+- Resolves host device APK from `context.applicationInfo.sourceDir` with fallbacks to workspace release builds.
+- Computes SHA-256 integrity checksum using standard streaming `MessageDigest`.
+- Enforces Telegram 50MB Bot API file upload ceiling with fallback instructions.
+- Formats rich release caption with version name, version code, size in MB, and SHA-256 hash.
+- Unit tested file hashing, size checking, limit triggers, and delivery upload. All unit tests passed.

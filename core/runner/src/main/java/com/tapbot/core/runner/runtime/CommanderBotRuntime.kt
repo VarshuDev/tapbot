@@ -35,6 +35,8 @@ import com.tapbot.core.model.TelegramUpdate
 import com.tapbot.core.model.TelegramUser
 import com.tapbot.core.runner.BotForegroundService
 import com.tapbot.core.runner.ServiceLocator
+import com.tapbot.core.runner.delivery.ApkDeliveryResult
+import com.tapbot.core.runner.delivery.ApkDeliveryService
 import com.tapbot.core.runner.device.DeviceActionController
 import com.tapbot.core.runner.device.DeviceActionResult
 import com.tapbot.core.runner.fleet.FleetCommandRouter
@@ -840,90 +842,19 @@ class CommanderBotRuntime(
 
     private suspend fun sendApkDocument(ctx: RuntimeContext, token: String, chatId: Long) {
         val aCtx = ctx.androidContext ?: ServiceLocator.appContext
-
-        // Discover APK file: sourceDir is the installed base APK
-        var apkFile: File? = null
-        if (aCtx != null) {
-            val sourceDir = aCtx.applicationInfo?.sourceDir
-            if (!sourceDir.isNullOrBlank()) {
-                val candidate = File(sourceDir)
-                if (candidate.exists() && candidate.canRead()) {
-                    apkFile = candidate
-                }
-            }
-        }
-
-        // Fallback for dev / workspace environments
-        if (apkFile == null) {
-            val buildApk = File("app/build/outputs/apk/debug/app-debug.apk")
-            if (buildApk.exists()) {
-                apkFile = buildApk
-            }
-        }
-
-        val pInfo = try {
-            aCtx?.packageManager?.getPackageInfo(aCtx.packageName, 0)
-        } catch (_: Exception) {
-            null
-        }
-
-        val versionName = pInfo?.versionName ?: "1.0.0"
-        val versionCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            pInfo?.longVersionCode ?: 1L
-        } else {
-            @Suppress("DEPRECATION")
-            (pInfo?.versionCode?.toLong() ?: 1L)
-        }
-
-        if (apkFile != null && apkFile.exists()) {
-            val sizeMb = String.format(Locale.US, "%.2f", apkFile.length() / (1024.0 * 1024.0))
-            val sha256 = computeSha256(apkFile)
-
-            val caption = """
-                🚀 *TapBot APK v${versionName} (Build ${versionCode})*
-                ━━━━━━━━━━━━━━━━━━━━━━
-                📦 Size: *${sizeMb} MB*
-                🔒 SHA-256: `${sha256}`
-                📱 Min SDK: Android 10+ (API 29–35)
-                
-                Run real Telegram bots directly on Android 24/7 without cloud fees!
-            """.trimIndent()
-
-            ctx.telegramApi.sendChatAction(token, chatId, "upload_document")
-            val sendResult = ctx.telegramApi.sendDocument(
-                token = token,
-                chatId = chatId,
-                file = apkFile,
-                caption = caption,
-                parseMode = "Markdown"
-            )
-
-            if (sendResult.isFailure) {
-                // If Telegram rejected due to file size (> 50MB) or network limit
-                val fallbackText = """
-                    🚀 *TapBot APK v${versionName} (Build ${versionCode})*
-                    ━━━━━━━━━━━━━━━━━━━━━━
-                    📦 Size: *${sizeMb} MB*
-                    🔒 SHA-256: `${sha256}`
-                    
-                    ⚠️ _Direct upload timed out or exceeded Bot API file limits._
-                    Download or install via:
-                    • ADB: `adb install -r app-debug.apk`
-                    • Web: [TapBot Official Releases](https://tapbot.dev/download)
-                """.trimIndent()
-                ctx.telegramApi.sendMessage(token, chatId, fallbackText, "Markdown")
-            }
-        } else {
-            val text = """
+        val deliveryService = ApkDeliveryService(aCtx)
+        val result = deliveryService.deliverApk(ctx.telegramApi, token, chatId)
+        if (result is ApkDeliveryResult.FileNotFound) {
+            val fallback = """
                 🚀 *TapBot APK Information*
                 ━━━━━━━━━━━━━━━━━━━━━━
-                • Version: *v${versionName} (Build ${versionCode})*
+                • Version: *v2.1.0*
                 • Runtime: *Native Android ART Coroutine Engine*
                 • Target: *Android 10+ (API 29–35)*
                 
                 _APK package is ready in your TapBot workspace build directory._
             """.trimIndent()
-            ctx.telegramApi.sendMessage(token, chatId, text, "Markdown")
+            ctx.telegramApi.sendMessage(token, chatId, fallback, "Markdown")
         }
     }
 

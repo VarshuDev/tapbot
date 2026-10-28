@@ -27,3 +27,10 @@
 - Enforced owner authentication via `isOwnerAuthorized(configuredOwnerId, senderUserId)`.
 - Delegated command routing in `CommanderBotRuntime.kt` to `DeviceActionController`.
 - Created comprehensive unit tests in `DeviceActionControllerTest.kt`. All tests passed.
+
+## 2026-10-28 - US-003: Fleet Command Router & In-Telegram Bot Management
+- Created `FleetCommandRouter` in `com.tapbot.core.runner.fleet`.
+- Formats `/bots` fleet status with real-time emoji badges (🟢 RUNNING, 🟡 STARTING, 🟠 STOPPING, ⚪ STOPPED, 🔴 CRASHED), poll/message counts, and crash reasons.
+- Implemented `/startbot`, `/stopbot`, and `/restartbot` with bot ID resolution to `installationId`.
+- Implemented `/logs <id> [lines]` with automatic Telegram bot token regex redaction (`\b\d{8,10}:[A-Za-z0-9_-]{35}\b` -> `[REDACTED_BOT_TOKEN]`).
+- Created unit tests in `FleetCommandRouterTest.kt`. All unit tests passed.

@@ -37,6 +37,7 @@ import com.tapbot.core.runner.BotForegroundService
 import com.tapbot.core.runner.ServiceLocator
 import com.tapbot.core.runner.device.DeviceActionController
 import com.tapbot.core.runner.device.DeviceActionResult
+import com.tapbot.core.runner.fleet.FleetCommandRouter
 import com.tapbot.core.runner.telemetry.DeviceTelemetryProvider
 import com.tapbot.core.runner.util.AdaptiveBackoff
 import kotlinx.coroutines.CancellationException
@@ -662,44 +663,9 @@ class CommanderBotRuntime(
             return
         }
 
-        val instances = manager.instances.value
-        if (instances.isEmpty()) {
-            ctx.telegramApi.sendMessage(
-                token,
-                chatId,
-                "🤖 *No bots installed yet.*\nVisit the TapBot app or run /store to explore available bots.",
-                "Markdown"
-            )
-            return
-        }
-
-        val sb = StringBuilder("🤖 *TapBot Installed Fleet (${instances.size})*\n━━━━━━━━━━━━━━━━━━━━━━\n")
-        for (inst in instances) {
-            val statusBadge = when (inst.status) {
-                is BotInstanceStatus.Running -> "🟢 RUNNING"
-                is BotInstanceStatus.Starting -> "🟡 STARTING"
-                is BotInstanceStatus.Stopping -> "🟠 STOPPING"
-                is BotInstanceStatus.Stopped -> "⚪ STOPPED"
-                is BotInstanceStatus.Crashed -> "🔴 CRASHED"
-            }
-
-            sb.append("• *${escapeMarkdown(inst.name)}* (`${escapeMarkdown(inst.botId)}`)\n")
-            sb.append("   Version: v${inst.version} | Status: *${statusBadge}*\n")
-
-            if (inst.status is BotInstanceStatus.Running) {
-                val r = inst.status as BotInstanceStatus.Running
-                sb.append("   Polls: `${r.pollCount}` | Messages: `${r.messageCount}`\n")
-            } else if (inst.status is BotInstanceStatus.Crashed) {
-                val c = inst.status as BotInstanceStatus.Crashed
-                sb.append("   Reason: `${escapeMarkdown(c.reason)}`\n")
-            }
-            sb.append("\n")
-        }
-
-        sb.append("━━━━━━━━━━━━━━━━━━━━━━\n")
-        sb.append("Manage: /startbot `<id>`, /stopbot `<id>`, /logs `<id>`")
-
-        ctx.telegramApi.sendMessage(token, chatId, sb.toString(), "Markdown")
+        val router = FleetCommandRouter(manager)
+        val text = router.formatFleetStatus(manager.instances.value)
+        ctx.telegramApi.sendMessage(token, chatId, text, "Markdown")
     }
 
     private suspend fun handleStartBot(ctx: RuntimeContext, token: String, chatId: Long, botId: String?) {
@@ -707,19 +673,13 @@ class CommanderBotRuntime(
             ctx.telegramApi.sendMessage(token, chatId, "Usage: `/startbot <bot_id>`\nSee /bots for available IDs.", "Markdown")
             return
         }
-        val manager = ServiceLocator.botInstanceManager
-        val inst = manager?.getInstanceByBotId(botId) ?: manager?.getInstance(botId)
-        if (inst == null) {
-            ctx.telegramApi.sendMessage(token, chatId, "❌ Bot with ID `${escapeMarkdown(botId)}` not found.", "Markdown")
-            return
-        }
-
-        val result = manager?.start(inst.installationId)
-        if (result?.isSuccess == true) {
-            ctx.telegramApi.sendMessage(token, chatId, "✅ Started bot *${escapeMarkdown(inst.name)}* successfully.", "Markdown")
+        val router = FleetCommandRouter(ServiceLocator.botInstanceManager)
+        val result = router.startBot(botId)
+        if (result.isSuccess) {
+            ctx.telegramApi.sendMessage(token, chatId, result.getOrThrow(), "Markdown")
         } else {
-            val err = result?.exceptionOrNull()?.message ?: "Unknown error"
-            ctx.telegramApi.sendMessage(token, chatId, "❌ Failed to start bot: `${escapeMarkdown(err)}`", "Markdown")
+            val err = result.exceptionOrNull()?.message ?: "Unknown error"
+            ctx.telegramApi.sendMessage(token, chatId, "❌ ${err}", "Markdown")
         }
     }
 
@@ -728,19 +688,13 @@ class CommanderBotRuntime(
             ctx.telegramApi.sendMessage(token, chatId, "Usage: `/stopbot <bot_id>`\nSee /bots for available IDs.", "Markdown")
             return
         }
-        val manager = ServiceLocator.botInstanceManager
-        val inst = manager?.getInstanceByBotId(botId) ?: manager?.getInstance(botId)
-        if (inst == null) {
-            ctx.telegramApi.sendMessage(token, chatId, "❌ Bot with ID `${escapeMarkdown(botId)}` not found.", "Markdown")
-            return
-        }
-
-        val result = manager?.stop(inst.installationId)
-        if (result?.isSuccess == true) {
-            ctx.telegramApi.sendMessage(token, chatId, "⏹ Stopped bot *${escapeMarkdown(inst.name)}* successfully.", "Markdown")
+        val router = FleetCommandRouter(ServiceLocator.botInstanceManager)
+        val result = router.stopBot(botId)
+        if (result.isSuccess) {
+            ctx.telegramApi.sendMessage(token, chatId, result.getOrThrow(), "Markdown")
         } else {
-            val err = result?.exceptionOrNull()?.message ?: "Unknown error"
-            ctx.telegramApi.sendMessage(token, chatId, "❌ Failed to stop bot: `${escapeMarkdown(err)}`", "Markdown")
+            val err = result.exceptionOrNull()?.message ?: "Unknown error"
+            ctx.telegramApi.sendMessage(token, chatId, "❌ ${err}", "Markdown")
         }
     }
 
@@ -749,19 +703,13 @@ class CommanderBotRuntime(
             ctx.telegramApi.sendMessage(token, chatId, "Usage: `/restartbot <bot_id>`\nSee /bots for available IDs.", "Markdown")
             return
         }
-        val manager = ServiceLocator.botInstanceManager
-        val inst = manager?.getInstanceByBotId(botId) ?: manager?.getInstance(botId)
-        if (inst == null) {
-            ctx.telegramApi.sendMessage(token, chatId, "❌ Bot with ID `${escapeMarkdown(botId)}` not found.", "Markdown")
-            return
-        }
-
-        val result = manager?.restart(inst.installationId)
-        if (result?.isSuccess == true) {
-            ctx.telegramApi.sendMessage(token, chatId, "🔄 Restarted bot *${escapeMarkdown(inst.name)}* successfully.", "Markdown")
+        val router = FleetCommandRouter(ServiceLocator.botInstanceManager)
+        val result = router.restartBot(botId)
+        if (result.isSuccess) {
+            ctx.telegramApi.sendMessage(token, chatId, result.getOrThrow(), "Markdown")
         } else {
-            val err = result?.exceptionOrNull()?.message ?: "Unknown error"
-            ctx.telegramApi.sendMessage(token, chatId, "❌ Failed to restart bot: `${escapeMarkdown(err)}`", "Markdown")
+            val err = result.exceptionOrNull()?.message ?: "Unknown error"
+            ctx.telegramApi.sendMessage(token, chatId, "❌ ${err}", "Markdown")
         }
     }
 
@@ -779,21 +727,10 @@ class CommanderBotRuntime(
             return
         }
 
-        val entries = logRepo.getLogStream(targetId).value.takeLast(lineCount)
-        if (entries.isEmpty()) {
-            ctx.telegramApi.sendMessage(token, chatId, "📄 No recent log entries for `${escapeMarkdown(targetId)}`.", "Markdown")
-            return
-        }
-
-        val timeFormat = SimpleDateFormat("HH:mm:ss", Locale.US)
-        val sb = StringBuilder("📄 *Live Logs for `${escapeMarkdown(targetId)}` (last ${entries.size})*\n```\n")
-        for (e in entries) {
-            val time = timeFormat.format(Date(e.timestamp))
-            sb.append("[$time] [${e.level.name}] [${e.tag}] ${e.message}\n")
-        }
-        sb.append("```")
-
-        ctx.telegramApi.sendMessage(token, chatId, sb.toString(), "Markdown")
+        val router = FleetCommandRouter(ServiceLocator.botInstanceManager)
+        val entries = logRepo.getLogStream(targetId).value
+        val text = router.formatLogs(targetId, entries, lineCount)
+        ctx.telegramApi.sendMessage(token, chatId, text, "Markdown")
     }
 
     private suspend fun handleExportLogs(ctx: RuntimeContext, token: String, chatId: Long, botId: String?) {

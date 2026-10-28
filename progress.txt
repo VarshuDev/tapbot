@@ -1,0 +1,16 @@
+# TapBot - Ralph Execution Progress
+
+## Codebase Patterns
+- Multi-module Android architecture: `:app`, `:feature:catalog`, `:feature:botdetail`, `:core:runner`, `:core:model`, `:core:network`, `:core:security`, `:core:logging`.
+- Bot runtimes extend `BotRuntime` with `start()`, `stop()`, and `isRunning()` coroutine lifecycles.
+- Keystore credentials stored via Android Keystore AES-256-GCM in `EncryptedSharedPreferences`.
+- Telegram Long-Polling implemented in `core:runner` with backoff logic and cancelable coroutine jobs.
+- UI built with Jetpack Compose following OLED Dark Mode design system (`BotHubTheme`).
+
+---
+
+## 2026-10-28 - US-001: Android Hardware Telemetry Service & Diagnostic DTOs
+- Implemented `DeviceTelemetryProvider` in `com.tapbot.core.runner.telemetry`.
+- Provides comprehensive hardware stats: Battery (level, charging state, temp, voltage, health, Doze whitelist status), RAM (physical memory, JVM heap), Storage (StatFs total/free/used, ASCII progress bar), Network (Wi-Fi, Cellular, Ethernet), and System HUD.
+- Added null-safe fallbacks for unit tests when running on local JVM without Robolectric (`Build.MANUFACTURER?.replaceFirstChar { it.uppercase() } ?: "Android"` and wrapped `SystemClock.elapsedRealtime()`).
+- Added unit tests in `DeviceTelemetryProviderTest.kt`. All 42 tests in `:core:runner:test` pass.

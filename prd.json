@@ -1,0 +1,103 @@
+{
+  "project": "TapBot",
+  "branchName": "ralph/commander-flagship-bot",
+  "description": "TapBot Commander Flagship on-device remote controller, device watchdog, and fleet manager for Android",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Android Hardware Telemetry Service & Diagnostic DTOs",
+      "description": "As a user, I want the bot to query physical device stats so I can inspect battery, RAM, storage, and network remotely via /status and /battery.",
+      "acceptanceCriteria": [
+        "Create DeviceTelemetryProvider querying BatteryManager, ActivityManager (RAM), StatFs (disk), and ConnectivityManager",
+        "Implement formatted text output with battery health, temperature, charging state, and Doze whitelist status",
+        "Unit test DeviceTelemetryProvider with mocked Android managers",
+        "Typecheck passes",
+        "Tests pass"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "DeviceTelemetryProvider implemented and tested with 42 unit tests passing."
+    },
+    {
+      "id": "US-002",
+      "title": "Remote Android Hardware Actions Controller",
+      "description": "As a user, I want to trigger phone actions via Telegram so I can find my misplaced phone with /ring, toggle flashlight with /torch, and send notifications with /notify.",
+      "acceptanceCriteria": [
+        "Implement DeviceActionController using AudioManager (Ringtone alert with max volume), CameraManager (Torch toggle), and Vibrator",
+        "Implement owner authentication checking Telegram numeric user_id against configured owner_id",
+        "Add safety timeout auto-silencing the ringtone after 15 seconds or via /stopring",
+        "Unit test action handlers and owner gating",
+        "Typecheck passes",
+        "Tests pass"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-003",
+      "title": "Fleet Command Router & In-Telegram Bot Management",
+      "description": "As a user, I want to control my TapBot fleet remotely via Telegram commands (/bots, /startbot, /stopbot, /restartbot, /logs).",
+      "acceptanceCriteria": [
+        "Wire BotInstanceManager to CommanderBotRuntime command dispatch",
+        "/bots returns real-time status list with emojis and poll counts",
+        "/logs <bot_id> [lines] returns the last N sanitized log lines from LogRepository",
+        "Unit test fleet commands with mock BotInstanceManager",
+        "Typecheck passes",
+        "Tests pass"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-004",
+      "title": "Autonomous Background Watchdog Coroutine",
+      "description": "As a user, I want autonomous Telegram push alerts when the host phone battery drops below 15% or when any bot crashes.",
+      "acceptanceCriteria": [
+        "Implement DeviceWatchdog running periodic background checks in CommanderBotRuntime",
+        "Trigger urgent Telegram message to owner_id if battery < threshold and discharging",
+        "Listen to BotInstanceManager crash events and immediately push crash notification with error message",
+        "Debounce battery alerts to avoid spamming (minimum 30 minutes between warnings)",
+        "Unit test watchdog threshold detection and debouncing",
+        "Typecheck passes",
+        "Tests pass"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-005",
+      "title": "In-Chat Direct APK Document Delivery (/apk)",
+      "description": "As a user, I want to download the latest installed TapBot APK directly in Telegram by typing /apk.",
+      "acceptanceCriteria": [
+        "Implement Telegram sendDocument multipart upload reading the app's base.apk via context.applicationInfo.sourceDir",
+        "Compute SHA-256 integrity checksum and format in caption message",
+        "Handle file size limit gracefully with clear user error message if APK exceeds Telegram 50MB bot upload limit",
+        "Unit test APK file resolver and checksum generation",
+        "Typecheck passes",
+        "Tests pass"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-006",
+      "title": "Catalog Store Registration & In-App Installation Flow",
+      "description": "As a user, I want TapBot Commander visible in the store and installable with credential fields for Bot Token and Owner ID.",
+      "acceptanceCriteria": [
+        "Verify 0006_commander_bot.sql is seeded in the catalog database",
+        "Ensure package tapbot-commander-1.0.0.botpkg is available in local package repository",
+        "Verify BotDetailScreen displays Owner ID and Low Battery Threshold configuration fields",
+        "Run ./gradlew assembleDebug and verify app launches clean",
+        "Typecheck passes",
+        "Tests pass"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": ""
+    }
+  ]
+}

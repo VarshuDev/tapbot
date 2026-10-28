@@ -34,3 +34,11 @@
 - Implemented `/startbot`, `/stopbot`, and `/restartbot` with bot ID resolution to `installationId`.
 - Implemented `/logs <id> [lines]` with automatic Telegram bot token regex redaction (`\b\d{8,10}:[A-Za-z0-9_-]{35}\b` -> `[REDACTED_BOT_TOKEN]`).
 - Created unit tests in `FleetCommandRouterTest.kt`. All unit tests passed.
+
+## 2026-10-28 - US-004: Autonomous Background Watchdog Coroutine
+- Created `DeviceWatchdog` in `com.tapbot.core.runner.watchdog`.
+- Detects low battery when battery <= threshold (default 15%) and discharging.
+- Enforces 30-minute debouncing between battery warnings (`lastLowBatteryAlertTime == 0L || currentTimeMillis - lastLowBatteryAlertTime >= debounceMillis`).
+- Detects and deduplicates bot fleet crash events via `checkCrashes(instances)`, alerting the configured owner with bot name, ID, crash reason, and recovery actions (`/logs`, `/restartbot`).
+- Delegated watchdog execution in `CommanderBotRuntime.kt` to `DeviceWatchdog`.
+- Created comprehensive unit tests in `DeviceWatchdogTest.kt`. All 55 tests passed.

@@ -39,6 +39,7 @@ import com.tapbot.core.runner.device.DeviceActionController
 import com.tapbot.core.runner.device.DeviceActionResult
 import com.tapbot.core.runner.fleet.FleetCommandRouter
 import com.tapbot.core.runner.telemetry.DeviceTelemetryProvider
+import com.tapbot.core.runner.watchdog.DeviceWatchdog
 import com.tapbot.core.runner.util.AdaptiveBackoff
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -82,9 +83,8 @@ class CommanderBotRuntime(
     private var lastUpdateId: Long? = null
     private var startedAtTimestamp: Long = 0L
 
-    // Autonomous watchdog state
-    private var lastLowBatteryAlertTime: Long = 0L
-    private val alertedCrashIds = mutableSetOf<String>()
+    // Autonomous watchdog
+    private val watchdog = DeviceWatchdog()
 
     private fun getActionController(ctx: RuntimeContext?): DeviceActionController {
         val aCtx = ctx?.androidContext ?: ServiceLocator.appContext
@@ -1118,44 +1118,23 @@ class CommanderBotRuntime(
         val ownerId = getOwnerId(ctx)?.toLongOrNull() ?: return
         val aCtx = ctx.androidContext ?: ServiceLocator.appContext
 
-        // 1. Low Battery Watchdog (< 15% and discharging)
-        val battery = getBatteryInfo(aCtx)
+        // 1. Low Battery Watchdog
+        val provider = DeviceTelemetryProvider(aCtx)
+        val battery = provider.getBatteryTelemetry()
         val threshold = ctx.credentials["low_battery_threshold"]?.toIntOrNull() ?: 15
-        if (battery.level > 0 && battery.level <= threshold && !battery.isCharging) {
-            val now = System.currentTimeMillis()
-            if (now - lastLowBatteryAlertTime > 20 * 60 * 1000L) { // alert once every 20 minutes
-                lastLowBatteryAlertTime = now
-                val alertMsg = """
-                    ⚠️ *LOW BATTERY WARNING!*
-                    ━━━━━━━━━━━━━━━━━━━━━━
-                    The host phone running your TapBot fleet is at *${battery.level}%* and discharging!
-                    
-                    Please connect a charger to prevent Android from shutting down your bots.
-                """.trimIndent()
-                ctx.telegramApi.sendMessage(token, ownerId, alertMsg, "Markdown")
-            }
+
+        val batteryAlert = watchdog.checkBattery(battery, threshold)
+        if (batteryAlert != null) {
+            val alertMsg = watchdog.formatBatteryAlert(batteryAlert)
+            ctx.telegramApi.sendMessage(token, ownerId, alertMsg, "Markdown")
         }
 
         // 2. Bot Fleet Crash Watchdog
         val instances = ServiceLocator.botInstanceManager?.instances?.value.orEmpty()
-        for (inst in instances) {
-            if (inst.status is BotInstanceStatus.Crashed) {
-                val reason = (inst.status as BotInstanceStatus.Crashed).reason
-                val crashKey = "${inst.installationId}:${reason}"
-                if (alertedCrashIds.add(crashKey)) {
-                    val alertMsg = """
-                        🚨 *BOT CRASH DETECTED!*
-                        ━━━━━━━━━━━━━━━━━━━━━━
-                        Bot: *${escapeMarkdown(inst.name)}* (`${escapeMarkdown(inst.botId)}`)
-                        Reason: `${escapeMarkdown(reason)}`
-                        
-                        Action required:
-                        • Run `/logs ${inst.botId}` to inspect crash stack.
-                        • Run `/restartbot ${inst.botId}` to recover.
-                    """.trimIndent()
-                    ctx.telegramApi.sendMessage(token, ownerId, alertMsg, "Markdown")
-                }
-            }
+        val crashAlerts = watchdog.checkCrashes(instances)
+        for (alert in crashAlerts) {
+            val alertMsg = watchdog.formatCrashAlert(alert)
+            ctx.telegramApi.sendMessage(token, ownerId, alertMsg, "Markdown")
         }
     }
 

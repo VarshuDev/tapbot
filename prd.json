@@ -96,8 +96,8 @@
         "Tests pass"
       ],
       "priority": 6,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Verified 0006_commander_bot.sql seeded, tapbot-commander-1.0.0.botpkg verified in assets, BotDetailScreen credential fields (bot_token, owner_id, low_battery_threshold) validated, and full assembleDebug and test suite build passes."
     }
   ]
 }

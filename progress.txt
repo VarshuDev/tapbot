@@ -50,3 +50,10 @@
 - Enforces Telegram 50MB Bot API file upload ceiling with fallback instructions.
 - Formats rich release caption with version name, version code, size in MB, and SHA-256 hash.
 - Unit tested file hashing, size checking, limit triggers, and delivery upload. All unit tests passed.
+
+## 2026-10-28 - US-006: Catalog Store Registration & In-App Installation Flow
+- Verified `0006_commander_bot.sql` database migration with `bot_commander_flagship` (slug `tapbot-commander`), version `1.0.0`, and credential definitions.
+- Confirmed `tapbot-commander-1.0.0.botpkg` packaged in `app/src/main/assets/packages/`.
+- Verified `MockCatalogApi` and `BotDetailScreen` credential fields: `bot_token`, `owner_id`, `low_battery_threshold`.
+- Executed `./gradlew.bat assembleDebug` (211 tasks) and `./gradlew.bat test` (271 tasks) across all modules (`:app`, `:feature:catalog`, `:feature:botdetail`, `:core:runner`, `:core:network`, `:core:security`, `:core:logging`, `:core:model`). All tests passed.
+- Milestone Complete: All user stories US-001 through US-006 passing.

@@ -14,3 +14,16 @@
 - Provides comprehensive hardware stats: Battery (level, charging state, temp, voltage, health, Doze whitelist status), RAM (physical memory, JVM heap), Storage (StatFs total/free/used, ASCII progress bar), Network (Wi-Fi, Cellular, Ethernet), and System HUD.
 - Added null-safe fallbacks for unit tests when running on local JVM without Robolectric (`Build.MANUFACTURER?.replaceFirstChar { it.uppercase() } ?: "Android"` and wrapped `SystemClock.elapsedRealtime()`).
 - Added unit tests in `DeviceTelemetryProviderTest.kt`. All 42 tests in `:core:runner:test` pass.
+
+## 2026-10-28 - US-002: Remote Android Hardware Actions Controller
+- Extracted and implemented `DeviceActionController` in `com.tapbot.core.runner.device`.
+- Supports hardware commands:
+  - Ring phone with maximum volume alert on `AudioManager.STREAM_ALARM` and auto-silencing timeout (clamped 5-60 seconds, default 15s).
+  - Stop ring immediate silence.
+  - CameraManager flashlight torch toggle and state tracking.
+  - Haptic feedback vibration (`VibratorManager` / `Vibrator`).
+  - Heads-up push notifications (`NotificationManager`).
+  - In-memory fallback and system clipboard sync.
+- Enforced owner authentication via `isOwnerAuthorized(configuredOwnerId, senderUserId)`.
+- Delegated command routing in `CommanderBotRuntime.kt` to `DeviceActionController`.
+- Created comprehensive unit tests in `DeviceActionControllerTest.kt`. All tests passed.

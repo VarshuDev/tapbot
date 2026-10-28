@@ -35,6 +35,9 @@ import com.tapbot.core.model.TelegramUpdate
 import com.tapbot.core.model.TelegramUser
 import com.tapbot.core.runner.BotForegroundService
 import com.tapbot.core.runner.ServiceLocator
+import com.tapbot.core.runner.device.DeviceActionController
+import com.tapbot.core.runner.device.DeviceActionResult
+import com.tapbot.core.runner.telemetry.DeviceTelemetryProvider
 import com.tapbot.core.runner.util.AdaptiveBackoff
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -78,17 +81,14 @@ class CommanderBotRuntime(
     private var lastUpdateId: Long? = null
     private var startedAtTimestamp: Long = 0L
 
-    // Remote ringtone state
-    private var activeRingtone: Ringtone? = null
-    private var ringtoneStopRunnable: Runnable? = null
-    private val mainHandler = Handler(Looper.getMainLooper())
-
-    // Torch / flashlight state
-    private val isTorchOn = AtomicBoolean(false)
-
     // Autonomous watchdog state
     private var lastLowBatteryAlertTime: Long = 0L
     private val alertedCrashIds = mutableSetOf<String>()
+
+    private fun getActionController(ctx: RuntimeContext?): DeviceActionController {
+        val aCtx = ctx?.androidContext ?: ServiceLocator.appContext
+        return DeviceActionController(aCtx)
+    }
 
     override suspend fun initialize(context: RuntimeContext) {
         this.context = context
@@ -211,7 +211,7 @@ class CommanderBotRuntime(
 
     override suspend fun stop() {
         context?.log(LogLevel.INFO, TAG, "Stopping TapBot Commander runtime...")
-        stopRing()
+        stopRing(context)
         pollJob?.cancel()
         watchdogJob?.cancel()
         pollJob = null
@@ -230,9 +230,8 @@ class CommanderBotRuntime(
     }
 
     private fun isOwner(ctx: RuntimeContext, fromUser: TelegramUser?): Boolean {
-        val configuredOwner = getOwnerId(ctx) ?: return true // If unconfigured, allow first setup
-        if (fromUser == null) return false
-        return fromUser.id.toString() == configuredOwner
+        val configuredOwner = getOwnerId(ctx)
+        return getActionController(ctx).isOwnerAuthorized(configuredOwner, fromUser?.id)
     }
 
     // =========================================================================
@@ -839,90 +838,22 @@ class CommanderBotRuntime(
     // =========================================================================
 
     private suspend fun handleRingPhone(ctx: RuntimeContext, token: String, chatId: Long, durationSec: Int) {
-        val aCtx = ctx.androidContext ?: ServiceLocator.appContext
-        if (aCtx == null) {
-            ctx.telegramApi.sendMessage(token, chatId, "⚠️ Android Context unavailable.", "Markdown")
-            return
-        }
-
-        val clampedSec = durationSec.coerceIn(5, 60)
-        try {
-            stopRing()
-
-            mainHandler.post {
-                try {
-                    val alertUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
-                        ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
-                    val ringtone = RingtoneManager.getRingtone(aCtx, alertUri)
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                        ringtone.audioAttributes = AudioAttributes.Builder()
-                            .setUsage(AudioAttributes.USAGE_ALARM)
-                            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                            .build()
-                    }
-                    ringtone.play()
-                    activeRingtone = ringtone
-
-                    ringtoneStopRunnable = Runnable {
-                        stopRing()
-                    }
-                    mainHandler.postDelayed(ringtoneStopRunnable!!, clampedSec * 1000L)
-                } catch (e: Exception) {
-                    ctx.log(LogLevel.ERROR, TAG, "Failed to play ringtone: ${e.message}")
-                }
-            }
-
-            ctx.telegramApi.sendMessage(
-                token,
-                chatId,
-                "🔔 *Ringing phone at full volume for ${clampedSec} seconds!*\nSend /stopring to silence immediately.",
-                "Markdown"
-            )
-        } catch (e: Exception) {
-            ctx.telegramApi.sendMessage(token, chatId, "❌ Ring failed: ${e.message}", "Markdown")
+        val controller = getActionController(ctx)
+        when (val res = controller.ringPhone(durationSec)) {
+            is DeviceActionResult.Success -> ctx.telegramApi.sendMessage(token, chatId, res.message, "Markdown")
+            is DeviceActionResult.Failure -> ctx.telegramApi.sendMessage(token, chatId, "❌ Ring failed: ${res.errorMessage}", "Markdown")
         }
     }
 
-    private fun stopRing() {
-        mainHandler.post {
-            try {
-                ringtoneStopRunnable?.let { mainHandler.removeCallbacks(it) }
-                ringtoneStopRunnable = null
-                activeRingtone?.stop()
-                activeRingtone = null
-            } catch (_: Exception) {}
-        }
+    private fun stopRing(ctx: RuntimeContext? = null) {
+        getActionController(ctx ?: context).stopRing()
     }
 
     private suspend fun handleTorch(ctx: RuntimeContext, token: String, chatId: Long, stateArg: String?) {
-        val aCtx = ctx.androidContext ?: ServiceLocator.appContext
-        val camManager = aCtx?.getSystemService(Context.CAMERA_SERVICE) as? CameraManager
-
-        if (camManager == null || Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
-            ctx.telegramApi.sendMessage(token, chatId, "⚠️ Flashlight is not supported on this device/runtime.", "Markdown")
-            return
-        }
-
-        try {
-            val cameraId = camManager.cameraIdList.firstOrNull()
-            if (cameraId == null) {
-                ctx.telegramApi.sendMessage(token, chatId, "⚠️ No camera flash unit found.", "Markdown")
-                return
-            }
-
-            val targetState = when (stateArg) {
-                "on", "1", "true" -> true
-                "off", "0", "false" -> false
-                else -> !isTorchOn.get() // Toggle
-            }
-
-            camManager.setTorchMode(cameraId, targetState)
-            isTorchOn.set(targetState)
-
-            val statusText = if (targetState) "🔦 Flashlight turned *ON*." else "🔦 Flashlight turned *OFF*."
-            ctx.telegramApi.sendMessage(token, chatId, statusText, "Markdown")
-        } catch (e: Exception) {
-            ctx.telegramApi.sendMessage(token, chatId, "❌ Torch error: ${e.message}", "Markdown")
+        val controller = getActionController(ctx)
+        when (val res = controller.toggleTorch(stateArg)) {
+            is DeviceActionResult.Success -> ctx.telegramApi.sendMessage(token, chatId, res.message, "Markdown")
+            is DeviceActionResult.Failure -> ctx.telegramApi.sendMessage(token, chatId, "❌ Torch error: ${res.errorMessage}", "Markdown")
         }
     }
 
@@ -931,72 +862,16 @@ class CommanderBotRuntime(
             ctx.telegramApi.sendMessage(token, chatId, "Usage: `/notify <message text>`", "Markdown")
             return
         }
-
-        val aCtx = ctx.androidContext ?: ServiceLocator.appContext
-        if (aCtx == null) {
-            ctx.telegramApi.sendMessage(token, chatId, "⚠️ Android Context unavailable.", "Markdown")
-            return
-        }
-
-        try {
-            val nm = aCtx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            val channelId = "tapbot_commander_notifications"
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                val channel = NotificationChannel(
-                    channelId,
-                    "Commander Remote Notifications",
-                    NotificationManager.IMPORTANCE_HIGH
-                ).apply {
-                    description = "Alerts pushed remotely from Telegram"
-                    enableVibration(true)
-                }
-                nm.createNotificationChannel(channel)
-            }
-
-            val launchIntent = aCtx.packageManager.getLaunchIntentForPackage(aCtx.packageName)
-            val pendingIntent = if (launchIntent != null) {
-                PendingIntent.getActivity(
-                    aCtx,
-                    0,
-                    launchIntent,
-                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-                )
-            } else null
-
-            val notif = NotificationCompat.Builder(aCtx, channelId)
-                .setSmallIcon(android.R.drawable.ic_dialog_info)
-                .setContentTitle("Telegram Commander Alert")
-                .setContentText(text)
-                .setStyle(NotificationCompat.BigTextStyle().bigText(text))
-                .setPriority(NotificationCompat.PRIORITY_HIGH)
-                .setContentIntent(pendingIntent)
-                .setAutoCancel(true)
-                .build()
-
-            nm.notify(1099, notif)
-            ctx.telegramApi.sendMessage(token, chatId, "🔔 Notification posted to Android device:\n\"${escapeMarkdown(text)}\"", "Markdown")
-        } catch (e: Exception) {
-            ctx.telegramApi.sendMessage(token, chatId, "❌ Notification failed: ${e.message}", "Markdown")
+        val controller = getActionController(ctx)
+        when (val res = controller.postNotification(text = text)) {
+            is DeviceActionResult.Success -> ctx.telegramApi.sendMessage(token, chatId, res.message, "Markdown")
+            is DeviceActionResult.Failure -> ctx.telegramApi.sendMessage(token, chatId, "❌ Notification failed: ${res.errorMessage}", "Markdown")
         }
     }
 
     private suspend fun handleGetClipboard(ctx: RuntimeContext, token: String, chatId: Long) {
-        val aCtx = ctx.androidContext ?: ServiceLocator.appContext
-        val cm = aCtx?.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
-
-        if (cm == null) {
-            ctx.telegramApi.sendMessage(token, chatId, "⚠️ ClipboardManager unavailable.", "Markdown")
-            return
-        }
-
-        val clipText = withContext(Dispatchers.Main) {
-            val clip = cm.primaryClip
-            if (clip != null && clip.itemCount > 0) {
-                clip.getItemAt(0)?.text?.toString()
-            } else null
-        }
-
+        val controller = getActionController(ctx)
+        val clipText = controller.getClipboard()
         if (clipText.isNullOrBlank()) {
             ctx.telegramApi.sendMessage(token, chatId, "📋 Android device clipboard is currently empty.", "Markdown")
         } else {
@@ -1009,41 +884,16 @@ class CommanderBotRuntime(
             ctx.telegramApi.sendMessage(token, chatId, "Usage: `/setclip <text to copy>`", "Markdown")
             return
         }
-
-        val aCtx = ctx.androidContext ?: ServiceLocator.appContext
-        val cm = aCtx?.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
-        if (cm == null) {
-            ctx.telegramApi.sendMessage(token, chatId, "⚠️ ClipboardManager unavailable.", "Markdown")
-            return
-        }
-
-        withContext(Dispatchers.Main) {
-            val clip = ClipData.newPlainText("Telegram Commander", text)
-            cm.setPrimaryClip(clip)
-        }
-
+        val controller = getActionController(ctx)
+        controller.setClipboard(text)
         ctx.telegramApi.sendMessage(token, chatId, "📋 Copied text to Android clipboard successfully.", "Markdown")
     }
 
     private suspend fun handleVibrate(ctx: RuntimeContext, token: String, chatId: Long) {
-        val aCtx = ctx.androidContext ?: ServiceLocator.appContext
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                val vm = aCtx?.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager
-                vm?.defaultVibrator?.vibrate(VibrationEffect.createOneShot(500, VibrationEffect.DEFAULT_AMPLITUDE))
-            } else {
-                @Suppress("DEPRECATION")
-                val v = aCtx?.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    v?.vibrate(VibrationEffect.createOneShot(500, VibrationEffect.DEFAULT_AMPLITUDE))
-                } else {
-                    @Suppress("DEPRECATION")
-                    v?.vibrate(500)
-                }
-            }
-            ctx.telegramApi.sendMessage(token, chatId, "📳 Phone vibrated (500ms).", "Markdown")
-        } catch (e: Exception) {
-            ctx.telegramApi.sendMessage(token, chatId, "❌ Vibrate failed: ${e.message}", "Markdown")
+        val controller = getActionController(ctx)
+        when (val res = controller.vibrate()) {
+            is DeviceActionResult.Success -> ctx.telegramApi.sendMessage(token, chatId, res.message, "Markdown")
+            is DeviceActionResult.Failure -> ctx.telegramApi.sendMessage(token, chatId, "❌ Vibrate failed: ${res.errorMessage}", "Markdown")
         }
     }
 

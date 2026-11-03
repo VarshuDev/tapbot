@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+  <defs>
+    <style>
+      @keyframes jet-glide {
+        0%, 100% { transform: translate(0, 0); }
+        50% { transform: translate(1.5px, -1.5px); }
+      }
+      .plane { animation: jet-glide 1.6s ease-in-out infinite; }
+    </style>
+  </defs>
+  <path class="plane" d="M 21.5 2.5 L 2.5 10.5 L 10.5 13.5 L 13.5 21.5 L 21.5 2.5 Z M 10.5 13.5 L 17.5 6.5" fill="none" stroke="#38bdf8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

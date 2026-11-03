@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+  <defs>
+    <style>
+      @keyframes blink-antenna {
+        0%, 100% { opacity: 0.3; transform: scale(0.9); }
+        50% { opacity: 1; transform: scale(1.2); filter: drop-shadow(0 0 4px #10b981); }
+      }
+      .beacon { animation: blink-antenna 1.4s ease-in-out infinite; transform-origin: 12px 3px; }
+    </style>
+  </defs>
+  <line x1="12" y1="3" x2="12" y2="7" stroke="#10b981" stroke-width="1.8" stroke-linecap="round"/>
+  <circle class="beacon" cx="12" cy="3" r="2" fill="#34d399"/>
+  <rect x="4" y="7" width="16" height="12" rx="4" fill="none" stroke="#10b981" stroke-width="1.8"/>
+  <circle cx="8.5" cy="12" r="1.5" fill="#38bdf8"/>
+  <circle cx="15.5" cy="12" r="1.5" fill="#38bdf8"/>
+  <path d="M 2 11 L 4 11 M 20 11 L 22 11" stroke="#06b6d4" stroke-width="1.8" stroke-linecap="round"/>
+</svg>

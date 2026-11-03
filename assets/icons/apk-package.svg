@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+  <defs>
+    <style>
+      @keyframes cube-lift {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-1.5px); }
+      }
+      .box { animation: cube-lift 1.8s ease-in-out infinite; }
+    </style>
+  </defs>
+  <g class="box">
+    <path d="M 12 2 L 20 6.5 V 17.5 L 12 22 L 4 17.5 V 6.5 Z" fill="none" stroke="#10b981" stroke-width="1.8" stroke-linejoin="round"/>
+    <path d="M 12 22 V 12 M 12 12 L 20 6.5 M 12 12 L 4 6.5" fill="none" stroke="#10b981" stroke-width="1.5"/>
+  </g>
+</svg>

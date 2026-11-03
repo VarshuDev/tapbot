@@ -1,7 +1,7 @@
 # Privacy Policy for TapBot
 
 **Effective Date:** October 10, 2026  
-**Developer:** VarshuAi  
+**Developer:** VarshuDev  
 **App:** TapBot (com.tapbot)  
 
 ## 1. Overview
@@ -59,10 +59,10 @@ TapBot does not knowingly collect or solicit any personal information from child
 
 ## 7. Open Source & Transparency
 TapBot is open-source. You can inspect the source code, build process, and network requests at:  
-[https://github.com/VarshuAi/tapbot](https://github.com/VarshuAi/tapbot)
+[https://github.com/VarshuDev/tapbot](https://github.com/VarshuDev/tapbot)
 
 ---
 
 ## 8. Contact
 If you have questions regarding this Privacy Policy, you can reach out via GitHub:  
-[https://github.com/VarshuAi/tapbot/issues](https://github.com/VarshuAi/tapbot/issues)
+[https://github.com/VarshuDev/tapbot/issues](https://github.com/VarshuDev/tapbot/issues)

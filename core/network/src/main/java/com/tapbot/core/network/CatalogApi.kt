@@ -220,7 +220,7 @@ class MockCatalogApi : CatalogApi {
             name = "Exon Robot",
             summary = "Advanced Telegram group management bot with ban, mute, pin, and moderation capabilities.",
             description = "High-performance Telegram group management bot inspired by ExonRobot. Runs directly on your Android device via ART runtime with MTProto and Bot API support.",
-            author = "VarshuAi",
+            author = "VarshuDev",
             version = "1.0.0",
             iconUrl = "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=200",
             category = "Automation",

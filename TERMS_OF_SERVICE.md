@@ -82,5 +82,5 @@ We reserve the right to modify or replace these Terms at any time. When updates 
 For support questions, bug reports, feature requests, or legal inquiries, please contact:
 
 - **Email:** `support@tapbot.app`
-- **GitHub Repository & Issue Tracker:** [https://github.com/VarshuAi/tapbot](https://github.com/VarshuAi/tapbot)
-- **Developer Profile:** [VarshuAi](https://github.com/VarshuAi)
+- **GitHub Repository & Issue Tracker:** [https://github.com/VarshuDev/tapbot](https://github.com/VarshuDev/tapbot)
+- **Developer Profile:** [VarshuDev](https://github.com/VarshuDev)

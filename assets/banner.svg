@@ -1,0 +1,112 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 310" width="100%" height="100%">
+  <defs>
+    <!-- Deep Obsidian ambient glow -->
+    <radialGradient id="tapGlow" cx="50%" cy="45%" r="65%">
+      <stop offset="0%" stop-color="#059669" stop-opacity="0.32"/>
+      <stop offset="45%" stop-color="#0284c7" stop-opacity="0.16"/>
+      <stop offset="100%" stop-color="#08090d" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Animated laser beam gradient -->
+    <linearGradient id="tapBeam" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#06b6d4" stop-opacity="0"/>
+      <stop offset="25%" stop-color="#10b981" stop-opacity="0.9"/>
+      <stop offset="50%" stop-color="#34d399" stop-opacity="1"/>
+      <stop offset="75%" stop-color="#38bdf8" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#06b6d4" stop-opacity="0"/>
+    </linearGradient>
+
+    <!-- Subtle circuit matrix pattern -->
+    <pattern id="tapGrid" width="28" height="28" patternUnits="userSpaceOnUse">
+      <path d="M 28 0 L 0 0 0 28" fill="none" stroke="#131e2b" stroke-width="0.8" opacity="0.7"/>
+      <circle cx="0" cy="0" r="1" fill="#1e293b" opacity="0.8"/>
+    </pattern>
+
+    <clipPath id="card-clip">
+      <rect width="920" height="310" rx="16"/>
+    </clipPath>
+
+    <style>
+      @keyframes sweep {
+        0% { transform: translateX(-920px); }
+        100% { transform: translateX(920px); }
+      }
+      @keyframes pulse-emerald {
+        0%, 100% { opacity: 1; filter: drop-shadow(0 0 3px #10b981); }
+        50% { opacity: 0.35; filter: none; }
+      }
+      .beam-sweep {
+        animation: sweep 3.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+      }
+      .pulse-dot {
+        animation: pulse-emerald 1.8s ease-in-out infinite;
+      }
+    </style>
+  </defs>
+
+  <!-- Base background -->
+  <rect width="920" height="310" rx="16" fill="#08090d"/>
+  <rect width="920" height="310" rx="16" fill="url(#tapGrid)"/>
+  <rect width="920" height="310" rx="16" fill="url(#tapGlow)"/>
+
+  <!-- Top animated laser beam border -->
+  <g clip-path="url(#card-clip)">
+    <rect x="0" y="0" width="920" height="1" fill="#1e293b"/>
+    <rect class="beam-sweep" x="0" y="0" width="460" height="2.5" fill="url(#tapBeam)"/>
+  </g>
+
+  <!-- Precision Corner Tech Accents -->
+  <path d="M 24 36 L 24 24 L 36 24" fill="none" stroke="#1e293b" stroke-width="1.5" stroke-linecap="round"/>
+  <path d="M 896 36 L 896 24 L 884 24" fill="none" stroke="#1e293b" stroke-width="1.5" stroke-linecap="round"/>
+  <path d="M 24 274 L 24 286 L 36 286" fill="none" stroke="#1e293b" stroke-width="1.5" stroke-linecap="round"/>
+  <path d="M 896 274 L 896 286 L 884 286" fill="none" stroke="#1e293b" stroke-width="1.5" stroke-linecap="round"/>
+
+  <!-- Top Status Pill (Left) -->
+  <g transform="translate(48, 30)">
+    <rect width="216" height="28" rx="14" fill="#0d141e" stroke="#162334" stroke-width="1"/>
+    <circle class="pulse-dot" cx="16" cy="14" r="4.5" fill="#10b981"/>
+    <text x="30" y="18" fill="#a7f3d0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'JetBrains Mono', monospace" font-size="10.5" font-weight="700" letter-spacing="0.6">DAEMON V2.1 // 24/7 ACTIVE</text>
+  </g>
+
+  <!-- Author Stamp (Right) -->
+  <g transform="translate(680, 30)">
+    <rect width="192" height="28" rx="14" fill="#0d141e" stroke="#162334" stroke-width="1"/>
+    <text x="16" y="18" fill="#38bdf8" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'JetBrains Mono', monospace" font-size="11" font-weight="700" letter-spacing="0.8">CRAFTED BY VARSHUDEV</text>
+  </g>
+
+  <!-- Main Hero Title & Tagline (Rock-solid Absolute Coordinates) -->
+  <text x="48" y="132" fill="#ffffff" font-family="-apple-system, BlinkMacSystemFont, 'Inter', 'SF Pro Display', 'Segoe UI', Roboto, sans-serif" font-size="52" font-weight="900" letter-spacing="-1">
+    TAPBOT <tspan fill="#34d399">RUNNER</tspan>
+  </text>
+  <text x="50" y="166" fill="#94a3b8" font-family="-apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif" font-size="15" font-weight="400" letter-spacing="0.2">
+    Decentralized On-Device Telegram Bot Engine &amp; Cloudflare Edge Bot Store
+  </text>
+
+  <!-- Bottom Specification Chips -->
+  <g transform="translate(48, 222)">
+    <!-- Chip 1 -->
+    <rect width="160" height="34" rx="8" fill="#0d131f" stroke="#162234" stroke-width="1"/>
+    <circle cx="16" cy="17" r="3.5" fill="#3ddc84"/>
+    <text x="28" y="21" fill="#cbd5e1" font-family="'JetBrains Mono', Consolas, monospace" font-size="10" font-weight="600">ANDROID 10+ (API 29-35)</text>
+
+    <!-- Chip 2 -->
+    <rect x="172" y="0" width="158" height="34" rx="8" fill="#0d131f" stroke="#162234" stroke-width="1"/>
+    <circle cx="188" cy="17" r="3.5" fill="#10b981"/>
+    <text x="200" y="21" fill="#cbd5e1" font-family="'JetBrains Mono', Consolas, monospace" font-size="10" font-weight="600">8-12 MB RAM FOOTPRINT</text>
+
+    <!-- Chip 3 -->
+    <rect x="342" y="0" width="162" height="34" rx="8" fill="#0d131f" stroke="#162234" stroke-width="1"/>
+    <circle cx="358" cy="17" r="3.5" fill="#06b6d4"/>
+    <text x="370" y="21" fill="#cbd5e1" font-family="'JetBrains Mono', Consolas, monospace" font-size="10" font-weight="600">AES-256-GCM STRONGBOX</text>
+
+    <!-- Chip 4 -->
+    <rect x="516" y="0" width="152" height="34" rx="8" fill="#0d131f" stroke="#162234" stroke-width="1"/>
+    <circle cx="532" cy="17" r="3.5" fill="#f59e0b"/>
+    <text x="544" y="21" fill="#cbd5e1" font-family="'JetBrains Mono', Consolas, monospace" font-size="10" font-weight="600">ZERO CLOUD VPS FEES</text>
+
+    <!-- Chip 5 -->
+    <rect x="680" y="0" width="192" height="34" rx="8" fill="#0d131f" stroke="#162234" stroke-width="1"/>
+    <circle cx="696" cy="17" r="3.5" fill="#f97316"/>
+    <text x="708" y="21" fill="#cbd5e1" font-family="'JetBrains Mono', Consolas, monospace" font-size="10" font-weight="600">CLOUDFLARE D1 / R2 STORE</text>
+  </g>
+</svg>

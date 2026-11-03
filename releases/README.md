@@ -11,7 +11,7 @@ Pre-built APK binaries for **TapBot: Native On-Device Telegram Bot Runner & Dece
 
 ## Official GitHub Release
 Direct CDN downloads are also available at:
-👉 **[GitHub Release v1.0.0](https://github.com/VarshuAi/tapbot/releases/tag/v1.0.0)**
+👉 **[GitHub Release v1.0.0](https://github.com/VarshuDev/tapbot/releases/tag/v1.0.0)**
 
 ## Installation
 ```bash

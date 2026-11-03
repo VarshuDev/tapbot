@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+  <defs>
+    <style>
+      @keyframes float-cloud {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-1.8px); }
+      }
+      .cloud { animation: float-cloud 2.2s ease-in-out infinite; }
+    </style>
+  </defs>
+  <path class="cloud" d="M 18 10 A 4.5 4.5 0 0 0 10 7.5 A 6 6 0 0 0 4 14 A 4 4 0 0 0 8 18 L 18 18 A 4 4 0 0 0 18 10 Z" fill="none" stroke="#f97316" stroke-width="1.8" stroke-linejoin="round"/>
+  <circle cx="12" cy="13" r="1.5" fill="#f97316"/>
+</svg>

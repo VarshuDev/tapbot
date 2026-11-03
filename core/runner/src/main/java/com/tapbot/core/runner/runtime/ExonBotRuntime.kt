@@ -16,7 +16,7 @@ import kotlinx.coroutines.launch
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * On-device runtime for Exon Robot (ported from VarshuAi/ExonRobot).
+ * On-device runtime for Exon Robot (ported from VarshuDev/ExonRobot).
  * Provides Telegram group management, administrative controls, and diagnostics:
  * - Greetings & Help: /start, /help, /alive
  * - Diagnostics: /ping, /stats

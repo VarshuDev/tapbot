@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+  <defs>
+    <style>
+      @keyframes radar-pulse {
+        0%, 100% { r: 2.5; opacity: 1; }
+        50% { r: 4; opacity: 0.4; }
+      }
+      .iris { animation: radar-pulse 1.6s ease-in-out infinite; transform-origin: 12px 12px; }
+    </style>
+  </defs>
+  <path d="M 2 12 C 5 6 19 6 22 12 C 19 18 5 18 2 12 Z" fill="none" stroke="#06b6d4" stroke-width="1.8" stroke-linejoin="round"/>
+  <circle class="iris" cx="12" cy="12" r="2.5" fill="#10b981"/>
+</svg>

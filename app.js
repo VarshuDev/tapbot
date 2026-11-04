@@ -1,12 +1,11 @@
 /**
- * TapBot & TapStream - Interactive Cyber Scrollytelling & Audio Engine
- * Pure Vanilla JavaScript & HTML5 Web Audio API
+ * TapBot & TapStream - Industrial Cyberdeck Audio Engine & GSAP Scrollytelling
  */
 
 // =============================================================================
-// 1. PROCEDURAL WEB AUDIO SYNTHESIZER (NO EXTERNAL ASSETS NEEDED)
+// 1. WEB AUDIO SYNTH & SOUND EFFECTS (ZERO EXTERNAL ASSETS)
 // =============================================================================
-class WebAudioFeedback {
+class HardwareAudioSynth {
   constructor() {
     this.ctx = null;
     this.soundEnabled = true;
@@ -21,56 +20,145 @@ class WebAudioFeedback {
     }
   }
 
-  playBeep(freq = 580, type = 'sine', duration = 0.08, gainVal = 0.08) {
+  // Mechanical switch click
+  playSwitchClick() {
     if (!this.soundEnabled) return;
-    try {
-      this.init();
-      if (!this.ctx) return;
-      if (this.ctx.state === 'suspended') {
-        this.ctx.resume();
-      }
-      const osc = this.ctx.createOscillator();
-      const gain = this.ctx.createGain();
-      osc.type = type;
-      osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
-      gain.gain.setValueAtTime(gainVal, this.ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + duration);
-      osc.connect(gain);
-      gain.connect(this.ctx.destination);
-      osc.start();
-      osc.stop(this.ctx.currentTime + duration);
-    } catch (_) {}
+    this.init();
+    if (!this.ctx) return;
+    if (this.ctx.state === 'suspended') this.ctx.resume();
+
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(120, this.ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(30, this.ctx.currentTime + 0.03);
+
+    gain.gain.setValueAtTime(0.08, this.ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.03);
+
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start();
+    osc.stop(this.ctx.currentTime + 0.03);
   }
 
-  playSuccessChime() {
-    this.playBeep(523.25, 'sine', 0.1, 0.05); // C5
-    setTimeout(() => this.playBeep(659.25, 'sine', 0.1, 0.05), 80); // E5
-    setTimeout(() => this.playBeep(783.99, 'sine', 0.18, 0.05), 160); // G5
+  // Analog rotary tick
+  playRotaryTick(freq = 600) {
+    if (!this.soundEnabled) return;
+    this.init();
+    if (!this.ctx) return;
+    if (this.ctx.state === 'suspended') this.ctx.resume();
+
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+    gain.gain.setValueAtTime(0.03, this.ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + 0.02);
+
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start();
+    osc.stop(this.ctx.currentTime + 0.02);
   }
 
-  playClick() {
-    this.playBeep(920, 'triangle', 0.04, 0.03);
+  // Cassette playback start tone
+  playTapeHeadEngage() {
+    if (!this.soundEnabled) return;
+    this.init();
+    if (!this.ctx) return;
+    if (this.ctx.state === 'suspended') this.ctx.resume();
+
+    // Low mechanical clunk + tape hiss burst
+    this.playSwitchClick();
+    setTimeout(() => {
+      this.playRotaryTick(880);
+    }, 60);
   }
 }
 
-const audioFeedback = new WebAudioFeedback();
+const hwAudio = new HardwareAudioSynth();
 
 // =============================================================================
-// 2. REAL-TIME CANVAS AUDIO SPECTRUM VISUALIZER
+// 2. ANALOG VU METERS WITH PHYSICAL NEEDLE INERTIA
 // =============================================================================
-class SpectrumVisualizer {
+class AnalogVUMeter {
+  constructor(needleLeftId, needleRightId, peakLedId) {
+    this.needleLeft = document.getElementById(needleLeftId);
+    this.needleRight = document.getElementById(needleRightId);
+    this.peakLed = document.getElementById(peakLedId);
+
+    this.valL = -45;
+    this.valR = -45;
+    this.targetL = -45;
+    this.targetR = -45;
+    this.isPlaying = true;
+    this.volumePct = 0.8;
+
+    this.updateLoop();
+  }
+
+  setPlaying(playing) {
+    this.isPlaying = playing;
+  }
+
+  setVolume(pct) {
+    this.volumePct = pct / 100;
+  }
+
+  updateLoop() {
+    requestAnimationFrame(() => this.updateLoop());
+
+    if (this.isPlaying) {
+      // Simulate real musical dynamics: base rhythm + transient peaks
+      const now = performance.now() * 0.003;
+      const beat = Math.sin(now * 3.5) * 0.5 + 0.5;
+      const jitter = (Math.random() - 0.5) * 8;
+      
+      const targetDeg = -45 + (beat * 65 * this.volumePct) + jitter;
+      this.targetL = Math.max(-45, Math.min(25, targetDeg));
+      this.targetR = Math.max(-45, Math.min(25, targetDeg + (Math.random() - 0.5) * 6));
+
+      // Overload peak LED trigger
+      if (this.peakLed) {
+        if (this.targetL > 10 || this.targetR > 10) {
+          this.peakLed.classList.add('bg-red-500', 'shadow-[0_0_10px_#ff2a4b]');
+        } else {
+          this.peakLed.classList.remove('bg-red-500', 'shadow-[0_0_10px_#ff2a4b]');
+        }
+      }
+    } else {
+      this.targetL = -45;
+      this.targetR = -45;
+      if (this.peakLed) {
+        this.peakLed.classList.remove('bg-red-500', 'shadow-[0_0_10px_#ff2a4b]');
+      }
+    }
+
+    // Spring interpolation with inertia
+    this.valL += (this.targetL - this.valL) * 0.22;
+    this.valR += (this.targetR - this.valR) * 0.22;
+
+    if (this.needleLeft) this.needleLeft.style.transform = `rotate(${this.valL}deg)`;
+    if (this.needleRight) this.needleRight.style.transform = `rotate(${this.valR}deg)`;
+  }
+}
+
+// =============================================================================
+// 3. PHOSPHOR OSCILLOSCOPE WAVEFORM CANVAS
+// =============================================================================
+class PhosphorOscilloscope {
   constructor(canvasId) {
     this.canvas = document.getElementById(canvasId);
     if (!this.canvas) return;
     this.ctx = this.canvas.getContext('2d');
-    this.isPlaying = true;
-    this.bars = 64;
-    this.barHeights = new Float32Array(this.bars);
-    this.targetHeights = new Float32Array(this.bars);
     this.phase = 0;
+    this.isPlaying = true;
+    this.volume = 0.8;
+
     this.resize();
     window.addEventListener('resize', () => this.resize());
-    this.animate();
+    this.render();
   }
 
   resize() {
@@ -80,387 +168,490 @@ class SpectrumVisualizer {
     this.ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
   }
 
-  setPlaying(playing) {
-    this.isPlaying = playing;
-  }
-
-  animate() {
-    requestAnimationFrame(() => this.animate());
+  render() {
+    requestAnimationFrame(() => this.render());
     if (!this.canvas || !this.ctx) return;
 
     const width = this.canvas.parentElement.clientWidth;
     const height = this.canvas.clientHeight;
-    this.ctx.clearRect(0, 0, width, height);
+    const cy = height / 2;
 
-    this.phase += this.isPlaying ? 0.07 : 0.01;
-    const barWidth = Math.max(2, (width / this.bars) - 2.5);
+    // Dark decay fade for CRT phosphor glow effect
+    this.ctx.fillStyle = 'rgba(6, 9, 14, 0.25)';
+    this.ctx.fillRect(0, 0, width, height);
 
-    for (let i = 0; i < this.bars; i++) {
-      if (this.isPlaying) {
-        const wave1 = Math.sin(this.phase + i * 0.22);
-        const wave2 = Math.cos(this.phase * 0.8 + i * 0.12);
-        const rand = (Math.random() - 0.5) * 8;
-        const target = Math.max(6, (Math.abs(wave1 * wave2) * (height * 0.85)) + rand);
-        this.barHeights[i] += (target - this.barHeights[i]) * 0.25;
+    this.phase += this.isPlaying ? 0.08 : 0.01;
+
+    // Draw main phosphor oscilloscope line
+    this.ctx.lineWidth = 2.5;
+    this.ctx.strokeStyle = '#00ff88';
+    this.ctx.shadowBlur = 12;
+    this.ctx.shadowColor = '#00ff88';
+    this.ctx.beginPath();
+
+    const points = 120;
+    const amp = this.isPlaying ? (height * 0.38 * this.volume) : 2;
+
+    for (let i = 0; i <= points; i++) {
+      const x = (i / points) * width;
+      const rad = (i / points) * Math.PI * 6 + this.phase;
+      const harmonic = Math.sin(rad * 2.3) * 0.35;
+      const y = cy + (Math.sin(rad) + harmonic) * amp;
+
+      if (i === 0) {
+        this.ctx.moveTo(x, y);
       } else {
-        this.barHeights[i] += (4 - this.barHeights[i]) * 0.1;
+        this.ctx.lineTo(x, y);
       }
-
-      const h = this.barHeights[i];
-      const x = i * (barWidth + 2.5);
-      const y = (height - h) / 2;
-
-      // Color gradient transition from cyan to purple
-      const gradient = this.ctx.createLinearGradient(0, y, 0, y + h);
-      const ratio = i / this.bars;
-      if (ratio < 0.5) {
-        gradient.addColorStop(0, '#00f5d4');
-        gradient.addColorStop(1, '#0284c7');
-      } else {
-        gradient.addColorStop(0, '#a855f7');
-        gradient.addColorStop(1, '#ec4899');
-      }
-
-      this.ctx.fillStyle = gradient;
-      this.ctx.beginPath();
-      this.ctx.roundRect(x, y, barWidth, h, [3, 3, 3, 3]);
-      this.ctx.fill();
     }
+    this.ctx.stroke();
+
+    // Subtle cyan overlay secondary wave
+    this.ctx.lineWidth = 1.2;
+    this.ctx.strokeStyle = '#00e5ff';
+    this.ctx.shadowBlur = 8;
+    this.ctx.shadowColor = '#00e5ff';
+    this.ctx.beginPath();
+
+    for (let i = 0; i <= points; i++) {
+      const x = (i / points) * width;
+      const rad = (i / points) * Math.PI * 4 + (this.phase * 1.4);
+      const y = cy + Math.cos(rad) * (amp * 0.65);
+      if (i === 0) this.ctx.moveTo(x, y);
+      else this.ctx.lineTo(x, y);
+    }
+    this.ctx.stroke();
   }
 }
 
 // =============================================================================
-// 3. INTERACTIVE PHONE SIMULATOR ENGINE (TAPSTREAM MUSIC & COMMANDER)
+// 4. HARDWARE ROTARY VOLUME KNOB CONTROLLER
 // =============================================================================
-class PhoneBotSimulator {
-  constructor() {
-    this.chatBody = document.getElementById('sim-chat-body');
-    this.inputField = document.getElementById('sim-input-text');
-    this.statusTitle = document.getElementById('sim-nowplaying-title');
-    this.statusArtist = document.getElementById('sim-nowplaying-artist');
-    this.volumeSlider = document.getElementById('sim-volume-slider');
-    this.volumePct = document.getElementById('sim-volume-val');
-    this.routingModeBadge = document.getElementById('sim-routing-mode');
-    this.soundWaveContainer = document.getElementById('sim-sound-waves');
+class RotaryVolumeKnob {
+  constructor(knobId, textId, onVolumeChange) {
+    this.knob = document.getElementById(knobId);
+    this.text = document.getElementById(textId);
+    this.onVolumeChange = onVolumeChange;
+    this.currentVol = 80; // 0 - 100
+    this.isDragging = false;
+    this.startY = 0;
+    this.startVol = 80;
 
+    this.init();
+  }
+
+  init() {
+    if (!this.knob) return;
+    this.updateAngle(this.currentVol);
+
+    this.knob.addEventListener('mousedown', (e) => {
+      this.isDragging = true;
+      this.startY = e.clientY;
+      this.startVol = this.currentVol;
+      hwAudio.playRotaryTick();
+      document.body.style.cursor = 'grabbing';
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!this.isDragging) return;
+      const dy = this.startY - e.clientY;
+      const newVol = Math.max(0, Math.min(100, Math.round(this.startVol + dy * 0.8)));
+      if (newVol !== this.currentVol) {
+        this.setVolume(newVol);
+        hwAudio.playRotaryTick(300 + newVol * 6);
+      }
+    });
+
+    window.addEventListener('mouseup', () => {
+      if (this.isDragging) {
+        this.isDragging = false;
+        document.body.style.cursor = '';
+      }
+    });
+
+    // Mouse wheel support on knob
+    this.knob.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const step = e.deltaY < 0 ? 5 : -5;
+      this.setVolume(Math.max(0, Math.min(100, this.currentVol + step)));
+      hwAudio.playRotaryTick(300 + this.currentVol * 6);
+    }, { passive: false });
+  }
+
+  setVolume(vol) {
+    this.currentVol = vol;
+    this.updateAngle(vol);
+    if (this.text) this.text.innerText = `${vol}%`;
+    if (this.onVolumeChange) this.onVolumeChange(vol);
+  }
+
+  updateAngle(vol) {
+    // Map 0-100% to -135deg to +135deg (270 degree rotation)
+    const deg = -135 + (vol / 100) * 270;
+    if (this.knob) this.knob.style.transform = `rotate(${deg}deg)`;
+  }
+}
+
+// =============================================================================
+// 5. MASTER AUDIO CONTROL DECK & TELEGRAM SIMULATOR
+// =============================================================================
+class MasterConsoleEngine {
+  constructor() {
+    this.reels = document.querySelectorAll('.cassette-reel');
+    this.chatBody = document.getElementById('chat-stream');
+    this.inputBox = document.getElementById('chat-input');
+    this.tapeTitle = document.getElementById('tape-label-title');
+    this.tapeArtist = document.getElementById('tape-label-artist');
+    this.routeSpeakerLed = document.getElementById('led-route-spk');
+    this.routeChatLed = document.getElementById('led-route-chat');
+    this.bitrateIndicator = document.getElementById('deck-bitrate');
+
+    this.isPlaying = true;
+    this.currentRouting = 'BOTH'; // SPEAKER, CHAT, BOTH
     this.currentTrack = {
       title: 'Lofi Girl Study Beats',
       artist: 'Lofi Girl 24/7',
-      duration: 'LIVE 🔴',
-      source: '📻 Radio Station'
+      station: 'lofi',
+      bitrate: '320 KBPS'
     };
-    this.isPlaying = true;
-    this.currentMode = 'BOTH'; // SPEAKER, CHAT, BOTH
-    this.currentVolume = 80;
 
     this.initEvents();
   }
 
   initEvents() {
-    if (this.inputField) {
-      this.inputField.addEventListener('keydown', (e) => {
+    if (this.inputBox) {
+      this.inputBox.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
           e.preventDefault();
-          this.submitCommand(this.inputField.value);
-          this.inputField.value = '';
+          this.handleCommand(this.inputBox.value);
+          this.inputBox.value = '';
         }
       });
     }
 
-    if (this.volumeSlider) {
-      this.volumeSlider.addEventListener('input', (e) => {
-        this.setVolume(parseInt(e.target.value, 10));
-      });
+    // Set initial cassette state
+    this.updateDeckState();
+  }
+
+  updateDeckState() {
+    this.reels.forEach(r => {
+      if (this.isPlaying) r.classList.add('is-spinning');
+      else r.classList.remove('is-spinning');
+    });
+
+    if (this.tapeTitle) this.tapeTitle.innerText = this.currentTrack.title.toUpperCase();
+    if (this.tapeArtist) this.tapeArtist.innerText = this.currentTrack.artist.toUpperCase();
+    if (this.bitrateIndicator) this.bitrateIndicator.innerText = this.currentTrack.bitrate;
+
+    // Routing LEDs
+    if (this.routeSpeakerLed) {
+      if (this.currentRouting === 'SPEAKER' || this.currentRouting === 'BOTH') {
+        this.routeSpeakerLed.className = 'led-dot green-on';
+      } else {
+        this.routeSpeakerLed.className = 'led-dot';
+      }
+    }
+
+    if (this.routeChatLed) {
+      if (this.currentRouting === 'CHAT' || this.currentRouting === 'BOTH') {
+        this.routeChatLed.className = 'led-dot cyan-on';
+      } else {
+        this.routeChatLed.className = 'led-dot';
+      }
     }
   }
 
-  setVolume(vol) {
-    this.currentVolume = Math.max(0, Math.min(100, vol));
-    if (this.volumePct) this.volumePct.innerText = `${this.currentVolume}%`;
-    if (this.volumeSlider) this.volumeSlider.value = this.currentVolume;
-    audioFeedback.playBeep(400 + this.currentVolume * 5, 'sine', 0.04, 0.03);
+  setRouting(mode) {
+    hwAudio.playSwitchClick();
+    this.currentRouting = mode;
+    this.updateDeckState();
+
+    document.querySelectorAll('[data-route-mode]').forEach(btn => {
+      if (btn.getAttribute('data-route-mode') === mode) {
+        btn.classList.add('is-active');
+      } else {
+        btn.classList.remove('is-active');
+      }
+    });
   }
 
-  submitCommand(text) {
-    const trimmed = text.trim();
-    if (!trimmed) return;
-    audioFeedback.playClick();
+  tuneStation(genre) {
+    hwAudio.playTapeHeadEngage();
+    const stations = {
+      lofi: { title: 'Lofi Girl Study Beats', artist: 'Lofi Girl 24/7', bitrate: '320 KBPS' },
+      synthwave: { title: 'Nightwave Plaza 80s Cyber', artist: 'Plaza FM', bitrate: '320 KBPS' },
+      rock: { title: 'Classic Rock Live FM', artist: 'Planet Rock', bitrate: '256 KBPS' },
+      chillhop: { title: 'Chillhop Cafe Beats', artist: 'Chillhop Music', bitrate: '320 KBPS' },
+      jazz: { title: 'Jazz Lounge & Bossa', artist: 'Jazz Radio FM', bitrate: '320 KBPS' },
+      space: { title: 'Deep Space Drone Ambient', artist: 'SomaFM Drone', bitrate: '192 KBPS' }
+    };
 
-    // 1. Append user message bubble
-    this.appendMessage(trimmed, 'user');
+    const s = stations[genre] || stations.lofi;
+    this.currentTrack = { ...s, station: genre };
+    this.isPlaying = true;
+    this.updateDeckState();
 
-    // 2. Show typing indicator
-    const typingIndicator = this.appendTypingIndicator();
+    if (window.vuMeters) window.vuMeters.setPlaying(true);
+    if (window.oscilloscope) window.oscilloscope.isPlaying = true;
 
-    // 3. Dispatch and reply after short simulated latency (180ms)
+    // Update preset button active states
+    document.querySelectorAll('[data-tune-btn]').forEach(btn => {
+      if (btn.getAttribute('data-tune-btn') === genre) {
+        btn.classList.add('is-active');
+      } else {
+        btn.classList.remove('is-active');
+      }
+    });
+
+    this.appendChatMsg(`/radio ${genre}`, 'user');
     setTimeout(() => {
-      typingIndicator.remove();
-      this.processBotResponse(trimmed);
-      audioFeedback.playSuccessChime();
-    }, 280);
+      this.appendChatMsg(
+        `📻 <b>Tuned 24/7 Internet Radio:</b>\n` +
+        `▶️ <b>${s.title}</b> (${genre.toUpperCase()})\n` +
+        `🎙 <i>${s.artist}</i>\n` +
+        `🔊 Output: <b>${this.currentRouting}</b> • Bitrate: <b>${s.bitrate}</b>`,
+        'bot'
+      );
+    }, 200);
   }
 
-  processBotResponse(rawText) {
-    const parts = rawText.split(/\s+/);
+  handleCommand(text) {
+    const raw = text.trim();
+    if (!raw) return;
+    hwAudio.playSwitchClick();
+
+    this.appendChatMsg(raw, 'user');
+    const parts = raw.split(/\s+/);
     const cmd = parts[0].toLowerCase();
-    const args = parts.slice(1).join(' ').trim();
+    const arg = parts.slice(1).join(' ').trim();
 
-    let reply = '';
-
-    switch (cmd) {
-      case '/start':
-      case '/help':
-        reply = `🎵 <b>TapStream v2.2.0 Active!</b>\n` +
-          `• <code>/play &lt;query&gt;</code> - Stream YouTube, yt-dlp, or direct URL\n` +
-          `• <code>/radio &lt;genre&gt;</code> - 24/7 stations: lofi, synthwave, rock, jazz\n` +
-          `• <code>/pause</code> | <code>/resume</code> | <code>/skip</code>\n` +
-          `• <code>/nowplaying</code> - Visual ASCII progress bar\n` +
-          `• <code>/volume &lt;0-100&gt;</code> - Android phone speaker volume\n` +
-          `• <code>/mode &lt;speaker|chat|both&gt;</code> - Audio routing`;
-        break;
-
-      case '/play':
-        if (!args) {
-          reply = `⚠️ Usage: <code>/play &lt;song title, artist, or YouTube URL&gt;</code>\nExample: <code>/play lofi</code> or <code>/play synthwave</code>`;
+    setTimeout(() => {
+      let reply = '';
+      if (cmd === '/play') {
+        if (!arg) {
+          reply = `⚠️ Usage: <code>/play &lt;song title, artist, or YouTube URL&gt;</code>`;
         } else {
-          const trackTitle = args.charAt(0).toUpperCase() + args.slice(1);
           this.currentTrack = {
-            title: trackTitle,
-            artist: 'TapStream Cloud Audio',
-            duration: '03:45',
-            source: '⚡ Stream Extractor'
+            title: arg.charAt(0).toUpperCase() + arg.slice(1),
+            artist: 'YouTube Audio Stream',
+            station: 'custom',
+            bitrate: '320 KBPS'
           };
           this.isPlaying = true;
-          this.updateNowPlayingUI();
-          reply = `🎧 <b>Queued & Streaming Now</b>\n` +
+          this.updateDeckState();
+          if (window.vuMeters) window.vuMeters.setPlaying(true);
+          if (window.oscilloscope) window.oscilloscope.isPlaying = true;
+
+          reply = `🎧 <b>Queued & Resolving Stream:</b>\n` +
             `▶️ <b>${this.currentTrack.title}</b>\n` +
-            `👤 <i>${this.currentTrack.artist}</i>\n` +
-            `🔊 Output: <b>${this.currentMode}</b> (Vol: ${this.currentVolume}%)\n` +
-            `📦 Delivering audio stream to Telegram chat...`;
+            `⚡ Source: <b>yt-dlp Engine</b>\n` +
+            `🔊 Output Mode: <b>${this.currentRouting}</b>`;
         }
-        break;
-
-      case '/radio':
-        const genre = args.toLowerCase() || 'lofi';
-        const stations = {
-          lofi: { title: 'Lofi Girl Study Beats', artist: 'Lofi Girl 24/7' },
-          synthwave: { title: 'Nightwave Plaza 80s Cyber', artist: 'Plaza FM' },
-          rock: { title: 'Classic Rock Live FM', artist: 'Planet Rock' },
-          chillhop: { title: 'Chillhop Cafe Beats', artist: 'Chillhop Music' },
-          jazz: { title: 'Jazz Cafe & Smooth Bossa', artist: 'Jazz Radio Lounge' },
-          space: { title: 'Deep Space Ambient', artist: 'SomaFM Drone Zone' }
-        };
-        const station = stations[genre] || stations.lofi;
-        this.currentTrack = {
-          title: station.title,
-          artist: station.artist,
-          duration: 'LIVE 🔴',
-          source: '📻 24/7 Radio Station'
-        };
-        this.isPlaying = true;
-        this.updateNowPlayingUI();
-        reply = `📻 <b>Tuned into 24/7 Radio Station</b>\n` +
-          `📡 <b>${station.title}</b> (${genre.toUpperCase()})\n` +
-          `🎙 <i>${station.artist}</i>\n` +
-          `🔴 Streaming live at 320kbps with zero buffer lag.`;
-        break;
-
-      case '/nowplaying':
-      case '/np':
-        reply = `🎶 <b>Now Playing on Android Host</b>\n` +
+      } else if (cmd === '/nowplaying' || cmd === '/np') {
+        reply = `🎶 <b>Now Playing:</b>\n` +
           `<b>${this.currentTrack.title}</b>\n` +
           `<i>${this.currentTrack.artist}</i>\n` +
-          `<code>▶ 01:42 ━━━━━●──────── 03:45</code>\n` +
-          `🔊 Volume: <b>${this.currentVolume}%</b> | Route: <code>${this.currentMode}</code>`;
-        break;
-
-      case '/pause':
+          `<code>▶ 01:23 ━━━━●──────── 03:45</code>\n` +
+          `🔊 Mode: <b>${this.currentRouting}</b> • Bitrate: <b>${this.currentTrack.bitrate}</b>`;
+      } else if (cmd === '/pause') {
         this.isPlaying = false;
-        this.updateNowPlayingUI();
-        reply = `⏸ <b>Playback paused.</b> Send <code>/resume</code> to continue.`;
-        break;
-
-      case '/resume':
+        this.updateDeckState();
+        if (window.vuMeters) window.vuMeters.setPlaying(false);
+        if (window.oscilloscope) window.oscilloscope.isPlaying = false;
+        reply = `⏸ <b>Playback paused.</b> Send <code>/resume</code> to restart tape.`;
+      } else if (cmd === '/resume') {
         this.isPlaying = true;
-        this.updateNowPlayingUI();
+        this.updateDeckState();
+        if (window.vuMeters) window.vuMeters.setPlaying(true);
+        if (window.oscilloscope) window.oscilloscope.isPlaying = true;
         reply = `▶️ <b>Resumed playback:</b> ${this.currentTrack.title}`;
-        break;
-
-      case '/volume':
-      case '/vol':
-        const val = parseInt(args, 10);
-        if (!isNaN(val)) {
-          this.setVolume(val);
-          reply = `🔊 Host device media speaker volume set to <b>${this.currentVolume}%</b>`;
+      } else if (cmd === '/mode') {
+        const mode = arg.toUpperCase();
+        if (mode === 'SPEAKER' || mode === 'CHAT' || mode === 'BOTH') {
+          this.setRouting(mode);
+          reply = `🎛 Active Routing Mode set to: <b>${mode}</b>`;
         } else {
-          reply = `🔊 Current volume: <b>${this.currentVolume}%</b>. Use <code>/volume &lt;0-100&gt;</code> to adjust.`;
+          reply = `Usage: <code>/mode speaker</code> | <code>/mode chat</code> | <code>/mode both</code>`;
         }
-        break;
+      } else if (cmd === '/status') {
+        reply = `📊 <b>Android ART System Telemetry:</b>\n` +
+          `🔋 Battery: <b>88% (AC Charger Plugged)</b>\n` +
+          `🧠 Heap Memory: <b>14.2 MB / 8 GB (0.17%)</b>\n` +
+          `⚡ CPU Load: <b>0.4%</b>\n` +
+          `⏱ Uptime: <b>42 Days 18 Hours</b>\n` +
+          `🛡 Flash Wear: <b>0 Bytes / hr (Ring Buffer)</b>`;
+      } else {
+        reply = `🎵 Received: <code>${raw}</code>\nTry: <code>/radio synthwave</code> or <code>/nowplaying</code>`;
+      }
 
-      case '/mode':
-        const mode = args.toLowerCase();
-        if (mode.includes('speaker') || mode.includes('phone')) {
-          this.currentMode = 'SPEAKER';
-          reply = `🔊 Playback mode: <b>SPEAKER ONLY</b>\nAudio streams through your phone's physical speaker & Bluetooth.`;
-        } else if (mode.includes('chat') || mode.includes('telegram')) {
-          this.currentMode = 'CHAT';
-          reply = `💬 Playback mode: <b>TELEGRAM CHAT ONLY</b>\nAudio sent as playable music files directly into chat.`;
-        } else {
-          this.currentMode = 'BOTH';
-          reply = `✨ Playback mode: <b>BOTH (SPEAKER + CHAT)</b>\nAudio plays on host phone speaker AND delivers to chat.`;
-        }
-        if (this.routingModeBadge) this.routingModeBadge.innerText = this.currentMode;
-        break;
-
-      case '/status':
-        reply = `📊 <b>TapBot Hardware Telemetry</b>\n` +
-          `🔋 Battery: <b>88% (AC Plugged)</b>\n` +
-          `🧠 RAM: <b>14.2 MB / 8 GB (0.17%)</b>\n` +
-          `⚡ CPU: <b>0.4% (ART Runtime)</b>\n` +
-          `⏱ Uptime: <b>42d 18h 12m</b>\n` +
-          `🛡 Flash Writes: <b>0 bytes / hr (Ring Buffer)</b>\n` +
-          `🌐 Network: <b>Wi-Fi 5GHz (12ms latency)</b>`;
-        break;
-
-      default:
-        reply = `🎵 Received: <code>${rawText}</code>\nSend <code>/help</code> or <code>/play lofi</code> to start music!`;
-    }
-
-    this.appendMessage(reply, 'bot');
+      this.appendChatMsg(reply, 'bot');
+    }, 220);
   }
 
-  updateNowPlayingUI() {
-    if (this.statusTitle) this.statusTitle.innerText = this.currentTrack.title;
-    if (this.statusArtist) this.statusArtist.innerText = `${this.currentTrack.artist} • ${this.currentTrack.duration}`;
-    if (this.soundWaveContainer) {
-      this.soundWaveContainer.style.opacity = this.isPlaying ? '1' : '0.2';
-    }
-  }
-
-  appendMessage(htmlText, sender = 'bot') {
+  appendChatMsg(html, sender = 'bot') {
     if (!this.chatBody) return;
-    const div = document.createElement('div');
-    div.className = sender === 'user' ? 'chat-bubble-user' : 'chat-bubble-bot';
-    div.innerHTML = htmlText.replace(/\n/g, '<br/>');
-    this.chatBody.appendChild(div);
+    const msg = document.createElement('div');
+    msg.className = sender === 'user' 
+      ? 'p-2.5 rounded-lg bg-cyan-950/80 border border-cyan-800/60 text-cyan-200 text-xs font-mono ml-auto max-w-[85%]'
+      : 'p-2.5 rounded-lg bg-[#141824] border border-[#262e42] text-slate-200 text-xs font-mono max-w-[90%]';
+    msg.innerHTML = html.replace(/\n/g, '<br/>');
+    this.chatBody.appendChild(msg);
     this.chatBody.scrollTop = this.chatBody.scrollHeight;
-    return div;
-  }
-
-  appendTypingIndicator() {
-    const div = document.createElement('div');
-    div.className = 'chat-bubble-bot flex items-center gap-1.5 py-2 px-3 text-slate-400 text-xs italic';
-    div.innerHTML = `<span class="animate-pulse">●</span><span class="animate-pulse delay-100">●</span><span class="animate-pulse delay-200">●</span> <span class="ml-1 text-[11px]">TapStream is resolving...</span>`;
-    this.chatBody.appendChild(div);
-    this.chatBody.scrollTop = this.chatBody.scrollHeight;
-    return div;
   }
 }
 
 // =============================================================================
-// 4. SCROLLYTELLING PROGRESS & INTERSECTION OBSERVER
+// 6. GSAP PINNED SCROLLYTELLING PIPELINE
 // =============================================================================
-function initScrollytelling() {
-  const progressBar = document.getElementById('scroll-progress-line');
-  const storySteps = document.querySelectorAll('.story-step');
+function initGsapScrollytelling() {
+  if (typeof gsap === 'undefined' || typeof ScrollTrigger === 'undefined') {
+    console.warn('GSAP or ScrollTrigger not loaded; using native scroll fallback.');
+    return;
+  }
 
-  window.addEventListener('scroll', () => {
-    const scrollTop = window.scrollY || document.documentElement.scrollTop;
-    const docHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
-    const progress = Math.min(100, Math.max(0, (scrollTop / docHeight) * 100));
-    if (progressBar) progressBar.style.width = `${progress}%`;
-  }, { passive: true });
+  gsap.registerPlugin(ScrollTrigger);
 
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach((entry) => {
-      if (entry.isIntersecting) {
-        entry.target.classList.add('is-active');
-      }
-    });
-  }, { threshold: 0.25 });
-
-  storySteps.forEach(step => observer.observe(step));
-}
-
-// =============================================================================
-// 5. BOTPKG CODE INSPECTOR TABS
-// =============================================================================
-function initPackageInspector() {
-  const tabs = document.querySelectorAll('[data-pkg-tab]');
-  const codeContent = document.getElementById('pkg-code-display');
-  const codeLang = document.getElementById('pkg-code-lang');
-
-  const files = {
-    manifest: {
-      lang: 'JSON',
-      code: `{\n  "$schema": "https://tapbot.dev/schemas/v1/manifest.json",\n  "id": "tapstream-music",\n  "name": "TapStream Music Bot",\n  "version": "1.0.0",\n  "runtime": "native_art",\n  "entrypoint": "com.tapbot.core.runner.runtime.MusicBotRuntime",\n  "credentials": [\n    {\n      "key": "bot_token",\n      "label": "Telegram Bot Token",\n      "required": true,\n      "secret": true\n    },\n    {\n      "key": "stream_resolver_url",\n      "label": "Custom yt-dlp API URL",\n      "required": false\n    }\n  ],\n  "permissions": [\n    "INTERNET",\n    "FOREGROUND_SERVICE",\n    "MODIFY_AUDIO_SETTINGS"\n  ]\n}`
-    },
-    entrypoint: {
-      lang: 'PROPERTIES',
-      code: `# TapStream Music Bot Bytecode Entrypoint\nclass=com.tapbot.core.runner.runtime.MusicBotRuntime\nruntime=native_art\nversion=1.0.0\ntargetSdk=35\nminSdk=26`
-    },
-    resolver: {
-      lang: 'KOTLIN',
-      code: `// AudioStreamResolver.kt - Curated 24/7 Internet Radio & yt-dlp API\nval curatedStations = listOf(\n    AudioTrack("radio_lofi", "Lofi Girl Study Beats", "https://stream.zeno.fm/0r0xa792kwzuv"),\n    AudioTrack("radio_synthwave", "Nightwave Plaza 80s", "https://plaza.one/mp3"),\n    AudioTrack("radio_chillhop", "Chillhop Cafe Beats", "https://stream.chillhop.com/live.mp3"),\n    AudioTrack("radio_rock", "Classic Rock Live FM", "https://icecast.walmradio.com:8443/classic")\n)`
-    },
-    security: {
-      lang: 'SHA-256 INTEGRITY',
-      code: `Package: tapstream-music-1.0.0.botpkg\nSize: 1,827 bytes\nSHA-256: 178434b2d9ff07199455a3ae04373be2d13bec341e398baa99529c4635550b0a\nEnclave: Android Keystore AES-256-GCM\nVerification: 100% Cryptographically Matched`
+  // Pin the Pipeline Stage Section
+  const pipelineTl = gsap.timeline({
+    scrollTrigger: {
+      trigger: '#pipeline-stage',
+      start: 'top top',
+      end: '+=180%',
+      pin: true,
+      scrub: 0.8,
+      anticipatePin: 1
     }
-  };
-
-  tabs.forEach(tab => {
-    tab.addEventListener('click', () => {
-      audioFeedback.playClick();
-      tabs.forEach(t => {
-        t.classList.remove('bg-cyan-500/20', 'text-cyan-400', 'border-cyan-500/40');
-        t.classList.add('text-slate-400');
-      });
-      tab.classList.remove('text-slate-400');
-      tab.classList.add('bg-cyan-500/20', 'text-cyan-400', 'border-cyan-500/40');
-
-      const key = tab.getAttribute('data-pkg-tab');
-      if (files[key] && codeContent) {
-        codeContent.textContent = files[key].code;
-        if (codeLang) codeLang.textContent = files[key].lang;
-      }
-    });
   });
+
+  // Step 1: Telegram Ingress (0% -> 25%)
+  pipelineTl.to('#pipe-node-1', { 
+    borderColor: '#00e5ff', 
+    backgroundColor: '#101d2c', 
+    boxShadow: '0 0 25px rgba(0, 229, 255, 0.4)', 
+    scale: 1.03, 
+    duration: 1,
+    onStart: () => {
+      const el = document.getElementById('pipeline-active-stage');
+      if (el) el.innerText = '1 / 4 • INGRESS PACKET';
+    }
+  });
+
+  // Step 2: In-Memory Ring Buffer (25% -> 50%)
+  pipelineTl.to('#pipe-node-1', { scale: 1, boxShadow: 'none', borderColor: '#273044', backgroundColor: '#0f131c', duration: 1 })
+    .to('#pipe-node-2', { 
+      borderColor: '#00ff88', 
+      backgroundColor: '#0d2218', 
+      boxShadow: '0 0 25px rgba(0, 255, 136, 0.4)', 
+      scale: 1.03, 
+      duration: 1,
+      onStart: () => {
+        const el = document.getElementById('pipeline-active-stage');
+        if (el) el.innerText = '2 / 4 • IN-MEMORY RING BUFFER (0 DISK WRITES)';
+      }
+    }, '<');
+
+  // Step 3: Audio Stream Resolver (50% -> 75%)
+  pipelineTl.to('#pipe-node-2', { scale: 1, boxShadow: 'none', borderColor: '#273044', backgroundColor: '#0f131c', duration: 1 })
+    .to('#pipe-node-3', { 
+      borderColor: '#ff8400', 
+      backgroundColor: '#24170d', 
+      boxShadow: '0 0 25px rgba(255, 132, 0, 0.4)', 
+      scale: 1.03, 
+      duration: 1,
+      onStart: () => {
+        const el = document.getElementById('pipeline-active-stage');
+        if (el) el.innerText = '3 / 4 • AUDIO STREAM RESOLVER';
+      }
+    }, '<');
+
+  // Step 4: Dual Egress Delivery (75% -> 100%)
+  pipelineTl.to('#pipe-node-3', { scale: 1, boxShadow: 'none', borderColor: '#273044', backgroundColor: '#0f131c', duration: 1 })
+    .to('#pipe-node-4', { 
+      borderColor: '#00e5ff', 
+      backgroundColor: '#101d2c', 
+      boxShadow: '0 0 25px rgba(0, 229, 255, 0.4)', 
+      scale: 1.03, 
+      duration: 1,
+      onStart: () => {
+        const el = document.getElementById('pipeline-active-stage');
+        if (el) el.innerText = '4 / 4 • DUAL STREAM EGRESS (SPEAKER + CHAT)';
+      }
+    }, '<');
 }
 
 // =============================================================================
-// 6. INITIALIZATION ON DOM READY
+// 7. INITIALIZE ON DOM READY
 // =============================================================================
 document.addEventListener('DOMContentLoaded', () => {
-  window.spectrumViz = new SpectrumVisualizer('audio-spectrum-canvas');
-  window.botSimulator = new PhoneBotSimulator();
-  initScrollytelling();
-  initPackageInspector();
+  // Initialize VU meters
+  window.vuMeters = new AnalogVUMeter('vu-needle-left', 'vu-needle-right', 'vu-peak-led');
 
-  // Quick command buttons on page
-  document.querySelectorAll('[data-quick-cmd]').forEach(btn => {
+  // Initialize phosphor oscilloscope
+  window.oscilloscope = new PhosphorOscilloscope('oscilloscope-canvas');
+
+  // Initialize master console
+  window.consoleDeck = new MasterConsoleEngine();
+
+  // Initialize rotary knob with live VU and oscilloscope coupling
+  window.rotaryKnob = new RotaryVolumeKnob('vol-rotary-knob', 'vol-rotary-val', (vol) => {
+    if (window.vuMeters) window.vuMeters.setVolume(vol);
+    if (window.oscilloscope) window.oscilloscope.volume = vol / 100;
+  });
+
+  // Radio preset buttons
+  document.querySelectorAll('[data-tune-btn]').forEach(btn => {
     btn.addEventListener('click', (e) => {
-      const cmd = e.currentTarget.getAttribute('data-quick-cmd');
-      if (cmd && window.botSimulator) {
-        window.botSimulator.submitCommand(cmd);
-        // smooth scroll to phone simulator if on mobile
-        const sim = document.getElementById('interactive-simulator');
-        if (sim && window.innerWidth < 768) {
-          sim.scrollIntoView({ behavior: 'smooth' });
-        }
+      const genre = e.currentTarget.getAttribute('data-tune-btn');
+      if (window.consoleDeck && genre) {
+        window.consoleDeck.tuneStation(genre);
       }
     });
   });
 
-  // Sound toggle button
-  const soundBtn = document.getElementById('toggle-sound-btn');
-  if (soundBtn) {
-    soundBtn.addEventListener('click', () => {
-      audioFeedback.soundEnabled = !audioFeedback.soundEnabled;
-      soundBtn.innerHTML = audioFeedback.soundEnabled 
-        ? `<svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/></svg> Sound: ON`
-        : `<svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"/></svg> Sound: OFF`;
-      if (audioFeedback.soundEnabled) audioFeedback.playBeep(600, 'sine', 0.08, 0.05);
+  // Routing buttons
+  document.querySelectorAll('[data-route-mode]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const mode = e.currentTarget.getAttribute('data-route-mode');
+      if (window.consoleDeck && mode) {
+        window.consoleDeck.setRouting(mode);
+      }
+    });
+  });
+
+  // Transport buttons (Play/Pause)
+  const playBtn = document.getElementById('transport-play');
+  const pauseBtn = document.getElementById('transport-pause');
+
+  if (playBtn) {
+    playBtn.addEventListener('click', () => {
+      if (window.consoleDeck) window.consoleDeck.handleCommand('/resume');
+      playBtn.classList.add('is-active');
+      if (pauseBtn) pauseBtn.classList.remove('is-active');
     });
   }
+
+  if (pauseBtn) {
+    pauseBtn.addEventListener('click', () => {
+      if (window.consoleDeck) window.consoleDeck.handleCommand('/pause');
+      pauseBtn.classList.add('is-active');
+      if (playBtn) playBtn.classList.remove('is-active');
+    });
+  }
+
+  // Audio mute/unmute toggle
+  const soundMuteBtn = document.getElementById('toggle-sound-btn');
+  if (soundMuteBtn) {
+    soundMuteBtn.addEventListener('click', () => {
+      hwAudio.soundEnabled = !hwAudio.soundEnabled;
+      soundMuteBtn.innerHTML = hwAudio.soundEnabled
+        ? `<span class="led-dot green-on mr-1.5"></span> AUDIO FX: ON`
+        : `<span class="led-dot mr-1.5"></span> AUDIO FX: OFF`;
+      if (hwAudio.soundEnabled) hwAudio.playSwitchClick();
+    });
+  }
+
+  // Initialize GSAP scroll animation
+  setTimeout(() => {
+    initGsapScrollytelling();
+  }, 100);
 });

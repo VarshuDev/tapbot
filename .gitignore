@@ -19,3 +19,6 @@ dist/
 *.jks
 *.keystore
 keystore/
+
+# Website binary release mirrors
+website/releases/*.apk

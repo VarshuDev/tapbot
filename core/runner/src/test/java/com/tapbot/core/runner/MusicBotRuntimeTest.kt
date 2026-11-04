@@ -216,4 +216,19 @@ class MusicBotRuntimeTest {
         val bothMode = musicRuntime.handleCommand(ctx, "TOKEN", 12345L, "/mode both")
         assertTrue(bothMode.contains("BOTH (SPEAKER + CHAT)"))
     }
+
+    @Test
+    fun `BotRuntimeFactory creates MusicBotRuntime for streamer and music identifiers`() {
+        val runtime1 = com.tapbot.core.runner.runtime.BotRuntimeFactory.createRuntime("bot_music")
+        assertTrue("bot_music maps to MusicBotRuntime", runtime1 is MusicBotRuntime)
+
+        val runtime2 = com.tapbot.core.runner.runtime.BotRuntimeFactory.createRuntime("bot_music_streamer")
+        assertTrue("bot_music_streamer maps to MusicBotRuntime", runtime2 is MusicBotRuntime)
+
+        val runtime3 = com.tapbot.core.runner.runtime.BotRuntimeFactory.createRuntime("tapstream-music")
+        assertTrue("tapstream-music maps to MusicBotRuntime", runtime3 is MusicBotRuntime)
+
+        val runtime4 = com.tapbot.core.runner.runtime.BotRuntimeFactory.createRuntime("any_id", "TapStream Music Bot")
+        assertTrue("TapStream Music Bot name maps to MusicBotRuntime", runtime4 is MusicBotRuntime)
+    }
 }

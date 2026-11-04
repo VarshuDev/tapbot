@@ -154,6 +154,38 @@ class CloudflareCatalogApiTest {
     }
 
     @Test
+    fun mockCatalogApi_includesTapStreamMusicBot() = runBlocking {
+        val mockApi = MockCatalogApi()
+        val bots = mockApi.getBots().getOrThrow()
+        val streamer = bots.find { it.id == "bot_music_streamer" }
+        assertNotNull("TapStream Music Bot must be present in sampleBots", streamer)
+        assertEquals("TapStream Music Bot", streamer!!.name)
+        assertTrue("TapStream Music Bot must be marked featured", streamer.isFeatured)
+        assertEquals("Media", streamer.category)
+        assertEquals("native_art", streamer.packageInfo.runtimeType)
+        assertTrue("Credentials must include bot_token", streamer.requiredCredentials.any { it.key == "bot_token" })
+        assertTrue("Credentials must include stream_resolver_url", streamer.requiredCredentials.any { it.key == "stream_resolver_url" })
+        assertTrue("Credentials must include default_volume", streamer.requiredCredentials.any { it.key == "default_volume" })
+        assertTrue("Credentials must include default_playback_mode", streamer.requiredCredentials.any { it.key == "default_playback_mode" })
+
+        // Check details by id or alias
+        val details = mockApi.getBotDetails("bot_music_streamer").getOrThrow()
+        assertEquals("TapStream Music Bot", details.name)
+        val aliasDetails = mockApi.getBotDetails("tapstream-music").getOrThrow()
+        assertEquals("TapStream Music Bot", aliasDetails.name)
+
+        // Check version
+        val versions = mockApi.getBotVersions("bot_music_streamer").getOrThrow()
+        assertTrue(versions.isNotEmpty())
+        assertEquals("1.0.0", versions.first().version)
+        assertEquals("packages/tapstream-music-1.0.0.botpkg", versions.first().packageUrl)
+
+        val latest = mockApi.getLatestVersion("tapstream-music").getOrThrow()
+        assertNotNull(latest)
+        assertEquals("1.0.0", latest!!.version)
+    }
+
+    @Test
     fun liveCatalogApi_fetchesBotsFromHostedBackend() = runBlocking {
         val api = CloudflareCatalogApi(
             baseUrl = CloudflareCatalogApi.DEFAULT_BASE_URL,

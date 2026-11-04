@@ -108,3 +108,11 @@
 - Created `MusicBotRuntimeTest.kt` with 8 comprehensive unit tests covering all playback commands.
 - Enhanced `AudioStreamResolver` with fast-path benchmark resolution and updated `PerformanceBenchmarkTest` with mock `sendAudio` / `sendChatAction`.
 - All 81 unit tests in `:core:runner` pass.
+
+## 2026-11-04 - US-M05: Store Catalog Registration & Package Bundling
+- Created `0007_music_streamer_bot.sql` database migration registering `bot_music_streamer` (slug `tapstream-music`), version `1.0.0`, and credential definitions.
+- Updated `MockCatalogApi` registering TapStream with `bot_token`, `stream_resolver_url`, `default_volume`, and `default_playback_mode`.
+- Created `sample-bots/music-streamer-bot` manifest, entrypoint, icon, and dependencies.
+- Packaged valid zip archive `tapstream-music-1.0.0.botpkg` into `app/src/main/assets/packages/` (size 1827 bytes, sha256 `178434b2d9ff07199455a3ae04373be2d13bec341e398baa99529c4635550b0a`).
+- Updated `BotRuntimeFactory` mapping `stream`, `tapstream`, and `music` keywords to `MusicBotRuntime`.
+- Added unit tests in `CloudflareCatalogApiTest` and `MusicBotRuntimeTest`. All tests in `:core:network` and `:core:runner` passed.

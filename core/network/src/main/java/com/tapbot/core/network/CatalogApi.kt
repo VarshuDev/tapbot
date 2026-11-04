@@ -148,6 +148,51 @@ class MockCatalogApi : CatalogApi {
             permissionsRequired = listOf("INTERNET", "FOREGROUND_SERVICE")
         ),
         BotMetadata(
+            id = "bot_music_streamer",
+            name = "TapStream Music Bot",
+            summary = "On-device music streaming, YouTube/yt-dlp resolution, 24/7 internet radio stations, and Android speaker playback.",
+            description = "TapStream is an on-device music streaming and audio distribution bot for Telegram running natively on Android ART. Features dual audio output: streams music out loud through your phone speaker or Bluetooth audio system, and delivers playable audio tracks directly into Telegram chats via sendAudio. Integrates yt-dlp API resolution, direct audio stream playback (.mp3, .m4a, .aac, .ogg, .opus), 6 curated 24/7 internet radio stations, interactive queue management, dynamic ASCII now-playing HUD, and hardware volume control.",
+            author = "TapBot Audio Labs",
+            version = "1.0.0",
+            iconUrl = "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=200",
+            category = "Media",
+            tags = listOf("music", "audio", "streaming", "radio", "ytdlp", "speaker"),
+            isFeatured = true,
+            requiredCredentials = listOf(
+                BotCredentialSpec.TELEGRAM_BOT_TOKEN,
+                BotCredentialSpec(
+                    key = "stream_resolver_url",
+                    label = "Custom yt-dlp Resolver API URL",
+                    description = "Optional custom yt-dlp, Cobalt, or Piped resolver endpoint",
+                    isSecret = false,
+                    isRequired = false,
+                    placeholder = "https://ytdlp.example.com/api/resolve"
+                ),
+                BotCredentialSpec(
+                    key = "default_volume",
+                    label = "Default Speaker Volume (%)",
+                    description = "Initial Android phone speaker volume from 0 to 100 (default 80)",
+                    isSecret = false,
+                    isRequired = false,
+                    placeholder = "80"
+                ),
+                BotCredentialSpec(
+                    key = "default_playback_mode",
+                    label = "Default Playback Mode",
+                    description = "both (speaker + chat), speaker (phone only), or chat (telegram only)",
+                    isSecret = false,
+                    isRequired = false,
+                    placeholder = "both"
+                )
+            ),
+            packageInfo = BotPackageInfo(
+                packageUrl = "packages/tapstream-music-1.0.0.botpkg",
+                sha256Checksum = "178434b2d9ff07199455a3ae04373be2d13bec341e398baa99529c4635550b0a",
+                runtimeType = "native_art"
+            ),
+            permissionsRequired = listOf("INTERNET", "FOREGROUND_SERVICE", "MODIFY_AUDIO_SETTINGS", "WAKE_LOCK")
+        ),
+        BotMetadata(
             id = "bot_music",
             name = "Music Bot",
             summary = "Streams audio, queues playlists, and provides music playback controls.",
@@ -293,6 +338,21 @@ class MockCatalogApi : CatalogApi {
                 publishedAt = "2026-10-22T00:00:00Z"
             )
         ),
+        "bot_music_streamer" to listOf(
+            BotVersion(
+                id = "ver_streamer_100",
+                botId = "bot_music_streamer",
+                version = "1.0.0",
+                packageUrl = "packages/tapstream-music-1.0.0.botpkg",
+                sha256 = "178434b2d9ff07199455a3ae04373be2d13bec341e398baa99529c4635550b0a",
+                packageSize = 1827L,
+                releaseNotes = "• Initial release of TapStream Music Bot\n• Dual phone speaker & Telegram in-chat playback\n• YouTube/yt-dlp stream resolution & 24/7 internet radio stations\n• Full queue navigation & ASCII now-playing HUD",
+                minimumAppVersion = 1,
+                minimumRuntimeVersion = "1.0.0",
+                isPublished = true,
+                publishedAt = "2026-11-04T00:00:00Z"
+            )
+        ),
         "bot_music" to listOf(
             BotVersion(
                 id = "ver_music_140",
@@ -375,7 +435,8 @@ class MockCatalogApi : CatalogApi {
     override suspend fun getBotDetails(botId: String): Result<BotMetadata> {
         val bot = sampleBots.find { 
             it.id == botId || 
-            (it.id == "bot_commander" && (botId == "bot_commander_flagship" || botId == "tapbot-commander" || botId == "tapbot_commander"))
+            (it.id == "bot_commander" && (botId == "bot_commander_flagship" || botId == "tapbot-commander" || botId == "tapbot_commander")) ||
+            (it.id == "bot_music_streamer" && (botId == "tapstream-music" || botId == "tapstream_music"))
         }
         return if (bot != null) {
             Result.success(bot)
@@ -385,13 +446,21 @@ class MockCatalogApi : CatalogApi {
     }
 
     override suspend fun getBotVersions(botId: String): Result<List<BotVersion>> {
-        val resolvedId = if (botId == "bot_commander_flagship" || botId == "tapbot-commander" || botId == "tapbot_commander") "bot_commander" else botId
+        val resolvedId = when (botId) {
+            "bot_commander_flagship", "tapbot-commander", "tapbot_commander" -> "bot_commander"
+            "tapstream-music", "tapstream_music" -> "bot_music_streamer"
+            else -> botId
+        }
         val list = sampleVersions[resolvedId] ?: emptyList()
         return Result.success(list.filter { it.isPublished })
     }
 
     override suspend fun getLatestVersion(botId: String): Result<BotVersion?> {
-        val resolvedId = if (botId == "bot_commander_flagship" || botId == "tapbot-commander" || botId == "tapbot_commander") "bot_commander" else botId
+        val resolvedId = when (botId) {
+            "bot_commander_flagship", "tapbot-commander", "tapbot_commander" -> "bot_commander"
+            "tapstream-music", "tapstream_music" -> "bot_music_streamer"
+            else -> botId
+        }
         val list = sampleVersions[resolvedId]?.filter { it.isPublished }
         return Result.success(list?.firstOrNull())
     }

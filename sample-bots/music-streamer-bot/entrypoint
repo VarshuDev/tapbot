@@ -1,0 +1,4 @@
+# TapStream Music Bot Entrypoint
+class=com.tapbot.core.runner.runtime.MusicBotRuntime
+runtime=native_art
+version=1.0.0

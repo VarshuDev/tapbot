@@ -1,0 +1,65 @@
+{
+  "$schema": "https://tapbot.dev/schemas/v1/manifest.json",
+  "id": "tapstream-music",
+  "name": "TapStream Music Bot",
+  "version": "1.0.0",
+  "description": "On-device music streaming, YouTube/yt-dlp resolution, 24/7 internet radio stations, and Android speaker playback.",
+  "longDescription": "TapStream is an on-device music streaming and audio distribution bot for Telegram running natively on Android ART. Features dual audio output: streams music out loud through your phone speaker or Bluetooth audio system, and delivers playable audio tracks directly into Telegram chats via sendAudio. Integrates yt-dlp API resolution, direct audio stream playback (.mp3, .m4a, .aac, .ogg, .opus), 6 curated 24/7 internet radio stations, interactive queue management, dynamic ASCII now-playing HUD, and hardware volume control.",
+  "category": "media",
+  "icon": "assets/icon.png",
+  "runtime": "native_art",
+  "entrypoint": "com.tapbot.core.runner.runtime.MusicBotRuntime",
+  "minimumRuntimeVersion": "1.0.0",
+  "minimumAppVersion": 1,
+  "credentials": [
+    {
+      "key": "bot_token",
+      "label": "Telegram Bot Token",
+      "description": "API token obtained from @BotFather on Telegram.",
+      "required": true,
+      "secret": true,
+      "inputType": "password",
+      "placeholder": "123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ",
+      "helpUrl": "https://t.me/BotFather"
+    },
+    {
+      "key": "stream_resolver_url",
+      "label": "Custom yt-dlp Resolver API URL",
+      "description": "Optional custom yt-dlp, Cobalt, or Piped resolver endpoint.",
+      "required": false,
+      "secret": false,
+      "inputType": "text",
+      "placeholder": "https://ytdlp.example.com/api/resolve"
+    },
+    {
+      "key": "default_volume",
+      "label": "Default Speaker Volume (%)",
+      "description": "Initial Android phone speaker volume from 0 to 100 (default 80).",
+      "required": false,
+      "secret": false,
+      "inputType": "number",
+      "placeholder": "80"
+    },
+    {
+      "key": "default_playback_mode",
+      "label": "Default Playback Mode",
+      "description": "both (speaker + chat), speaker (phone only), or chat (telegram only).",
+      "required": false,
+      "secret": false,
+      "inputType": "text",
+      "placeholder": "both"
+    }
+  ],
+  "permissions": [
+    "INTERNET",
+    "FOREGROUND_SERVICE",
+    "MODIFY_AUDIO_SETTINGS",
+    "WAKE_LOCK"
+  ],
+  "packageMetadata": {
+    "author": "TapBot Audio Labs",
+    "license": "Apache-2.0",
+    "repository": "https://github.com/tapbot/tapbot",
+    "createdAt": "2026-11-04T00:00:00Z"
+  }
+}

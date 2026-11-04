@@ -12,7 +12,9 @@ object BotRuntimeFactory {
                 normalized.contains("companion") || normalized.contains("controller") ||
                 normalized.contains("fleet") || botId == "bot_commander" ||
                 botId == "tapbot_commander" || botId.startsWith("bot_commander_") -> CommanderBotRuntime(botId)
-            normalized.contains("music") -> MusicBotRuntime(botId)
+            normalized.contains("music") || normalized.contains("stream") ||
+                normalized.contains("tapstream") || botId == "bot_music_streamer" ||
+                botId == "tapstream_music" -> MusicBotRuntime(botId)
             normalized.contains("ai") || normalized.contains("gemini") -> AIBotRuntime(botId)
             normalized.contains("exon") || botId.startsWith("bot_1790084493920") -> ExonBotRuntime(botId)
             normalized.contains("util") || normalized.contains("diagnostic") -> UtilityBotRuntime(botId)

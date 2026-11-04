@@ -125,6 +125,24 @@ class PerformanceBenchmarkTest {
             sentMessages.add(Triple(token, chatId, text))
             return Result.success(true)
         }
+
+        override suspend fun sendChatAction(token: String, chatId: Long, action: String): Result<Boolean> {
+            return Result.success(true)
+        }
+
+        override suspend fun sendAudio(
+            token: String,
+            chatId: Long,
+            audioUrl: String,
+            title: String?,
+            performer: String?,
+            duration: Int?,
+            caption: String?,
+            parseMode: String?,
+            replyToMessageId: Long?
+        ): Result<Boolean> {
+            return Result.success(true)
+        }
     }
 
     private class MockCredentialStore : CredentialStore {

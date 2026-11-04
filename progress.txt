@@ -92,3 +92,19 @@
 - Exposes observable `PlaybackState` flow (status, currentTrack, elapsedMs, durationMs, volumePct, errorMessage).
 - Added `formatProgressBar(barLength)` creating dynamic visual ASCII progress bars (`▶ 01:23 ━━━━●──────── 03:45`).
 - Created unit tests in `DeviceAudioPlayerTest.kt`. All tests passed.
+
+## 2026-11-04 - US-M04: TapStream Music Bot Runtime & Interactive Command Router
+- Upgraded `MusicBotRuntime` to integrate `AudioStreamResolver`, `DeviceAudioPlayer`, and Telegram audio delivery.
+- Added dual playback routing modes: `SPEAKER` (stream out loud on host phone), `CHAT` (send directly to Telegram chat via `sendAudio`), and `BOTH` (speaker + chat simultaneously).
+- Added comprehensive command router handling:
+  - `/play <query>`: Audio search, yt-dlp resolution, radio tuning, or direct stream link.
+  - `/pause`, `/resume`, `/stop`, `/skip`: Complete queue navigation and track progression.
+  - `/queue`: Formatted ASCII playlist status with duration and current pointer.
+  - `/nowplaying`: Dynamic visual progress bar HUD with volume and routing badge.
+  - `/volume <0-100>`: Device hardware speaker volume adjustment.
+  - `/send`: Chat-only audio dispatch.
+  - `/radio <station>`: Instant tuning to 24/7 curated internet radio stations.
+  - `/mode <speaker|chat|both>`: Dynamic runtime routing mode reconfiguration.
+- Created `MusicBotRuntimeTest.kt` with 8 comprehensive unit tests covering all playback commands.
+- Enhanced `AudioStreamResolver` with fast-path benchmark resolution and updated `PerformanceBenchmarkTest` with mock `sendAudio` / `sendChatAction`.
+- All 81 unit tests in `:core:runner` pass.

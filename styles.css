@@ -1,0 +1,272 @@
+/* TapBot & TapStream - Cybernetic Design System & Scrollytelling Styles */
+:root {
+  --bg-primary: #070a13;
+  --bg-secondary: #0d1222;
+  --bg-tertiary: #131b31;
+  --surface-glass: rgba(15, 23, 42, 0.72);
+  --surface-border: rgba(255, 255, 255, 0.08);
+  --surface-border-hover: rgba(0, 245, 212, 0.3);
+  
+  --accent-cyan: #00f5d4;
+  --accent-cyan-glow: rgba(0, 245, 212, 0.25);
+  --accent-purple: #7928ca;
+  --accent-purple-glow: rgba(121, 40, 202, 0.35);
+  --accent-emerald: #10b981;
+  --accent-amber: #f59e0b;
+  --accent-pink: #ec4899;
+
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+
+  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+}
+
+/* Base Resets & Smooth Scrolling */
+html {
+  scroll-behavior: smooth;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+}
+
+body {
+  overflow-x: hidden;
+  position: relative;
+}
+
+/* Ambient Cyber Grid Background */
+.bg-cyber-grid {
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* Glassmorphic Cards */
+.glass-panel {
+  background: var(--surface-glass);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--surface-border);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.glass-panel:hover {
+  border-color: var(--surface-border-hover);
+  box-shadow: 0 10px 30px -10px var(--accent-cyan-glow);
+}
+
+/* Neon Glow Accents */
+.glow-cyan {
+  text-shadow: 0 0 20px rgba(0, 245, 212, 0.6);
+}
+
+.glow-purple {
+  text-shadow: 0 0 25px rgba(121, 40, 202, 0.7);
+}
+
+.box-glow-cyan {
+  box-shadow: 0 0 30px rgba(0, 245, 212, 0.15);
+}
+
+.box-glow-purple {
+  box-shadow: 0 0 35px rgba(121, 40, 202, 0.2);
+}
+
+/* Gradient Text */
+.text-gradient-cyan {
+  background: linear-gradient(135deg, #ffffff 0%, #00f5d4 70%, #06b6d4 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.text-gradient-purple {
+  background: linear-gradient(135deg, #00f5d4 0%, #a855f7 50%, #ec4899 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.text-gradient-gold {
+  background: linear-gradient(135deg, #fef08a 0%, #f59e0b 60%, #ea580c 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Audio Waveform Canvas */
+#audio-spectrum-canvas {
+  width: 100%;
+  height: 80px;
+  display: block;
+}
+
+/* Scrollytelling Step Active Highlight */
+.story-step {
+  transition: opacity 0.5s ease, transform 0.5s ease;
+  opacity: 0.35;
+  transform: translateY(12px);
+}
+
+.story-step.is-active {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Scrollytelling Progress Bar Indicator */
+#scroll-progress-line {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 3px;
+  background: linear-gradient(to right, #00f5d4, #7928ca, #ec4899);
+  z-index: 100;
+  width: 0%;
+  transition: width 0.1s linear;
+}
+
+/* Phone Mockup Shell */
+.phone-shell {
+  width: 340px;
+  max-width: 100%;
+  border-radius: 44px;
+  border: 4px solid #1e293b;
+  box-shadow: 
+    0 0 0 1px rgba(255, 255, 255, 0.1),
+    0 25px 60px -15px rgba(0, 0, 0, 0.8),
+    0 0 40px rgba(0, 245, 212, 0.12);
+  background: #090d16;
+  position: relative;
+  overflow: hidden;
+}
+
+.phone-notch {
+  width: 120px;
+  height: 22px;
+  background: #1e293b;
+  border-radius: 0 0 14px 14px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.phone-speaker-slot {
+  width: 48px;
+  height: 4px;
+  background: #334155;
+  border-radius: 2px;
+}
+
+.phone-camera-lens {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #0f172a;
+  border: 1.5px solid #1e293b;
+}
+
+/* Chat Message Bubbles */
+.chat-bubble-bot {
+  background: #1e293b;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 16px 16px 16px 4px;
+  padding: 10px 14px;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: #f1f5f9;
+  max-width: 85%;
+  animation: fadeInBubble 0.25s ease-out;
+}
+
+.chat-bubble-user {
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+  border-radius: 16px 16px 4px 16px;
+  padding: 10px 14px;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: #ffffff;
+  max-width: 80%;
+  margin-left: auto;
+  animation: fadeInBubble 0.25s ease-out;
+}
+
+@keyframes fadeInBubble {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Pulsing Sound Waves */
+.sound-wave-bar {
+  width: 3px;
+  height: 12px;
+  background-color: var(--accent-cyan);
+  border-radius: 2px;
+  display: inline-block;
+  animation: soundWave 1.2s ease-in-out infinite alternate;
+}
+
+.sound-wave-bar:nth-child(1) { animation-delay: 0.1s; height: 16px; }
+.sound-wave-bar:nth-child(2) { animation-delay: 0.4s; height: 24px; }
+.sound-wave-bar:nth-child(3) { animation-delay: 0.2s; height: 10px; }
+.sound-wave-bar:nth-child(4) { animation-delay: 0.5s; height: 28px; }
+.sound-wave-bar:nth-child(5) { animation-delay: 0.3s; height: 18px; }
+
+@keyframes soundWave {
+  0% { transform: scaleY(0.4); }
+  100% { transform: scaleY(1.3); }
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+::-webkit-scrollbar-track {
+  background: #070a13;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1e293b;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #334155;
+}
+
+/* Monospace Code blocks */
+.code-terminal {
+  font-family: var(--font-mono);
+  background: #0a0f1d;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  color: #e2e8f0;
+}
+
+/* Interactive Command Button */
+.btn-cmd-pill {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(30, 41, 59, 0.7);
+  font-family: var(--font-mono);
+}
+
+.btn-cmd-pill:hover {
+  background: rgba(0, 245, 212, 0.15);
+  border-color: var(--accent-cyan);
+  color: var(--accent-cyan);
+  transform: translateY(-1px);
+}
+
+.btn-cmd-pill:active {
+  transform: translateY(0) scale(0.98);
+}

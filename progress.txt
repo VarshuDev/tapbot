@@ -75,3 +75,12 @@
 - Implemented `sendAudio(token, chatId, file, title, performer, duration, caption, parseMode)` supporting multipart form audio file uploads.
 - Created unit tests in `TelegramApiAudioTest.kt` verifying stream URL serialization, multipart file upload, and API error description handling.
 - All 19 tests in `:core:network` passed.
+
+## 2026-11-04 - US-M02: Audio Stream Resolver Service (AudioStreamResolver)
+- Created `AudioStreamResolver` in `com.tapbot.core.runner.audio`.
+- Supports:
+  - Direct HTTP audio streams (`.mp3`, `.m4a`, `.aac`, `.ogg`, `.opus`).
+  - Custom yt-dlp API proxy endpoint querying (`title`, `uploader`, `url`, `duration`, `thumbnail`).
+  - Public audio stream extractor resolution (Piped/Invidious).
+  - 6 curated 24/7 internet radio stations across genres (lofi, synthwave, chillhop, rock, jazz, ambient).
+- Added comprehensive unit tests in `AudioStreamResolverTest.kt`. All tests passed.

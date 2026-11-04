@@ -41,8 +41,8 @@ class MultiBotBenchmarkTest {
     private val benchmarkScope = CoroutineScope(Dispatchers.Default + benchmarkJob)
 
     private class BenchmarkTelegramApiClient : TelegramApiClient() {
-        val sentMessages = mutableListOf<Triple<String, Long, String>>() // token, chatId, text
-        var pollCounts = mutableMapOf<String, Long>()
+        val sentMessages = java.util.Collections.synchronizedList(mutableListOf<Triple<String, Long, String>>()) // token, chatId, text
+        val pollCounts = java.util.concurrent.ConcurrentHashMap<String, Long>()
 
         override suspend fun getMe(token: String): Result<TelegramUser> {
             val username = when {

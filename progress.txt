@@ -84,3 +84,11 @@
   - Public audio stream extractor resolution (Piped/Invidious).
   - 6 curated 24/7 internet radio stations across genres (lofi, synthwave, chillhop, rock, jazz, ambient).
 - Added comprehensive unit tests in `AudioStreamResolverTest.kt`. All tests passed.
+
+## 2026-11-04 - US-M03: On-Device Android Audio Player Engine (DeviceAudioPlayer)
+- Implemented `DeviceAudioPlayer` in `com.tapbot.core.runner.audio`.
+- Supports hardware media stream playback using Android's `MediaPlayer` and `AudioManager`.
+- Added volume scaling (0-100) mapped to `AudioManager.STREAM_MUSIC`.
+- Exposes observable `PlaybackState` flow (status, currentTrack, elapsedMs, durationMs, volumePct, errorMessage).
+- Added `formatProgressBar(barLength)` creating dynamic visual ASCII progress bars (`▶ 01:23 ━━━━●──────── 03:45`).
+- Created unit tests in `DeviceAudioPlayerTest.kt`. All tests passed.

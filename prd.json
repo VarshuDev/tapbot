@@ -1,103 +1,103 @@
 {
   "project": "TapBot",
-  "branchName": "ralph/commander-flagship-bot",
-  "description": "TapBot Commander Flagship on-device remote controller, device watchdog, and fleet manager for Android",
+  "branchName": "ralph/music-streamer-bot",
+  "description": "TapStream - On-Device Music Streaming & Audio Telegram Bot for Android with yt-dlp/stream resolver integration and native phone speaker playback",
   "userStories": [
     {
-      "id": "US-001",
-      "title": "Android Hardware Telemetry Service & Diagnostic DTOs",
-      "description": "As a user, I want the bot to query physical device stats so I can inspect battery, RAM, storage, and network remotely via /status and /battery.",
+      "id": "US-M01",
+      "title": "TelegramApiClient Audio Delivery Extensions (sendAudio)",
+      "description": "As a user, I want the bot to send playable audio tracks directly to Telegram chat via sendAudio using direct stream URLs or audio files.",
       "acceptanceCriteria": [
-        "Create DeviceTelemetryProvider querying BatteryManager, ActivityManager (RAM), StatFs (disk), and ConnectivityManager",
-        "Implement formatted text output with battery health, temperature, charging state, and Doze whitelist status",
-        "Unit test DeviceTelemetryProvider with mocked Android managers",
+        "Implement sendAudio with audio stream URL, title, performer, duration, caption, and parseMode in TelegramApiClient",
+        "Implement sendAudio with multipart File upload for cached/downloaded audio files",
+        "Unit test sendAudio request building and parameter serialization in core:network",
         "Typecheck passes",
         "Tests pass"
       ],
       "priority": 1,
       "passes": true,
-      "notes": "DeviceTelemetryProvider implemented and tested with 42 unit tests passing."
+      "notes": "sendAudio implemented in TelegramApiClient with URL streaming and multipart file upload, SendAudioPayload added to model, and all core:network unit tests pass."
     },
     {
-      "id": "US-002",
-      "title": "Remote Android Hardware Actions Controller",
-      "description": "As a user, I want to trigger phone actions via Telegram so I can find my misplaced phone with /ring, toggle flashlight with /torch, and send notifications with /notify.",
+      "id": "US-M02",
+      "title": "Audio Stream Resolver Service (AudioStreamResolver)",
+      "description": "As a user, I want the bot to search and resolve audio streams from YouTube/yt-dlp APIs, audio URLs, and curated 24/7 radio stations.",
       "acceptanceCriteria": [
-        "Implement DeviceActionController using AudioManager (Ringtone alert with max volume), CameraManager (Torch toggle), and Vibrator",
-        "Implement owner authentication checking Telegram numeric user_id against configured owner_id",
-        "Add safety timeout auto-silencing the ringtone after 15 seconds or via /stopring",
-        "Unit test action handlers and owner gating",
+        "Create AudioStreamResolver supporting search queries, direct audio links, and custom yt-dlp API endpoints",
+        "Include curated 24/7 internet radio stations (Lofi Girl, Synthwave, Chillhop, Classic Rock, Jazz FM) with zero-buffering stream URLs",
+        "Parse track metadata (title, artist, durationSeconds, streamUrl, thumbnailUrl)",
+        "Unit test stream resolution, search fallbacks, and radio station indexing in core:runner",
         "Typecheck passes",
         "Tests pass"
       ],
       "priority": 2,
-      "passes": true,
-      "notes": "DeviceActionController implemented with AudioManager, CameraManager, and Vibrator, owner auth checks, safety auto-silencing, and full unit test coverage."
+      "passes": false,
+      "notes": ""
     },
     {
-      "id": "US-003",
-      "title": "Fleet Command Router & In-Telegram Bot Management",
-      "description": "As a user, I want to control my TapBot fleet remotely via Telegram commands (/bots, /startbot, /stopbot, /restartbot, /logs).",
+      "id": "US-M03",
+      "title": "On-Device Android Audio Player Engine (DeviceAudioPlayer)",
+      "description": "As a user, I want the bot to physically stream and play music out loud on the Android phone speakers or connected Bluetooth sound system.",
       "acceptanceCriteria": [
-        "Wire BotInstanceManager to CommanderBotRuntime command dispatch",
-        "/bots returns real-time status list with emojis and poll counts",
-        "/logs <bot_id> [lines] returns the last N sanitized log lines from LogRepository",
-        "Unit test fleet commands with mock BotInstanceManager",
+        "Implement DeviceAudioPlayer wrapping Android MediaPlayer with async stream preparation and error recovery",
+        "Implement playback control: play, pause, resume, stop, seekTo, and AudioManager volume scaling (0-100)",
+        "Expose real-time PlaybackState flow (status, currentTrack, elapsedMs, durationMs, volumePct)",
+        "Include JVM test fallback so unit tests run cleanly without native Android audio hardware",
+        "Unit test playback states, queue progression, and volume control in core:runner",
         "Typecheck passes",
         "Tests pass"
       ],
       "priority": 3,
-      "passes": true,
-      "notes": "FleetCommandRouter implemented for /bots, /startbot, /stopbot, /restartbot, and /logs with token redaction sanitization and unit test suite passing."
+      "passes": false,
+      "notes": ""
     },
     {
-      "id": "US-004",
-      "title": "Autonomous Background Watchdog Coroutine",
-      "description": "As a user, I want autonomous Telegram push alerts when the host phone battery drops below 15% or when any bot crashes.",
+      "id": "US-M04",
+      "title": "TapStream Music Bot Runtime & Interactive Command Router",
+      "description": "As a user, I want Telegram playback commands (/play, /pause, /resume, /stop, /skip, /queue, /nowplaying, /volume, /send, /radio, /mode).",
       "acceptanceCriteria": [
-        "Implement DeviceWatchdog running periodic background checks in CommanderBotRuntime",
-        "Trigger urgent Telegram message to owner_id if battery < threshold and discharging",
-        "Listen to BotInstanceManager crash events and immediately push crash notification with error message",
-        "Debounce battery alerts to avoid spamming (minimum 30 minutes between warnings)",
-        "Unit test watchdog threshold detection and debouncing",
+        "Upgrade MusicBotRuntime to integrate AudioStreamResolver, DeviceAudioPlayer, and TelegramApiClient sendAudio",
+        "Support dual playback modes: SPEAKER (phone hardware audio) and CHAT (sendAudio in Telegram)",
+        "Implement /nowplaying with visual ASCII time progress bar (▶ 01:23 ━━━━●──────── 03:45)",
+        "Implement /radio command for instant 24/7 streaming station selection",
+        "Unit test all music commands, queue transitions, and mode switching in core:runner",
         "Typecheck passes",
         "Tests pass"
       ],
       "priority": 4,
-      "passes": true,
-      "notes": "DeviceWatchdog implemented with threshold detection (< 15% and discharging), 30-minute debouncing, bot crash alert deduplication, and full unit test coverage."
+      "passes": false,
+      "notes": ""
     },
     {
-      "id": "US-005",
-      "title": "In-Chat Direct APK Document Delivery (/apk)",
-      "description": "As a user, I want to download the latest installed TapBot APK directly in Telegram by typing /apk.",
+      "id": "US-M05",
+      "title": "Store Catalog Registration & Package Bundling",
+      "description": "As a user, I want TapStream Music Bot visible in the in-app catalog store with configurable credential fields.",
       "acceptanceCriteria": [
-        "Implement Telegram sendDocument multipart upload reading the app's base.apk via context.applicationInfo.sourceDir",
-        "Compute SHA-256 integrity checksum and format in caption message",
-        "Handle file size limit gracefully with clear user error message if APK exceeds Telegram 50MB bot upload limit",
-        "Unit test APK file resolver and checksum generation",
+        "Create backend migration 0007_music_streamer_bot.sql with bot_music_streamer metadata and credentials",
+        "Update MockCatalogApi to register TapStream with stream_resolver_url, default_volume, and playback_mode settings",
+        "Create sample-bots/music-streamer-bot manifest and package tapstream-music-1.0.0.botpkg into app assets",
+        "Update BotRuntimeFactory to map music-streamer to MusicBotRuntime",
         "Typecheck passes",
         "Tests pass"
       ],
       "priority": 5,
-      "passes": true,
-      "notes": "ApkDeliveryService implemented with ApplicationInfo.sourceDir discovery, SHA-256 calculation, Telegram 50MB file size checking, multipart sendDocument upload, and unit test suite passing."
+      "passes": false,
+      "notes": ""
     },
     {
-      "id": "US-006",
-      "title": "Catalog Store Registration & In-App Installation Flow",
-      "description": "As a user, I want TapBot Commander visible in the store and installable with credential fields for Bot Token and Owner ID.",
+      "id": "US-M06",
+      "title": "End-to-End Build & Multi-Module Verification",
+      "description": "As a developer, I want the full project build and unit test suite across all modules to pass cleanly.",
       "acceptanceCriteria": [
-        "Verify 0006_commander_bot.sql is seeded in the catalog database",
-        "Ensure package tapbot-commander-1.0.0.botpkg is available in local package repository",
-        "Verify BotDetailScreen displays Owner ID and Low Battery Threshold configuration fields",
-        "Run ./gradlew assembleDebug and verify app launches clean",
+        "Run ./gradlew.bat test across all modules (:core:runner, :core:network, :feature:catalog, :feature:botdetail, :app)",
+        "Run ./gradlew.bat assembleDebug and verify APK packaging without regressions",
+        "Verify all user stories pass in prd.json",
         "Typecheck passes",
         "Tests pass"
       ],
       "priority": 6,
-      "passes": true,
-      "notes": "Verified 0006_commander_bot.sql seeded, tapbot-commander-1.0.0.botpkg verified in assets, BotDetailScreen credential fields (bot_token, owner_id, low_battery_threshold) validated, and full assembleDebug and test suite build passes."
+      "passes": false,
+      "notes": ""
     }
   ]
 }

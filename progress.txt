@@ -57,3 +57,21 @@
 - Verified `MockCatalogApi` and `BotDetailScreen` credential fields: `bot_token`, `owner_id`, `low_battery_threshold`.
 - Executed `./gradlew.bat assembleDebug` (211 tasks) and `./gradlew.bat test` (271 tasks) across all modules (`:app`, `:feature:catalog`, `:feature:botdetail`, `:core:runner`, `:core:network`, `:core:security`, `:core:logging`, `:core:model`). All tests passed.
 - Milestone Complete: All user stories US-001 through US-006 passing.
+
+
+---
+## Milestone 2: TapStream Music Streamer & Audio Bot (Ralph Execution)
+- Branch: `ralph/music-streamer-bot`
+- Goals:
+  - Add Telegram audio delivery (`sendAudio`) with streaming URL and file upload support.
+  - Implement `AudioStreamResolver` for resolving YouTube/yt-dlp search queries, direct audio links, and 24/7 internet radio stations.
+  - Implement `DeviceAudioPlayer` for hardware phone speaker/Bluetooth playback using Android `MediaPlayer`.
+  - Upgrade `MusicBotRuntime` with full playback controls, queue HUD, volume scaling, and dual playback routing.
+  - Register TapStream in store catalog and migration `0007_music_streamer_bot.sql`.
+
+## 2026-11-04 - US-M01: TelegramApiClient Audio Delivery Extensions (sendAudio)
+- Added `SendAudioPayload` data class to `core:model`.
+- Implemented `sendAudio(token, chatId, audioUrl, title, performer, duration, caption, parseMode)` in `TelegramApiClient`.
+- Implemented `sendAudio(token, chatId, file, title, performer, duration, caption, parseMode)` supporting multipart form audio file uploads.
+- Created unit tests in `TelegramApiAudioTest.kt` verifying stream URL serialization, multipart file upload, and API error description handling.
+- All 19 tests in `:core:network` passed.

@@ -1,5 +1,6 @@
 package com.tapbot.core.network
 
+import com.tapbot.core.model.SendAudioPayload
 import com.tapbot.core.model.SendMessagePayload
 import com.tapbot.core.model.TelegramApiResponse
 import com.tapbot.core.model.TelegramUpdate
@@ -392,6 +393,93 @@ open class TelegramApiClient(
                 true
             } else {
                 throw IOException(apiResponse.description ?: "sendDocument error")
+            }
+        }
+    }
+
+    /**
+     * Sends an audio track to a chat via direct audio stream/file URL.
+     */
+    open suspend fun sendAudio(
+        token: String,
+        chatId: Long,
+        audioUrl: String,
+        title: String? = null,
+        performer: String? = null,
+        duration: Int? = null,
+        caption: String? = null,
+        parseMode: String? = null,
+        replyToMessageId: Long? = null
+    ): Result<Boolean> = runCatching {
+        withContext(Dispatchers.IO) {
+            val url = "$BASE_URL/bot$token/sendAudio"
+            val payload = SendAudioPayload(
+                chatId = chatId,
+                audio = audioUrl,
+                caption = caption,
+                parseMode = parseMode,
+                duration = duration,
+                performer = performer,
+                title = title,
+                replyToMessageId = replyToMessageId
+            )
+            val requestBody = json.encodeToString(payload).toRequestBody(jsonMediaType)
+            val request = Request.Builder().url(url).post(requestBody).build()
+
+            val body = client.newCall(request).execute().use { response ->
+                response.body?.string().orEmpty()
+            }
+            val apiResponse = json.decodeFromString<TelegramApiResponse<kotlinx.serialization.json.JsonElement>>(body)
+            if (apiResponse.ok) {
+                true
+            } else {
+                throw IOException(apiResponse.description ?: "sendAudio error")
+            }
+        }
+    }
+
+    /**
+     * Uploads and sends a local audio file (.mp3, .m4a, .ogg) to a chat or channel.
+     */
+    open suspend fun sendAudio(
+        token: String,
+        chatId: Long,
+        file: File,
+        title: String? = null,
+        performer: String? = null,
+        duration: Int? = null,
+        caption: String? = null,
+        parseMode: String? = null
+    ): Result<Boolean> = runCatching {
+        withContext(Dispatchers.IO) {
+            val url = "$BASE_URL/bot$token/sendAudio"
+            val mediaType = "audio/mpeg".toMediaType()
+            val fileBody = file.asRequestBody(mediaType)
+
+            val multipartBuilder = MultipartBody.Builder()
+                .setType(MultipartBody.FORM)
+                .addFormDataPart("chat_id", chatId.toString())
+                .addFormDataPart("audio", file.name, fileBody)
+
+            if (!title.isNullOrBlank()) multipartBuilder.addFormDataPart("title", title)
+            if (!performer.isNullOrBlank()) multipartBuilder.addFormDataPart("performer", performer)
+            if (duration != null && duration > 0) multipartBuilder.addFormDataPart("duration", duration.toString())
+            if (!caption.isNullOrBlank()) multipartBuilder.addFormDataPart("caption", caption)
+            if (!parseMode.isNullOrBlank()) multipartBuilder.addFormDataPart("parse_mode", parseMode)
+
+            val request = Request.Builder()
+                .url(url)
+                .post(multipartBuilder.build())
+                .build()
+
+            val body = client.newCall(request).execute().use { response ->
+                response.body?.string().orEmpty()
+            }
+            val apiResponse = json.decodeFromString<TelegramApiResponse<kotlinx.serialization.json.JsonElement>>(body)
+            if (apiResponse.ok) {
+                true
+            } else {
+                throw IOException(apiResponse.description ?: "sendAudio error")
             }
         }
     }

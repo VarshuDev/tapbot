@@ -107,3 +107,16 @@ data class DeleteMessagePayload(
     @SerialName("chat_id") val chatId: Long,
     @SerialName("message_id") val messageId: Long
 )
+
+@Serializable
+data class SendAudioPayload(
+    @SerialName("chat_id") val chatId: Long,
+    val audio: String,
+    val caption: String? = null,
+    @SerialName("parse_mode") val parseMode: String? = null,
+    val duration: Int? = null,
+    val performer: String? = null,
+    val title: String? = null,
+    @SerialName("reply_to_message_id") val replyToMessageId: Long? = null
+)
+

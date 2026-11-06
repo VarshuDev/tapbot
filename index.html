@@ -3,553 +3,276 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TapBot & TapStream — Hardware-Native Android Telegram Bot Platform</title>
-  <meta name="description" content="Turn any Android phone into a 24/7 Telegram bot server and music streamer. Zero cloud bills, hardware Keystore security, and on-device speaker audio.">
+  <title>TapBot — Your Phone Is the Server</title>
+  <meta name="description" content="Turn any spare Android phone into a 24/7 Telegram bot server and music streamer. No cloud. No VPS. No bills.">
 
-  <!-- Google Fonts: JetBrains Mono & Plus Jakarta Sans -->
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2300ff88'><path d='M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3'/></svg>">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+
+  <!-- IBM Plex Sans + JetBrains Mono (design system recommendation) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-  <!-- Tailwind CSS -->
-  <script src="https://cdn.tailwindcss.com"></script>
-
-  <!-- GSAP 3 & ScrollTrigger for real pinned scrollytelling -->
+  <!-- GSAP + ScrollTrigger + SplitText -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
 
-  <!-- Custom Industrial Cyberdeck Stylesheet -->
   <link rel="stylesheet" href="styles.css">
 </head>
-<body class="chassis-texture selection:bg-cyan-500/30 selection:text-cyan-200">
+<body>
 
-  <!-- Top System Header Bar -->
-  <header class="border-b border-[#232838] bg-[#0a0c12]/95 backdrop-blur-md sticky top-0 z-50">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-      
-      <!-- Logo & System Indicator -->
-      <a href="#" class="flex items-center gap-3">
-        <div class="w-9 h-9 rounded-lg bg-[#141824] border border-[#2d354b] flex items-center justify-center text-cyan-400 font-mono font-bold text-sm shadow-inner">
-          <svg class="w-5 h-5 text-[#00ff88]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-          </svg>
-        </div>
-        <div>
-          <div class="flex items-center gap-2">
-            <span class="font-extrabold text-sm sm:text-base text-white font-mono uppercase tracking-tight">TapBot // ART-Host</span>
-            <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-bold">v2.2.0</span>
-          </div>
-          <span class="text-[10px] font-mono text-slate-500 block -mt-0.5">ON-DEVICE TELEGRAM ENGINE</span>
-        </div>
+  <!-- ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ -->
+  <!-- NAV                                                                     -->
+  <!-- ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ -->
+  <nav id="nav">
+    <div class="nav-inner">
+      <a href="#" class="nav-brand">
+        <span class="nav-logo">TB</span>
+        <span class="nav-name">TapBot</span>
       </a>
-
-      <!-- Desktop Nav -->
-      <nav class="hidden md:flex items-center gap-6 text-xs font-mono font-medium text-slate-400">
-        <a href="#console" class="hover:text-cyan-400 transition-colors">// MASTER_CONSOLE</a>
-        <a href="#pipeline-stage" class="hover:text-cyan-400 transition-colors">// PIPELINE_PIN</a>
-        <a href="#benchmarks" class="hover:text-cyan-400 transition-colors">// BENCHMARKS</a>
-        <a href="#developer" class="hover:text-cyan-400 transition-colors">// DEV_ORIGIN</a>
-        <a href="#download" class="hover:text-cyan-400 transition-colors">// APK_BIN</a>
-      </nav>
-
-      <!-- Action Cluster -->
-      <div class="flex items-center gap-3">
-        <button id="toggle-sound-btn" class="tactile-btn px-2.5 py-1.5 rounded-lg text-[11px] flex items-center gap-1.5 text-slate-300">
-          <span class="led-dot green-on"></span>
-          <span>AUDIO FX: ON</span>
-        </button>
-
-        <a href="https://github.com/VarshuDev/tapbot" target="_blank" rel="noopener noreferrer" class="tactile-btn p-1.5 rounded-lg text-slate-300 hover:text-white" title="GitHub Repository">
-          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-            <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
-          </svg>
-        </a>
-
-        <a href="#download" class="tactile-btn px-3 py-1.5 rounded-lg text-[11px] text-cyan-300 border-cyan-500/40 hover:text-white flex items-center gap-1.5">
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
-          </svg>
-          <span>APK (19.3MB)</span>
-        </a>
+      <div class="nav-links">
+        <a href="#how">How</a>
+        <a href="#features">Features</a>
+        <a href="#terminal">Try It</a>
+        <a href="#dev">Dev</a>
       </div>
-
+      <div class="nav-actions">
+        <a href="https://github.com/VarshuDev/tapbot" target="_blank" rel="noopener" class="nav-gh" aria-label="GitHub">
+          <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/></svg>
+        </a>
+        <a href="#download" class="nav-cta">Download APK</a>
+      </div>
     </div>
-  </header>
+  </nav>
 
-  <!-- ========================================================================= -->
-  <!-- HERO BANNER                                                               -->
-  <!-- ========================================================================= -->
-  <section class="py-14 px-4 sm:px-6 max-w-7xl mx-auto">
-    <div class="max-w-4xl">
-      
-      <!-- System Telemetry Badge -->
-      <div class="inline-flex items-center gap-2 px-3 py-1 rounded bg-[#10141f] border border-[#273044] text-[11px] font-mono text-cyan-400 mb-6">
-        <span class="w-2 h-2 rounded-full bg-[#00ff88] animate-pulse"></span>
-        <span>DEVICE STATUS: ONLINE • 0 DISK FLASH WRITES • ART BYTECODE JIT</span>
-      </div>
-
-      <!-- Main Headline -->
-      <h1 class="text-3xl sm:text-6xl font-extrabold text-white tracking-tight leading-[1.08] mb-6">
-        Stop Paying \$15/mo for VPS. <br/>
-        <span class="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-emerald-400 to-amber-400">
-          Your Android Phone is a 24/7 Telegram Server.
-        </span>
+  <!-- ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ -->
+  <!-- HERO                                                                    -->
+  <!-- ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ -->
+  <section id="hero">
+    <div class="hero-inner">
+      <p class="hero-eyebrow">Open-source &middot; Android 8–15+ &middot; Zero cloud bills</p>
+      <h1 class="hero-h1">
+        <span class="hero-line">Your old phone</span>
+        <span class="hero-line">is a <em>server.</em></span>
       </h1>
-
-      <!-- Subtitle -->
-      <p class="text-base sm:text-lg text-slate-300 font-normal leading-relaxed max-w-3xl mb-8">
-        TapBot runs compiled Kotlin bytecode directly on native Android ART. Stream room music through connected phone speakers with <b>TapStream Music</b>, control hardware telemetry with <b>TapBot Commander</b>, and encrypt bot credentials in the Android Keystore enclave.
+      <p class="hero-sub">
+        TapBot turns any spare Android into a 24/7 Telegram bot host and music streamer.
+        Compiled Kotlin on native ART. No root. No VPS.
       </p>
-
-      <!-- Key Engineering Tags -->
-      <div class="flex flex-wrap gap-2 text-xs font-mono">
-        <span class="px-2.5 py-1 rounded bg-[#141824] border border-[#242c3d] text-slate-300">⚡ 14.2MB Heap RAM</span>
-        <span class="px-2.5 py-1 rounded bg-[#141824] border border-[#242c3d] text-slate-300">🛡 AES-256-GCM Keystore</span>
-        <span class="px-2.5 py-1 rounded bg-[#141824] border border-[#242c3d] text-slate-300">📻 6 Zero-Buffer Radio Stations</span>
-        <span class="px-2.5 py-1 rounded bg-[#141824] border border-[#242c3d] text-slate-300">🔊 Dual Speaker + Chat Output</span>
-      </div>
-
-    </div>
-  </section>
-
-  <!-- ========================================================================= -->
-  <!-- INTERACTIVE MASTER CYBERDECK (AUDIO TAPE + VU METERS + OSCILLOSCOPE)       -->
-  <!-- ========================================================================= -->
-  <section id="console" class="py-10 px-4 sm:px-6 max-w-7xl mx-auto">
-    
-    <div class="panel-industrial rounded-2xl p-5 sm:p-8">
-      
-      <!-- Top Cyberdeck Header Strip -->
-      <div class="flex flex-wrap items-center justify-between pb-4 mb-6 border-b border-[#232938] gap-4">
-        <div class="flex items-center gap-3">
-          <div class="text-xs font-mono font-bold text-white tracking-wider flex items-center gap-2">
-            <span class="w-2.5 h-2.5 rounded-full bg-cyan-400"></span>
-            <span>TAPSTREAM // MODEL TS-2200</span>
-          </div>
-          <span class="text-[11px] font-mono text-slate-500">| HIGH-FIDELITY ON-DEVICE AUDIO ENGINE</span>
-        </div>
-
-        <div class="flex items-center gap-4 text-xs font-mono">
-          <div class="flex items-center gap-1.5">
-            <span class="led-dot green-on"></span>
-            <span class="text-slate-400">POWER</span>
-          </div>
-          <div class="flex items-center gap-1.5">
-            <span id="vu-peak-led" class="led-dot"></span>
-            <span class="text-slate-400">OVERLOAD</span>
-          </div>
-          <div class="flex items-center gap-1.5">
-            <span class="text-slate-500">BITRATE:</span>
-            <span id="deck-bitrate" class="text-cyan-400 font-bold">320 KBPS</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Main Deck Grid (3 Columns) -->
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        
-        <!-- Left: Dual VU Meters & Phosphor Oscilloscope (4 cols) -->
-        <div class="lg:col-span-4 space-y-4">
-          
-          <!-- Dual Analog Needle VU Meter -->
-          <div class="vu-meter-housing">
-            <div class="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-widest mb-2 flex justify-between">
-              <span>OUTPUT LEVEL (dB)</span>
-              <span class="text-cyan-400">STEREO L / R</span>
-            </div>
-
-            <div class="grid grid-cols-2 gap-2">
-              
-              <!-- Channel L -->
-              <div class="vu-face">
-                <div class="vu-scale-ticks">
-                  <span>-20</span>
-                  <span>-10</span>
-                  <span>-3</span>
-                  <span class="text-red-400">0</span>
-                  <span class="text-red-500">+3</span>
-                </div>
-                <div id="vu-needle-left" class="vu-needle"></div>
-                <div class="vu-needle-pivot"></div>
-              </div>
-
-              <!-- Channel R -->
-              <div class="vu-face">
-                <div class="vu-scale-ticks">
-                  <span>-20</span>
-                  <span>-10</span>
-                  <span>-3</span>
-                  <span class="text-red-400">0</span>
-                  <span class="text-red-500">+3</span>
-                </div>
-                <div id="vu-needle-right" class="vu-needle"></div>
-                <div class="vu-needle-pivot"></div>
-              </div>
-
-            </div>
-          </div>
-
-          <!-- Phosphor Oscilloscope Tube -->
-          <div class="p-3 bg-[#0a0c13] border border-[#222938] rounded-xl">
-            <div class="text-[10px] font-mono text-emerald-400 uppercase tracking-wider mb-1 flex items-center justify-between">
-              <span>OSCILLOSCOPE SINE TRACE</span>
-              <span class="text-slate-500">44.1 kHz</span>
-            </div>
-            <canvas id="oscilloscope-canvas" class="w-full h-24 rounded-lg"></canvas>
-          </div>
-
-          <!-- Rotary Hardware Volume Encoder -->
-          <div class="p-4 bg-[#0e111a] border border-[#252c3e] rounded-xl flex items-center justify-between">
-            <div>
-              <div class="text-[11px] font-mono font-bold text-slate-300 uppercase">SPEAKER GAIN</div>
-              <div class="text-[10px] font-mono text-slate-500">DRAG OR USE WHEEL</div>
-              <div id="vol-rotary-val" class="text-xl font-mono font-extrabold text-amber-400 mt-1">80%</div>
-            </div>
-            
-            <div class="flex flex-col items-center">
-              <div id="vol-rotary-knob" class="rotary-knob"></div>
-            </div>
-          </div>
-
-        </div>
-
-        <!-- Middle: Cassette Deck & Radio Tuner Presets (4 cols) -->
-        <div class="lg:col-span-4 space-y-4">
-          
-          <!-- Spinning Dual-Reel Cassette Deck -->
-          <div class="cassette-deck p-3 flex flex-col justify-between">
-            <div class="flex items-center justify-between text-[10px] font-mono text-slate-400 border-b border-[#283144] pb-1">
-              <span>CASSETTE COMPARTMENT</span>
-              <span class="text-cyan-400 font-bold">TYPE-II CHROME</span>
-            </div>
-
-            <!-- Cassette Body & Dual Spinning Reels -->
-            <div class="cassette-window">
-              <div class="cassette-reel is-spinning"></div>
-              <div class="cassette-tape-bar"></div>
-              <div class="cassette-reel is-spinning"></div>
-            </div>
-
-            <!-- Tape Label -->
-            <div class="text-center pt-1 font-mono">
-              <div id="tape-label-title" class="text-xs font-extrabold text-amber-400 truncate tracking-wider">LOFI GIRL STUDY BEATS</div>
-              <div id="tape-label-artist" class="text-[10px] text-slate-400 truncate">LOFI GIRL 24/7 • 320 KBPS</div>
-            </div>
-          </div>
-
-          <!-- 24/7 Internet Radio Tuner Preset Buttons -->
-          <div class="p-3 bg-[#0e111a] border border-[#252c3e] rounded-xl">
-            <div class="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider mb-2">
-              RADIO PRESETS (ZERO BUFFER LAG)
-            </div>
-            <div class="grid grid-cols-3 gap-2">
-              <button data-tune-btn="lofi" class="tactile-btn is-active py-2 px-2 text-[10px] rounded text-center">LOFI</button>
-              <button data-tune-btn="synthwave" class="tactile-btn py-2 px-2 text-[10px] rounded text-center">SYNTH</button>
-              <button data-tune-btn="rock" class="tactile-btn py-2 px-2 text-[10px] rounded text-center">ROCK</button>
-              <button data-tune-btn="chillhop" class="tactile-btn py-2 px-2 text-[10px] rounded text-center">CHILL</button>
-              <button data-tune-btn="jazz" class="tactile-btn py-2 px-2 text-[10px] rounded text-center">JAZZ</button>
-              <button data-tune-btn="space" class="tactile-btn py-2 px-2 text-[10px] rounded text-center">SPACE</button>
-            </div>
-          </div>
-
-          <!-- Dual Audio Routing Switch -->
-          <div class="p-3 bg-[#0e111a] border border-[#252c3e] rounded-xl">
-            <div class="flex items-center justify-between text-[10px] font-mono font-bold text-slate-400 uppercase mb-2">
-              <span>AUDIO SIGNAL ROUTING</span>
-              <div class="flex items-center gap-2">
-                <span class="flex items-center gap-1 text-[9px] text-slate-400"><span id="led-route-spk" class="led-dot green-on"></span> SPK</span>
-                <span class="flex items-center gap-1 text-[9px] text-slate-400"><span id="led-route-chat" class="led-dot cyan-on"></span> CHAT</span>
-              </div>
-            </div>
-            <div class="grid grid-cols-3 gap-2">
-              <button data-route-mode="SPEAKER" class="tactile-btn py-2 text-[10px] rounded text-center">SPEAKER</button>
-              <button data-route-mode="BOTH" class="tactile-btn is-active py-2 text-[10px] rounded text-center">BOTH</button>
-              <button data-route-mode="CHAT" class="tactile-btn py-2 text-[10px] rounded text-center">CHAT</button>
-            </div>
-          </div>
-
-          <!-- Transport Control Buttons -->
-          <div class="flex gap-2">
-            <button id="transport-play" class="tactile-btn is-active flex-1 py-2 text-xs rounded text-center flex items-center justify-center gap-1">
-              <svg class="w-3.5 h-3.5 text-emerald-400" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-              <span>PLAY</span>
-            </button>
-            <button id="transport-pause" class="tactile-btn flex-1 py-2 text-xs rounded text-center flex items-center justify-center gap-1">
-              <svg class="w-3.5 h-3.5 text-amber-400" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
-              <span>PAUSE</span>
-            </button>
-          </div>
-
-        </div>
-
-        <!-- Right: Real Telegram Command Terminal (4 cols) -->
-        <div class="lg:col-span-4 flex flex-col h-full justify-between">
-          
-          <div class="terminal-phone flex-1 flex flex-col">
-            
-            <!-- Terminal Header -->
-            <div class="p-3 bg-[#11141e] border-b border-[#283144] flex items-center justify-between text-xs font-mono">
-              <div class="flex items-center gap-2">
-                <span class="w-2 h-2 rounded-full bg-[#00ff88]"></span>
-                <span class="font-bold text-white">TELEGRAM BOT API // LIVE</span>
-              </div>
-              <span class="text-[10px] text-slate-500">Android ART</span>
-            </div>
-
-            <!-- Chat Stream Scroll -->
-            <div id="chat-stream" class="p-3 space-y-2.5 h-80 overflow-y-auto bg-[#07090e]">
-              <div class="p-2.5 rounded-lg bg-[#141824] border border-[#262e42] text-slate-200 text-xs font-mono max-w-[90%]">
-                🎧 <b>TapStream v2.2.0 Ready!</b><br/>
-                On-device Android host connected.<br/>
-                Try clicking radio presets on the left or type <code>/nowplaying</code>.
-              </div>
-            </div>
-
-            <!-- Terminal Command Input Box -->
-            <div class="p-2.5 bg-[#0e111a] border-t border-[#252c3e] flex items-center gap-2">
-              <input type="text" id="chat-input" placeholder="Enter /play, /nowplaying, /status..." class="flex-1 bg-[#06080d] border border-[#2b3449] rounded-lg px-2.5 py-1.5 text-xs font-mono text-white placeholder-slate-600 focus:outline-none focus:border-cyan-400">
-              <button onclick="if(window.consoleDeck){window.consoleDeck.handleCommand(document.getElementById('chat-input').value); document.getElementById('chat-input').value='';}" class="tactile-btn px-2.5 py-1.5 rounded-lg text-xs font-mono text-cyan-300">
-                SEND
-              </button>
-            </div>
-
-          </div>
-
-        </div>
-
-      </div>
-
-    </div>
-
-  </section>
-
-  <!-- ========================================================================= -->
-  <!-- TRUE PINNED GSAP SCROLLYTELLING PIPELINE                                 -->
-  <!-- ========================================================================= -->
-  <section id="pipeline-stage" class="scrolly-scene border-t border-[#232838] py-20 px-4 sm:px-6">
-    
-    <div class="max-w-7xl mx-auto scrolly-sticky flex flex-col justify-between">
-      
-      <!-- Section Header -->
-      <div class="mb-6">
-        <div class="inline-flex items-center gap-2 px-3 py-1 rounded bg-[#10141f] border border-[#273044] text-[11px] font-mono text-cyan-400 mb-2">
-          <span>REAL-TIME BYTECODE EXECUTION</span>
-        </div>
-        <h2 class="text-2xl sm:text-4xl font-extrabold text-white tracking-tight">
-          From Telegram Packet to Room Speaker Audio
-        </h2>
-        <p class="text-xs sm:text-sm text-slate-400 font-mono">
-          Scroll down to scrub through the 4 on-device hardware execution phases:
-        </p>
-      </div>
-
-      <!-- Pinned 4-Stage Architectural Diagram -->
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-4 my-auto">
-        
-        <!-- Step 1 -->
-        <div id="pipe-node-1" class="pipeline-node p-5 rounded-xl is-active">
-          <div class="text-[10px] font-mono text-slate-500 font-bold mb-1">PHASE 01 // INGRESS</div>
-          <div class="text-sm font-bold text-cyan-300 font-mono mb-2">Adaptive Long Polling</div>
-          <p class="text-xs text-slate-400 leading-relaxed font-sans">
-            Device maintains long-poll socket via <code>OkHttpClient</code>. If Wi-Fi disconnects, <code>AdaptiveBackoff</code> suppresses 80%+ of CPU wakeups until connectivity resumes.
-          </p>
-        </div>
-
-        <!-- Step 2 -->
-        <div id="pipe-node-2" class="pipeline-node p-5 rounded-xl">
-          <div class="text-[10px] font-mono text-slate-500 font-bold mb-1">PHASE 02 // EXECUTION</div>
-          <div class="text-sm font-bold text-emerald-300 font-mono mb-2">In-Memory Ring Buffer</div>
-          <p class="text-xs text-slate-400 leading-relaxed font-sans">
-            State events pass into a synchronized in-memory ring buffer. <b>0 bytes</b> written to flash storage during continuous polling, protecting phone flash memory from burnout.
-          </p>
-        </div>
-
-        <!-- Step 3 -->
-        <div id="pipe-node-3" class="pipeline-node p-5 rounded-xl">
-          <div class="text-[10px] font-mono text-slate-500 font-bold mb-1">PHASE 03 // RESOLUTION</div>
-          <div class="text-sm font-bold text-amber-300 font-mono mb-2">AudioStreamResolver</div>
-          <p class="text-xs text-slate-400 leading-relaxed font-sans">
-            Extracts audio stream via yt-dlp API proxy or tunes to 6 high-bitrate zero-buffer internet radio stations. Hardware <code>MediaPlayer</code> initializes asynchronously.
-          </p>
-        </div>
-
-        <!-- Step 4 -->
-        <div id="pipe-node-4" class="pipeline-node p-5 rounded-xl">
-          <div class="text-[10px] font-mono text-slate-500 font-bold mb-1">PHASE 04 // EGRESS</div>
-          <div class="text-sm font-bold text-cyan-300 font-mono mb-2">Dual Playback Delivery</div>
-          <p class="text-xs text-slate-400 leading-relaxed font-sans">
-            Audio streams physically through phone speakers via <code>AudioManager</code> AND uploads directly to Telegram chats via <code>sendAudio</code> with scrub timeline & artwork.
-          </p>
-        </div>
-
-      </div>
-
-      <!-- Scrolly Step Indicator Strip -->
-      <div class="border-t border-[#1e2333] pt-4 flex items-center justify-between text-xs font-mono text-slate-500">
-        <div>STAGE: <span id="pipeline-active-stage" class="text-white font-bold">1 / 4 • INGRESS PACKET</span></div>
-        <div>CONTINUE SCROLLING TO ADVANCE HARDWARE PIPELINE ↓</div>
-      </div>
-
-    </div>
-
-  </section>
-
-  <!-- ========================================================================= -->
-  <!-- PERFORMANCE BENCHMARKS (EVIDENCE OVER HYPE)                               -->
-  <!-- ========================================================================= -->
-  <section id="benchmarks" class="py-16 px-4 sm:px-6 max-w-7xl mx-auto border-t border-[#232838]">
-    
-    <div class="mb-10">
-      <div class="inline-flex items-center gap-2 px-3 py-1 rounded bg-[#10141f] border border-[#273044] text-[11px] font-mono text-emerald-400 mb-2">
-        <span>VERIFIED MEASUREMENTS</span>
-      </div>
-      <h2 class="text-2xl sm:text-4xl font-extrabold text-white tracking-tight">
-        Hardware Performance Benchmarks
-      </h2>
-      <p class="text-xs sm:text-sm text-slate-400 font-mono">
-        Automated matrix measurements executed across multi-bot runtime tests:
-      </p>
-    </div>
-
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-      
-      <div class="panel-industrial p-5 rounded-xl">
-        <div class="text-[10px] font-mono text-slate-500 mb-1">STEADY POLLING DISK WEAR</div>
-        <div class="text-2xl font-mono font-extrabold text-[#00ff88]">0 BYTES</div>
-        <p class="text-xs text-slate-400 mt-2 font-sans">
-          Proves 0 flash storage writes during steady-state polling via in-memory ring buffer.
-        </p>
-      </div>
-
-      <div class="panel-industrial p-5 rounded-xl">
-        <div class="text-[10px] font-mono text-slate-500 mb-1">CONCURRENT BOT STARTUP</div>
-        <div class="text-2xl font-mono font-extrabold text-cyan-400">~1.2 ms</div>
-        <p class="text-xs text-slate-400 mt-2 font-sans">
-          3 bots initialized and polling simultaneously on Android ART in under 2 milliseconds.
-        </p>
-      </div>
-
-      <div class="panel-industrial p-5 rounded-xl">
-        <div class="text-[10px] font-mono text-slate-500 mb-1">NETWORK OUTAGE WAKEUPS</div>
-        <div class="text-2xl font-mono font-extrabold text-amber-400">&gt;80% CUT</div>
-        <p class="text-xs text-slate-400 mt-2 font-sans">
-          Adaptive backoff suppresses radio wakeups, saving mobile battery life during drops.
-        </p>
-      </div>
-
-      <div class="panel-industrial p-5 rounded-xl">
-        <div class="text-[10px] font-mono text-slate-500 mb-1">TEST SUITE COVERAGE</div>
-        <div class="text-2xl font-mono font-extrabold text-white">271/271</div>
-        <p class="text-xs text-slate-400 mt-2 font-sans">
-          Full unit test suite passing cleanly across all runner, network, and app modules.
-        </p>
-      </div>
-
-    </div>
-
-  </section>
-
-  <!-- ========================================================================= -->
-  <!-- DEVELOPER ORIGIN & PHILOSOPHY (VARSHUDEV)                                 -->
-  <!-- ========================================================================= -->
-  <section id="developer" class="py-16 px-4 sm:px-6 max-w-7xl mx-auto border-t border-[#232838]">
-    
-    <div class="panel-industrial rounded-2xl p-6 sm:p-10">
-      
-      <div class="max-w-3xl space-y-4">
-        
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-lg bg-[#191e2b] border border-[#2f3950] flex items-center justify-center font-mono font-bold text-cyan-400 text-sm">
-            VD
-          </div>
-          <div>
-            <div class="text-sm font-bold text-white font-mono">VarshuDev</div>
-            <div class="text-[11px] font-mono text-slate-500">System Architect & Open-Source Maintainer</div>
-          </div>
-        </div>
-
-        <h3 class="text-xl sm:text-2xl font-bold text-white tracking-tight pt-2">
-          Why I Built TapBot
-        </h3>
-
-        <div class="text-xs sm:text-sm text-slate-300 font-mono leading-relaxed space-y-3 bg-[#0a0c12] p-4 rounded-xl border border-[#212635]">
-          <p>
-            &gt; I had an old Android smartphone sitting in my desk drawer doing nothing.
-          </p>
-          <p>
-            &gt; That device already had an 8-core ARM processor, a lithium battery backup, Wi-Fi, 4G cellular fallback, and audio hardware. Yet every month I was paying \$15 to \$30 to cloud VPS providers to host simple Telegram bots.
-          </p>
-          <p>
-            &gt; TapBot was built to reclaim that computing power. By compiling bots for native Android ART bytecode and protecting flash storage with in-memory ring buffers, an old phone becomes an immortal, silent, self-hosted hardware server.
-          </p>
-        </div>
-
-        <div class="pt-2 flex flex-wrap items-center gap-4 text-xs font-mono">
-          <a href="https://github.com/VarshuDev/tapbot" target="_blank" rel="noopener noreferrer" class="tactile-btn px-4 py-2 rounded-lg text-cyan-300 flex items-center gap-2">
-            <span>GITHUB: VarshuDev/tapbot</span>
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
-          </a>
-          <span class="text-slate-500">100% Free & Open-Source under Apache-2.0</span>
-        </div>
-
-      </div>
-
-    </div>
-
-  </section>
-
-  <!-- ========================================================================= -->
-  <!-- DOWNLOAD APK RELEASE                                                      -->
-  <!-- ========================================================================= -->
-  <section id="download" class="py-16 px-4 sm:px-6 max-w-7xl mx-auto border-t border-[#232838]">
-    
-    <div class="panel-industrial rounded-2xl p-6 sm:p-10 max-w-3xl mx-auto text-center space-y-6">
-      
-      <div class="w-12 h-12 rounded-xl bg-cyan-950 border border-cyan-800/80 mx-auto flex items-center justify-center text-cyan-400">
-        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
-        </svg>
-      </div>
-
-      <div>
-        <h2 class="text-2xl sm:text-3xl font-extrabold text-white font-mono mb-2">
-          tapbot-v2.2.0-tapstream-music.apk
-        </h2>
-        <div class="text-xs font-mono text-slate-400">
-          SIZE: <b>19.3 MB</b> • TARGET: <b>Android 8.0 - 15+ (API 26-35)</b> • ARCH: <b>Universal</b>
-        </div>
-      </div>
-
-      <div>
-        <a href="releases/tapbot-v2.2.0-tapstream-music.apk" download class="tactile-btn inline-flex items-center gap-2 px-6 py-3 rounded-xl text-cyan-300 border-cyan-500/50 hover:text-white text-sm">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
-          </svg>
-          <span>DOWNLOAD OFFICIAL APK (19.3 MB)</span>
+      <div class="hero-ctas">
+        <a href="#download" class="btn-primary">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+          Get APK — 19.3 MB
         </a>
+        <a href="https://github.com/VarshuDev/tapbot" target="_blank" rel="noopener" class="btn-ghost">Star on GitHub</a>
       </div>
-
-      <div class="p-3 bg-[#0a0c12] border border-[#212635] rounded-xl text-left text-xs font-mono text-slate-400">
-        <div class="text-slate-500 mb-1">INSTALLATION INSTRUCTIONS:</div>
-        <ol class="list-decimal list-inside space-y-1 text-slate-300">
-          <li>Download & install APK onto your Android phone.</li>
-          <li>Message <code>@BotFather</code> on Telegram, send <code>/newbot</code>, and copy your token.</li>
-          <li>Open TapBot, select TapStream Music or TapBot Commander, paste token, and tap Start!</li>
-        </ol>
-      </div>
-
     </div>
 
+    <!-- Floating stats ribbon -->
+    <div class="stats-ribbon">
+      <div class="stat">
+        <span class="stat-value">0 B</span>
+        <span class="stat-label">Flash wear</span>
+      </div>
+      <div class="stat-sep"></div>
+      <div class="stat">
+        <span class="stat-value">14.2 MB</span>
+        <span class="stat-label">Heap memory</span>
+      </div>
+      <div class="stat-sep"></div>
+      <div class="stat">
+        <span class="stat-value">&lt;0.5%</span>
+        <span class="stat-label">Battery / hr</span>
+      </div>
+      <div class="stat-sep"></div>
+      <div class="stat">
+        <span class="stat-value">271</span>
+        <span class="stat-label">Automated tests</span>
+      </div>
+    </div>
   </section>
 
-  <!-- Footer -->
-  <footer class="border-t border-[#1e2333] py-8 text-center text-xs font-mono text-slate-500">
-    <div>TapBot & TapStream // Engineered by VarshuDev • Apache-2.0 License</div>
-    <div class="mt-1 text-slate-600">Zero telemetry • 100% on-device Keystore encrypted • No cloud dependencies</div>
+  <!-- ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ -->
+  <!-- HOW IT WORKS — Horizontal scroll-pinned timeline                        -->
+  <!-- ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ -->
+  <section id="how">
+    <div class="how-header">
+      <span class="section-tag">How it works</span>
+      <h2 class="section-h2">Three minutes from drawer to server.</h2>
+    </div>
+    <div class="how-track-wrapper">
+      <div class="how-track">
+        <article class="how-card">
+          <span class="how-num">01</span>
+          <h3>Install the APK</h3>
+          <p>Sideload a single 19.3 MB APK. No Play Store, no Play Services, no root.</p>
+          <code>adb install tapbot-v2.2.0.apk</code>
+        </article>
+        <article class="how-card">
+          <span class="how-num">02</span>
+          <h3>Paste your bot token</h3>
+          <p>Message <strong>@BotFather</strong> on Telegram, create a bot, copy the token, paste it in TapBot.</p>
+          <code>/newbot → copy token → paste</code>
+        </article>
+        <article class="how-card">
+          <span class="how-num">03</span>
+          <h3>Tap Start</h3>
+          <p>TapBot launches a foreground service on Android ART. Your bot is live. Put the phone in a drawer.</p>
+          <code>Runtime: ART • Uptime: ∞</code>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ -->
+  <!-- FEATURES — Bento grid                                                   -->
+  <!-- ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ -->
+  <section id="features">
+    <div class="features-inner">
+      <span class="section-tag">Features</span>
+      <h2 class="section-h2">Everything a VPS gives you, in your pocket.</h2>
+
+      <div class="bento">
+        <!-- Large card -->
+        <div class="bento-card bento-lg" data-reveal>
+          <div class="bento-icon">
+            <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"/></svg>
+          </div>
+          <h3>TapStream Music</h3>
+          <p>Stream any song via yt-dlp or tune into 6 curated 24/7 radio stations. Audio routes to the phone speaker, Bluetooth, Telegram in-chat player, or all at once.</p>
+          <div class="bento-tags">
+            <span>yt-dlp</span><span>320 kbps</span><span>Speaker + Chat</span>
+          </div>
+        </div>
+
+        <!-- Small cards -->
+        <div class="bento-card" data-reveal>
+          <div class="bento-icon">
+            <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+          </div>
+          <h3>Keystore Encryption</h3>
+          <p>Bot tokens stored in Android Keystore with AES-256-GCM. Never touches disk in plaintext.</p>
+        </div>
+
+        <div class="bento-card" data-reveal>
+          <div class="bento-icon">
+            <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+          </div>
+          <h3>Zero Flash Wear</h3>
+          <p>In-memory ring buffers for all logs. Zero bytes written per hour. Your phone storage lasts forever.</p>
+        </div>
+
+        <div class="bento-card" data-reveal>
+          <div class="bento-icon">
+            <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+          </div>
+          <h3>Native ART Runtime</h3>
+          <p>Compiled Kotlin bytecode runs directly on Android ART. No interpreter overhead, no Node, no Python.</p>
+        </div>
+
+        <div class="bento-card" data-reveal>
+          <div class="bento-icon">
+            <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+          </div>
+          <h3>Background Immortality</h3>
+          <p>Foreground service + wake lock + battery exemption. Survives Doze, app killers, and restarts.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ -->
+  <!-- INTERACTIVE TERMINAL                                                     -->
+  <!-- ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ -->
+  <section id="terminal">
+    <div class="terminal-section-inner">
+      <div class="terminal-text-col">
+        <span class="section-tag">Try it live</span>
+        <h2 class="section-h2">Talk to the bot.</h2>
+        <p class="terminal-desc">This is a working simulation of TapStream's command interface. Type a command or tap a chip.</p>
+        <div class="chip-row">
+          <button class="chip" data-cmd="/play lofi beats">/play lofi</button>
+          <button class="chip" data-cmd="/radio synthwave">/radio synthwave</button>
+          <button class="chip" data-cmd="/nowplaying">/nowplaying</button>
+          <button class="chip" data-cmd="/volume 90">/volume 90</button>
+          <button class="chip" data-cmd="/status">/status</button>
+          <button class="chip" data-cmd="/radio jazz">/radio jazz</button>
+        </div>
+      </div>
+      <div class="terminal-col">
+        <div class="term">
+          <div class="term-bar">
+            <div class="term-dots">
+              <span></span><span></span><span></span>
+            </div>
+            <span class="term-title">TapStream v2.2.0 — ART runtime</span>
+          </div>
+          <div class="term-body" id="term-body">
+            <div class="term-line term-system">TapStream v2.2.0 active on Android ART.</div>
+            <div class="term-line term-system">Type /play, /radio, /status, /volume, /nowplaying, /mode</div>
+          </div>
+          <div class="term-input-row">
+            <span class="term-prompt">❯</span>
+            <input type="text" id="term-input" class="term-input" placeholder="Type a command…" autocomplete="off" spellcheck="false">
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ -->
+  <!-- DEVELOPER                                                                -->
+  <!-- ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ -->
+  <section id="dev">
+    <div class="dev-inner">
+      <span class="section-tag">Developer</span>
+      <div class="dev-card" data-reveal>
+        <div class="dev-card-top">
+          <div class="dev-avatar">VD</div>
+          <div>
+            <h3>VarshuDev</h3>
+            <p class="dev-role">Creator &amp; Systems Architect</p>
+          </div>
+        </div>
+        <blockquote>
+          "I hated watching functional phones rot in drawers while developers kept paying $15–$30/month for cloud VPS to run simple Telegram bots. Android phones are incredible computers — multi-core ARM, battery failover, Wi-Fi, native audio. TapBot is what happens when you stop renting and start using what you already own."
+        </blockquote>
+        <div class="dev-stack">
+          <span>Kotlin</span>
+          <span>Android ART</span>
+          <span>Coroutines Flow</span>
+          <span>OkHttp</span>
+          <span>yt-dlp</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ -->
+  <!-- DOWNLOAD                                                                 -->
+  <!-- ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ -->
+  <section id="download">
+    <div class="dl-inner">
+      <h2 class="dl-h2">Ready?</h2>
+      <p class="dl-sub">Download the APK. Three minutes to a self-hosted Telegram bot.</p>
+      <a href="releases/tapbot-v2.2.0-tapstream-music.apk" download class="btn-primary btn-dl">
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+        tapbot-v2.2.0.apk &middot; 19.3 MB
+      </a>
+      <p class="dl-compat">Android 8.0 – 15+ &middot; No root &middot; No Play Services &middot; Apache-2.0</p>
+    </div>
+  </section>
+
+  <!-- ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ -->
+  <!-- FOOTER                                                                   -->
+  <!-- ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ -->
+  <footer>
+    <div class="footer-inner">
+      <span>TapBot &amp; TapStream &middot; Apache-2.0 &middot; VarshuDev</span>
+      <span>Zero trackers &middot; 100% on-device &middot; Keystore encrypted</span>
+    </div>
   </footer>
 
-  <!-- Application Engine Script -->
   <script src="app.js"></script>
 </body>
 </html>

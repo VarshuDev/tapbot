@@ -1,11 +1,6 @@
 /**
- * TapBot & TapStream — Ultra-Craft Interactive Motion Engine
- * - Interactive Audio Waveform Canvas
- * - Spotlight Cursor Borders (Linear/Vercel effect)
- * - 3D Perspective Tilt on Hardware/Phone & Bento Cards
- * - Procedural Web Audio FX
- * - Telegram Bot Simulator with Live Audio Player & Scrubber
- * - Lenis Smooth Scroll + GSAP ScrollTrigger
+ * TapBot & TapStream — Titanium & Monochrome Obsidian Motion Engine
+ * Modernist Engineering Showcase · Zero Emojis · Zero AI Slop
  */
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -14,7 +9,7 @@
 const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 1. PROCEDURAL WEB AUDIO SFX (No external assets required)
+// 1. TACTILE AUDIO SYNTHESIZER (Mechanical Studio Clicks)
 // ═══════════════════════════════════════════════════════════════════════════
 class TactileAudio {
   constructor() {
@@ -29,56 +24,53 @@ class TactileAudio {
     }
   }
 
-  playClick(freq = 600, duration = 0.035) {
+  playClick(freq = 480, duration = 0.028) {
     if (!this.enabled || prefersReducedMotion) return;
     try {
       this.init();
       if (!this.ctx) return;
       if (this.ctx.state === 'suspended') this.ctx.resume();
-      
+
       const osc = this.ctx.createOscillator();
       const gain = this.ctx.createGain();
-      
+
       osc.type = 'sine';
       osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(freq * 0.4, this.ctx.currentTime + duration);
-      
-      gain.gain.setValueAtTime(0.04, this.ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(freq * 0.35, this.ctx.currentTime + duration);
+
+      gain.gain.setValueAtTime(0.035, this.ctx.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + duration);
-      
+
       osc.connect(gain);
       gain.connect(this.ctx.destination);
-      
+
       osc.start();
       osc.stop(this.ctx.currentTime + duration);
     } catch (_) {}
   }
 
-  playChirp(type = 'success') {
+  playChirp() {
     if (!this.enabled || prefersReducedMotion) return;
     try {
       this.init();
       if (!this.ctx) return;
       if (this.ctx.state === 'suspended') this.ctx.resume();
 
-      const f1 = type === 'success' ? 520 : 380;
-      const f2 = type === 'success' ? 880 : 240;
-
       const osc = this.ctx.createOscillator();
       const gain = this.ctx.createGain();
 
       osc.type = 'triangle';
-      osc.frequency.setValueAtTime(f1, this.ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(f2, this.ctx.currentTime + 0.08);
+      osc.frequency.setValueAtTime(440, this.ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(680, this.ctx.currentTime + 0.05);
 
-      gain.gain.setValueAtTime(0.05, this.ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + 0.09);
+      gain.gain.setValueAtTime(0.03, this.ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + 0.06);
 
       osc.connect(gain);
       gain.connect(this.ctx.destination);
 
       osc.start();
-      osc.stop(this.ctx.currentTime + 0.09);
+      osc.stop(this.ctx.currentTime + 0.06);
     } catch (_) {}
   }
 }
@@ -86,9 +78,9 @@ class TactileAudio {
 const sfx = new TactileAudio();
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 2. INTERACTIVE AUDIO WAVEFORM CANVAS (Hero & Ambient Background)
+// 2. MONOCHROMATIC OSCILLOSCOPE CANVAS (Clean Titanium Waveforms)
 // ═══════════════════════════════════════════════════════════════════════════
-class AudioVisualizerCanvas {
+class OscilloscopeVisualizer {
   constructor() {
     this.canvas = document.getElementById('bg-visualizer');
     if (!this.canvas) return;
@@ -98,15 +90,13 @@ class AudioVisualizerCanvas {
 
     this.mouse = { x: this.width / 2, y: this.height / 2 };
     this.phase = 0;
-    this.genre = 'lofi';
-    this.amplitudeMultiplier = 1;
-    this.speed = 0.015;
+    this.genre = 'precision';
 
-    this.genres = {
-      lofi: { color1: 'rgba(56, 189, 248, 0.35)', color2: 'rgba(16, 185, 129, 0.25)', waves: 3, amp: 45, freq: 0.004, speed: 0.014 },
-      synthwave: { color1: 'rgba(236, 72, 153, 0.4)', color2: 'rgba(129, 140, 248, 0.3)', waves: 4, amp: 70, freq: 0.007, speed: 0.026 },
-      rock: { color1: 'rgba(245, 158, 11, 0.4)', color2: 'rgba(239, 68, 68, 0.3)', waves: 5, amp: 85, freq: 0.009, speed: 0.035 },
-      ambient: { color1: 'rgba(99, 102, 241, 0.3)', color2: 'rgba(16, 185, 129, 0.2)', waves: 2, amp: 30, freq: 0.002, speed: 0.008 }
+    this.presets = {
+      precision: { color1: 'rgba(255, 255, 255, 0.32)', color2: 'rgba(161, 161, 170, 0.18)', waves: 3, amp: 40, freq: 0.0035, speed: 0.012 },
+      lofi: { color1: 'rgba(228, 228, 231, 0.28)', color2: 'rgba(113, 113, 122, 0.14)', waves: 3, amp: 32, freq: 0.0028, speed: 0.010 },
+      synth: { color1: 'rgba(255, 255, 255, 0.38)', color2: 'rgba(161, 161, 170, 0.22)', waves: 4, amp: 58, freq: 0.006, speed: 0.022 },
+      ambient: { color1: 'rgba(212, 212, 216, 0.22)', color2: 'rgba(82, 82, 91, 0.12)', waves: 2, amp: 26, freq: 0.002, speed: 0.007 }
     };
 
     window.addEventListener('resize', () => this.resize());
@@ -123,14 +113,13 @@ class AudioVisualizerCanvas {
     this.height = (this.canvas.height = window.innerHeight);
   }
 
-  setGenre(genreName) {
-    if (this.genres[genreName]) {
-      this.genre = genreName;
-      sfx.playClick(640);
-      
-      const trackLabel = document.getElementById('vis-track-name');
-      if (trackLabel) {
-        trackLabel.innerHTML = `AUDIO CANVAS: ${genreName.toUpperCase()} PRESET &middot; 320 KBPS LIVE`;
+  setPreset(name) {
+    if (this.presets[name]) {
+      this.genre = name;
+      sfx.playClick(560);
+      const label = document.getElementById('vis-track-name');
+      if (label) {
+        label.innerHTML = `AUDIO OSCILLOSCOPE // ${name.toUpperCase()} // 320 KBPS LIVE`;
       }
     }
   }
@@ -139,45 +128,43 @@ class AudioVisualizerCanvas {
     requestAnimationFrame(() => this.animate());
     this.ctx.clearRect(0, 0, this.width, this.height);
 
-    const cfg = this.genres[this.genre] || this.genres.lofi;
+    const cfg = this.presets[this.genre] || this.presets.precision;
     this.phase += cfg.speed;
 
-    // React slightly to cursor proximity
-    const dy = (this.mouse.y / this.height - 0.5) * 30;
-    const baseAmp = cfg.amp * this.amplitudeMultiplier + dy;
+    const dy = (this.mouse.y / this.height - 0.5) * 24;
+    const baseAmp = cfg.amp + dy;
 
     for (let w = 0; w < cfg.waves; w++) {
       this.ctx.beginPath();
       const wavePhase = this.phase + (w * Math.PI) / 3;
       const waveFreq = cfg.freq * (1 + w * 0.25);
-      const waveAmp = baseAmp * (1 - w * 0.18);
-      const baseline = this.height * 0.52 + w * 18;
+      const waveAmp = baseAmp * (1 - w * 0.2);
+      const baseline = this.height * 0.52 + w * 16;
 
       this.ctx.moveTo(0, baseline);
       for (let x = 0; x <= this.width; x += 6) {
-        // Multi-frequency sinusoidal equation
         const y =
           baseline +
           Math.sin(x * waveFreq + wavePhase) * waveAmp +
-          Math.sin(x * waveFreq * 2 + wavePhase * 1.5) * (waveAmp * 0.35);
+          Math.sin(x * waveFreq * 1.8 + wavePhase * 1.4) * (waveAmp * 0.3);
         this.ctx.lineTo(x, y);
       }
 
-      const grad = this.ctx.createLinearGradient(0, baseline - 80, this.width, baseline + 80);
+      const grad = this.ctx.createLinearGradient(0, baseline - 60, this.width, baseline + 60);
       grad.addColorStop(0, cfg.color1);
       grad.addColorStop(1, cfg.color2);
 
       this.ctx.strokeStyle = grad;
-      this.ctx.lineWidth = 1.8 + (cfg.waves - w) * 0.5;
-      this.ctx.shadowBlur = 12;
-      this.ctx.shadowColor = cfg.color1;
+      this.ctx.lineWidth = 1.4;
+      this.ctx.shadowBlur = 8;
+      this.ctx.shadowColor = 'rgba(255, 255, 255, 0.15)';
       this.ctx.stroke();
     }
   }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 3. SPOTLIGHT BORDER HIGHLIGHT (Linear / Vercel mouse cursor tracker)
+// 3. SPOTLIGHT BORDER HIGHLIGHT (Linear/Vercel Monochromatic)
 // ═══════════════════════════════════════════════════════════════════════════
 function initSpotlights() {
   const cards = document.querySelectorAll('.spotlight-card');
@@ -205,8 +192,7 @@ function init3DTilt() {
       const rect = el.getBoundingClientRect();
       const x = (e.clientX - rect.left) / rect.width - 0.5;
       const y = (e.clientY - rect.top) / rect.height - 0.5;
-      
-      const maxAngle = el.classList.contains('phone-3d-wrap') ? 12 : 6;
+      const maxAngle = el.classList.contains('phone-3d-wrap') ? 10 : 5;
 
       gsap.to(el, {
         rotateY: x * maxAngle,
@@ -221,7 +207,7 @@ function init3DTilt() {
       gsap.to(el, {
         rotateY: 0,
         rotateX: 0,
-        duration: 0.7,
+        duration: 0.65,
         ease: 'elastic.out(1, 0.45)',
       });
     });
@@ -229,7 +215,7 @@ function init3DTilt() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 5. LIVE SMARTPHONE SIMULATOR & TELEGRAM BOT ENGINE
+// 5. LIVE DEVICE SIMULATOR & TELEGRAM ENGINE (ZERO EMOJIS)
 // ═══════════════════════════════════════════════════════════════════════════
 class PhoneBotSimulator {
   constructor(visualizer) {
@@ -240,7 +226,6 @@ class PhoneBotSimulator {
     this.timeDisplay = document.getElementById('player-time-display');
     this.volDisplay = document.getElementById('player-vol-display');
     this.scrubberFill = document.getElementById('player-scrubber-fill');
-    this.playIcon = document.getElementById('player-play-icon');
     this.playBtn = document.getElementById('player-play-toggle');
     this.userInput = document.getElementById('phone-user-input');
     this.sendBtn = document.getElementById('phone-send-btn');
@@ -254,7 +239,7 @@ class PhoneBotSimulator {
     this.currentTrack = {
       title: 'Lofi Girl Study Beats',
       artist: 'Lofi Girl 24/7 &middot; 320kbps',
-      genre: 'lofi'
+      preset: 'lofi'
     };
 
     this.initEvents();
@@ -287,7 +272,6 @@ class PhoneBotSimulator {
       });
     }
 
-    // Audio Output Mode switcher buttons
     document.querySelectorAll('.mode-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
         const mode = e.currentTarget.getAttribute('data-mode');
@@ -297,7 +281,6 @@ class PhoneBotSimulator {
       });
     });
 
-    // Radio quick stations inside Bento Card
     document.querySelectorAll('.st-chip').forEach(chip => {
       chip.addEventListener('click', (e) => {
         document.querySelectorAll('.st-chip').forEach(c => c.classList.remove('active'));
@@ -310,25 +293,28 @@ class PhoneBotSimulator {
 
   togglePlay() {
     this.isPlaying = !this.isPlaying;
-    sfx.playClick(this.isPlaying ? 700 : 420);
-    if (this.playIcon) {
-      this.playIcon.textContent = this.isPlaying ? '❚❚' : '▶';
+    sfx.playClick(this.isPlaying ? 600 : 380);
+    const svgWrap = document.getElementById('player-play-svg');
+    if (svgWrap) {
+      svgWrap.innerHTML = this.isPlaying
+        ? `<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>`
+        : `<polygon points="5 3 19 12 5 21 5 3"/>`;
     }
     const eqBars = document.querySelectorAll('.p-eq-bar, .eq-bar');
     eqBars.forEach(bar => {
       bar.style.animationPlayState = this.isPlaying ? 'running' : 'paused';
-      bar.style.opacity = this.isPlaying ? '1' : '0.25';
+      bar.style.opacity = this.isPlaying ? '1' : '0.2';
     });
   }
 
   setMode(mode) {
-    sfx.playClick(580);
+    sfx.playClick(520);
     let label = 'BOTH (SPEAKER + CHAT)';
     if (mode === 'SPEAKER') label = 'PHONE SPEAKER ONLY';
     if (mode === 'CHAT') label = 'TELEGRAM CHAT ONLY';
     this.currentMode = label;
     if (this.modeBadge) this.modeBadge.textContent = label;
-    this.appendBotMessage(`🎛 Playback routing updated to: <b>${label}</b>`);
+    this.appendBotMessage(`ROUTING: Playback routing set to <b>${label}</b>`);
   }
 
   startScrubberTicker() {
@@ -346,14 +332,13 @@ class PhoneBotSimulator {
     const text = rawText.trim();
     if (!text) return;
 
-    if (!fromDemo) sfx.playClick(620);
+    if (!fromDemo) sfx.playClick(580);
     this.appendUserMessage(text);
 
-    // Typing delay simulation
     setTimeout(() => {
       this.resolveCommand(text);
-      if (!fromDemo) sfx.playChirp('success');
-    }, 220);
+      if (!fromDemo) sfx.playChirp();
+    }, 200);
   }
 
   resolveCommand(text) {
@@ -362,72 +347,70 @@ class PhoneBotSimulator {
     const arg = parts.slice(1).join(' ').trim();
 
     if (cmd === '/play') {
-      const songName = arg ? arg.charAt(0).toUpperCase() + arg.slice(1) : 'Lofi Chill Beats';
+      const songName = arg ? arg.charAt(0).toUpperCase() + arg.slice(1) : 'Lofi Study Beats';
       this.currentTrack = {
         title: songName,
-        artist: 'TapStream Cloud &middot; 320kbps',
-        genre: 'lofi'
+        artist: 'TapStream Audio &middot; 320kbps',
+        preset: 'lofi'
       };
       this.updatePlayerUI();
-      if (this.visualizer) this.visualizer.setGenre('lofi');
+      if (this.visualizer) this.visualizer.setPreset('lofi');
 
       this.appendBotMessage(
-        `🎧 <b>Now Streaming: ${songName}</b><br/>` +
-        `📦 Resolved via yt-dlp API (320 kbps)<br/>` +
-        `🔊 Output: <b>${this.currentMode}</b><br/>` +
-        `🎵 Audio player attached to Telegram chat.`
+        `NOW PLAYING: <b>${songName}</b><br/>` +
+        `CODEC: 320 kbps (yt-dlp stream)<br/>` +
+        `ROUTE: <b>${this.currentMode}</b><br/>` +
+        `STATUS: In-chat track delivered.`
       );
     } else if (cmd === '/radio') {
       const genre = arg.toLowerCase() || 'synthwave';
       const radioMap = {
-        lofi: { title: 'Lofi Girl Study Beats', artist: 'Lofi Girl 24/7', genre: 'lofi' },
-        synthwave: { title: 'Nightwave Plaza 80s Cyber', artist: 'Plaza FM Live', genre: 'synthwave' },
-        rock: { title: 'Classic Rock Live FM', artist: 'Planet Rock', genre: 'rock' },
-        jazz: { title: 'Jazz Lounge & Bossa Beats', artist: 'Jazz Radio HQ', genre: 'ambient' },
-        space: { title: 'Deep Space Ambient Drone', artist: 'SomaFM Zero Buffer', genre: 'ambient' }
+        lofi: { title: 'Lofi Girl Study Beats', artist: 'Lofi Girl 24/7', preset: 'lofi' },
+        synthwave: { title: 'Nightwave Plaza 80s Cyber', artist: 'Plaza FM Live', preset: 'synth' },
+        rock: { title: 'Classic Rock Live FM', artist: 'Planet Rock', preset: 'precision' },
+        jazz: { title: 'Jazz Lounge & Bossa Beats', artist: 'Jazz Radio HQ', preset: 'ambient' },
+        space: { title: 'Deep Space Ambient Drone', artist: 'SomaFM Zero Buffer', preset: 'ambient' }
       };
 
       const match = radioMap[genre] || radioMap.synthwave;
       this.currentTrack = match;
       this.updatePlayerUI();
-      if (this.visualizer) this.visualizer.setGenre(match.genre);
+      if (this.visualizer) this.visualizer.setPreset(match.preset);
 
       this.appendBotMessage(
-        `📻 <b>Tuned to 24/7 Internet Radio:</b><br/>` +
-        `▶ <b>${match.title}</b><br/>` +
-        `🎙 <i>${match.artist}</i> &middot; 320kbps<br/>` +
-        `🔴 Zero-buffer stream active on native Android ART.`
+        `TUNER: 24/7 Radio Stream Active<br/>` +
+        `STATION: <b>${match.title}</b><br/>` +
+        `CHANNEL: <i>${match.artist}</i> &middot; 320 kbps<br/>` +
+        `BUFFER: 0ms (In-Memory RAM)`
       );
     } else if (cmd === '/nowplaying' || cmd === '/np') {
       this.appendBotMessage(
-        `🎶 <b>Currently Streaming:</b><br/>` +
-        `<b>${this.currentTrack.title}</b><br/>` +
-        `<i>${this.currentTrack.artist}</i><br/>` +
-        `<code>▶ 01:42 ━━━━●────── 03:45</code><br/>` +
-        `🔊 Route: <b>${this.currentMode}</b> (${this.currentVolume}%)`
+        `STATUS: <b>${this.currentTrack.title}</b><br/>` +
+        `STREAM: <i>${this.currentTrack.artist}</i><br/>` +
+        `ROUTE: <b>${this.currentMode}</b> (Vol: ${this.currentVolume}%)`
       );
     } else if (cmd === '/volume') {
       const val = parseInt(arg, 10);
       if (!isNaN(val)) {
         this.currentVolume = Math.max(0, Math.min(100, val));
         if (this.volDisplay) this.volDisplay.textContent = `Vol: ${this.currentVolume}%`;
-        this.appendBotMessage(`🔊 Media stream volume set to <b>${this.currentVolume}%</b>`);
+        this.appendBotMessage(`VOLUME: Media volume adjusted to <b>${this.currentVolume}%</b>`);
       } else {
-        this.appendBotMessage(`🔊 Current volume: <b>${this.currentVolume}%</b> (use <code>/volume 0-100</code>)`);
+        this.appendBotMessage(`VOLUME: Current level is <b>${this.currentVolume}%</b> (use <code>/volume 0-100</code>)`);
       }
     } else if (cmd === '/mode') {
       this.setMode(arg.toUpperCase());
     } else if (cmd === '/status') {
       this.appendBotMessage(
-        `📊 <b>Android ART Telemetry:</b><br/>` +
-        `🔋 Battery: <b>88% (Charging AC)</b><br/>` +
-        `🧠 Heap Memory: <b>14.2 MB / 8 GB (0.17%)</b><br/>` +
-        `🛡 Flash Writes: <b>0 Bytes/hr (RAM Buffer)</b><br/>` +
-        `⏱ Service Uptime: <b>42d 18h 34m</b><br/>` +
-        `⚡ Process: <b>PID 8412 [FOREGROUND_SERVICE]</b>`
+        `TELEMETRY // ART PROCESS PID 8412<br/>` +
+        `BATTERY: <b>88% [CHARGING_AC]</b><br/>` +
+        `HEAP RAM: <b>14.2 MB / 8 GB (0.17%)</b><br/>` +
+        `STORAGE: <b>0 Bytes/hr [RAM_RING_BUFFER]</b><br/>` +
+        `UPTIME: <b>42d 18h 34m</b><br/>` +
+        `DAEMON: <b>ACTIVE [FOREGROUND_SERVICE]</b>`
       );
     } else {
-      this.appendBotMessage(`🎵 Received: <code>${text}</code><br/>Try <code>/play lofi</code>, <code>/radio synthwave</code>, or <code>/status</code>.`);
+      this.appendBotMessage(`INPUT: <code>${text}</code><br/>Commands: <code>/play</code>, <code>/radio</code>, <code>/status</code>, <code>/nowplaying</code>`);
     }
   }
 
@@ -487,31 +470,28 @@ function initMagneticCursor() {
   }
   tick();
 
-  // Hover states on clickable targets
   document.querySelectorAll('a, button, input, [data-magnetic]').forEach(el => {
     el.addEventListener('mouseenter', () => document.body.classList.add('cursor-hover'));
     el.addEventListener('mouseleave', () => document.body.classList.remove('cursor-hover'));
   });
 
-  // Magnetic button pull
   document.querySelectorAll('[data-magnetic]').forEach(el => {
     el.addEventListener('mousemove', (e) => {
       const rect = el.getBoundingClientRect();
       const dx = e.clientX - (rect.left + rect.width / 2);
       const dy = e.clientY - (rect.top + rect.height / 2);
-      gsap.to(el, { x: dx * 0.28, y: dy * 0.28, duration: 0.25, ease: 'power2.out' });
+      gsap.to(el, { x: dx * 0.24, y: dy * 0.24, duration: 0.25, ease: 'power2.out' });
     });
     el.addEventListener('mouseleave', () => {
-      gsap.to(el, { x: 0, y: 0, duration: 0.55, ease: 'elastic.out(1, 0.45)' });
+      gsap.to(el, { x: 0, y: 0, duration: 0.5, ease: 'elastic.out(1, 0.45)' });
     });
   });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 7. TEXT SPLITTING UTILITIES & GSAP SCROLL ANIMATIONS
+// 7. TEXT SPLITTING & GSAP SCROLL ANIMATIONS
 // ═══════════════════════════════════════════════════════════════════════════
 function splitIntoChars(el) {
-  // Split words first, then characters inside words to prevent mid-word line breaks
   function traverse(node, container) {
     if (node.nodeType === Node.TEXT_NODE) {
       const words = node.textContent.split(/(\s+)/);
@@ -573,7 +553,6 @@ function splitIntoWords(el) {
 function initGSAPAnimations() {
   gsap.registerPlugin(ScrollTrigger);
 
-  // Scroll Progress Bar
   const progBar = document.getElementById('scroll-progress');
   if (progBar) {
     gsap.to(progBar, {
@@ -588,7 +567,6 @@ function initGSAPAnimations() {
     });
   }
 
-  // Nav border toggle on scroll
   ScrollTrigger.create({
     start: 24,
     onUpdate: (self) => {
@@ -599,15 +577,29 @@ function initGSAPAnimations() {
 
   if (prefersReducedMotion) return;
 
-  // Kinetic Hero Character Reveal
   document.querySelectorAll('[data-reveal="chars"]').forEach(el => {
     const chars = splitIntoChars(el);
-
     gsap.from(chars, {
       opacity: 0,
-      y: 40,
-      rotateX: -30,
+      y: 35,
+      rotateX: -25,
       duration: 0.8,
+      stagger: 0.018,
+      ease: 'expo.out',
+      scrollTrigger: {
+        trigger: el,
+        start: 'top 85%',
+        toggleActions: 'play none none none',
+      }
+    });
+  });
+
+  document.querySelectorAll('[data-reveal="words"]').forEach(el => {
+    const words = splitIntoWords(el);
+    gsap.from(words, {
+      opacity: 0,
+      y: 18,
+      duration: 0.7,
       stagger: 0.02,
       ease: 'expo.out',
       scrollTrigger: {
@@ -618,28 +610,10 @@ function initGSAPAnimations() {
     });
   });
 
-  // Word-by-word reveal
-  document.querySelectorAll('[data-reveal="words"]').forEach(el => {
-    const words = splitIntoWords(el);
-    gsap.from(words, {
-      opacity: 0,
-      y: 20,
-      duration: 0.7,
-      stagger: 0.025,
-      ease: 'expo.out',
-      scrollTrigger: {
-        trigger: el,
-        start: 'top 85%',
-        toggleActions: 'play none none none',
-      }
-    });
-  });
-
-  // Fade reveals
   document.querySelectorAll('[data-reveal="fade"]').forEach(el => {
     gsap.from(el, {
       opacity: 0,
-      y: 24,
+      y: 22,
       duration: 0.9,
       ease: 'expo.out',
       scrollTrigger: {
@@ -650,13 +624,12 @@ function initGSAPAnimations() {
     });
   });
 
-  // Slide-up card reveals
   document.querySelectorAll('[data-reveal="slide-up"]').forEach((el, i) => {
     gsap.from(el, {
       opacity: 0,
-      y: 50,
+      y: 45,
       duration: 0.85,
-      delay: (i % 3) * 0.1,
+      delay: (i % 3) * 0.08,
       ease: 'expo.out',
       scrollTrigger: {
         trigger: el,
@@ -666,7 +639,6 @@ function initGSAPAnimations() {
     });
   });
 
-  // Horizontal Pinned Timeline (#how)
   const track = document.querySelector('.how-track');
   if (track) {
     const totalDist = track.scrollWidth - window.innerWidth + 240;
@@ -685,7 +657,6 @@ function initGSAPAnimations() {
     });
   }
 
-  // Animated Numbers Counter
   document.querySelectorAll('[data-count]').forEach(el => {
     const target = parseFloat(el.getAttribute('data-count'));
     const prefix = el.getAttribute('data-prefix') || '';
@@ -751,7 +722,7 @@ function initLenis() {
 // ═══════════════════════════════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', () => {
   initLenis();
-  const visualizer = new AudioVisualizerCanvas();
+  const visualizer = new OscilloscopeVisualizer();
   const sim = new PhoneBotSimulator(visualizer);
 
   initSpotlights();
@@ -760,29 +731,26 @@ document.addEventListener('DOMContentLoaded', () => {
   initGSAPAnimations();
   initUptimeTicker();
 
-  // Waveform Visualizer controller preset buttons
   document.querySelectorAll('.vis-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
       document.querySelectorAll('.vis-btn').forEach(b => b.classList.remove('active'));
       e.currentTarget.classList.add('active');
       const g = e.currentTarget.getAttribute('data-genre');
-      if (visualizer) visualizer.setGenre(g);
+      if (visualizer) visualizer.setPreset(g);
     });
   });
 
-  // Sound toggle button in header
   const soundBtn = document.getElementById('sound-toggle-btn');
   const soundLabel = document.getElementById('sound-label');
   if (soundBtn && soundLabel) {
     soundBtn.addEventListener('click', () => {
       sfx.enabled = !sfx.enabled;
-      soundLabel.textContent = sfx.enabled ? 'Audio FX: ON' : 'Audio FX: OFF';
-      soundBtn.querySelector('.sound-dot').style.background = sfx.enabled ? '#10b981' : '#64748b';
-      if (sfx.enabled) sfx.playClick(600);
+      soundLabel.textContent = sfx.enabled ? 'Audio: ON' : 'Audio: OFF';
+      soundBtn.querySelector('.sound-dot').style.opacity = sfx.enabled ? '1' : '0.3';
+      if (sfx.enabled) sfx.playClick(560);
     });
   }
 
-  // Interactive Command chips in playground
   document.querySelectorAll('.cmd-chip').forEach(chip => {
     chip.addEventListener('click', (e) => {
       const cmd = e.currentTarget.getAttribute('data-cmd');

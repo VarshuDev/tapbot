@@ -3,29 +3,29 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TapBot & TapStream — Turn Any Android Phone Into a 24/7 Telegram Server</title>
-  <meta name="description" content="Host Telegram bots and stream music 24/7 directly on Android ART. Zero cloud bills, Keystore encryption, zero flash wear, and room audio streaming.">
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+  <title>TapBot & TapStream — On-Device Android Telegram Bot Engine</title>
+  <meta name="description" content="Host production Telegram bots and stream high-bitrate audio 24/7 on native Android ART. Zero cloud fees, Keystore encryption, and zero flash wear.">
+  
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2'><path stroke-linecap='round' stroke-linejoin='round' d='M13 10V3L4 14h7v7l9-11h-7z'/></svg>">
 
-  <!-- Google Fonts: IBM Plex Sans & JetBrains Mono -->
+  <!-- Typography: IBM Plex Sans & JetBrains Mono -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-  <!-- GSAP & ScrollTrigger -->
+  <!-- GSAP & Lenis -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
-  <!-- Lenis Smooth Scroll -->
   <script src="https://unpkg.com/lenis@1.1.14/dist/lenis.min.js"></script>
 
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
-  <!-- Top Scroll Progress Indicator -->
+  <!-- Top Scroll Progress -->
   <div id="scroll-progress"></div>
 
-  <!-- Background Interactive Audio Waveform Canvas -->
+  <!-- Background Oscilloscope Visualizer -->
   <canvas id="bg-visualizer"></canvas>
 
   <!-- Fine Film Grain Overlay -->
@@ -42,7 +42,7 @@
     <div class="nav-inner">
       <a href="#" class="nav-brand" data-magnetic>
         <div class="nav-logo-box">
-          <svg class="nav-logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/>
           </svg>
         </div>
@@ -54,23 +54,23 @@
 
       <div class="nav-links">
         <a href="#how" data-magnetic>Architecture</a>
-        <a href="#features" data-magnetic>Features</a>
-        <a href="#playground" data-magnetic>Interactive Live Bot</a>
+        <a href="#features" data-magnetic>Specs</a>
+        <a href="#playground" data-magnetic>Live Console</a>
         <a href="#dev" data-magnetic>Developer</a>
       </div>
 
       <div class="nav-actions">
-        <!-- Interactive Web Audio SFX Toggle -->
+        <!-- Tactile Web Audio SFX Toggle -->
         <button id="sound-toggle-btn" class="nav-sound-btn" data-magnetic aria-label="Toggle Sound Effects">
           <span class="sound-dot"></span>
-          <span id="sound-label">Audio FX: ON</span>
+          <span id="sound-label">Audio: ON</span>
         </button>
 
         <a href="https://github.com/VarshuDev/tapbot" target="_blank" rel="noopener noreferrer" class="nav-gh" data-magnetic aria-label="GitHub Repository">
-          <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/></svg>
+          <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/></svg>
         </a>
 
-        <a href="#download" class="nav-cta" data-magnetic>Get APK (19.3MB)</a>
+        <a href="#download" class="nav-cta" data-magnetic>Get APK</a>
       </div>
     </div>
   </nav>
@@ -81,60 +81,67 @@
   <section id="hero">
     <div class="hero-inner">
       
-      <!-- Status Badge -->
+      <!-- Precision Engineering Status Badge -->
       <div class="hero-badge" data-reveal="fade">
-        <span class="badge-beacon"></span>
-        <span class="badge-text">Native Android ART &middot; Keystore Encrypted &middot; Zero Cloud Bills</span>
+        <span class="badge-dot"></span>
+        <span class="badge-text">ON-DEVICE ART RUNTIME &middot; HARDWARE ENCLAVE &middot; ZERO CLOUD DEPENDENCY</span>
       </div>
 
-      <!-- Main Headline with Character Splits -->
+      <!-- Main Headline -->
       <h1 class="hero-h1">
         <span class="hero-line" data-reveal="chars">Your spare phone is</span>
-        <span class="hero-line" data-reveal="chars">an immortal <em>server.</em></span>
+        <span class="hero-line" data-reveal="chars">a dedicated <em>server.</em></span>
       </h1>
 
-      <!-- Subtitle with Word Splits -->
+      <!-- Subtitle -->
       <p class="hero-sub" data-reveal="words">
-        TapBot turns any spare Android phone into a 24/7 Telegram bot server and room audio streamer. Stream music through phone speakers with <b>TapStream</b>, monitor hardware telemetry, and stop paying monthly VPS fees.
+        TapBot turns any spare Android phone into a 24/7 Telegram bot server and room audio streamer. Stream music through connected hardware with <b>TapStream</b>, monitor low-level telemetry, and eliminate monthly VPS invoices.
       </p>
 
       <!-- Action Buttons -->
       <div class="hero-ctas" data-reveal="fade">
         <a href="#download" class="btn-primary" data-magnetic>
-          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-          <span>Download Official APK (19.3 MB)</span>
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+          <span>Download APK (19.3 MB)</span>
         </a>
         <a href="#playground" class="btn-ghost" data-magnetic>
-          <span class="play-triangle">▶</span>
-          <span>Live Bot Simulator</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          <span>Interactive Simulator</span>
         </a>
       </div>
     </div>
 
-    <!-- Live Telemetry Glass Ribbon with Interactive Meters -->
+    <!-- Precision Telemetry Ribbon (Vector SVGs, No Emojis) -->
     <div class="telemetry-ribbon" data-reveal="fade">
-      <div class="telem-item" data-tooltip="Zero internal eMMC wear">
-        <div class="telem-icon telem-shield">🛡</div>
+      
+      <div class="telem-item">
+        <div class="telem-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
         <div class="telem-info">
-          <span class="telem-val" data-count="0" data-suffix=" Bytes">0 Bytes</span>
-          <span class="telem-label">Flash Wear / hr</span>
+          <span class="telem-val" data-count="0" data-suffix=" B/hr">0 B/hr</span>
+          <span class="telem-label">Storage Wear</span>
         </div>
       </div>
 
       <div class="telem-sep"></div>
 
-      <div class="telem-item" data-tooltip="Ultra-lightweight heap footprint">
-        <div class="telem-icon telem-ram">🧠</div>
+      <div class="telem-item">
+        <div class="telem-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="15" x2="23" y2="15"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="15" x2="4" y2="15"/></svg>
+        </div>
         <div class="telem-info">
           <span class="telem-val" data-count="14.2" data-suffix=" MB">0 MB</span>
-          <span class="telem-label">ART Heap Memory</span>
+          <span class="telem-label">Heap Memory</span>
         </div>
       </div>
 
       <div class="telem-sep"></div>
 
-      <div class="telem-item" data-tooltip="Low drain background execution">
-        <div class="telem-icon telem-battery">🔋</div>
+      <div class="telem-item">
+        <div class="telem-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="16" height="10" rx="2"/><line x1="22" y1="11" x2="22" y2="13"/><line x1="6" y1="10" x2="6" y2="14"/></svg>
+        </div>
         <div class="telem-info">
           <span class="telem-val" data-count="0.4" data-prefix="<" data-suffix="%/hr">&lt;0.4%/hr</span>
           <span class="telem-label">Battery Drain</span>
@@ -143,64 +150,65 @@
 
       <div class="telem-sep"></div>
 
-      <div class="telem-item" data-tooltip="Continuous uninterrupted uptime">
-        <div class="telem-icon telem-time">⏱</div>
+      <div class="telem-item">
+        <div class="telem-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
         <div class="telem-info">
           <span class="telem-val" id="live-uptime-counter">42d 18h 34m 12s</span>
-          <span class="telem-label">Live Service Uptime</span>
+          <span class="telem-label">Active Uptime</span>
         </div>
       </div>
+
     </div>
 
-    <!-- Waveform Visualizer Controller Bar -->
+    <!-- Oscilloscope Preset Selector -->
     <div class="visualizer-controller" data-reveal="fade">
       <div class="vis-status">
         <span class="vis-indicator"></span>
-        <span id="vis-track-name">AUDIO FREQUENCY CANVAS &middot; 320 KBPS ENGINE</span>
+        <span id="vis-track-name">AUDIO OSCILLOSCOPE // 320 KBPS ENGINE</span>
       </div>
       <div class="vis-buttons">
-        <button class="vis-btn active" data-genre="lofi">Lofi Wave</button>
-        <button class="vis-btn" data-genre="synthwave">Synth Pulse</button>
-        <button class="vis-btn" data-genre="rock">High Energy</button>
-        <button class="vis-btn" data-genre="ambient">Deep Flow</button>
+        <button class="vis-btn active" data-genre="precision">Precision</button>
+        <button class="vis-btn" data-genre="lofi">Lofi Master</button>
+        <button class="vis-btn" data-genre="synth">Harmonic</button>
+        <button class="vis-btn" data-genre="ambient">Ambient Wave</button>
       </div>
     </div>
 
   </section>
 
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
-  <!-- MARQUEE KINETIC STRIP                                                   -->
+  <!-- KINETIC MARQUEE STRIP                                                   -->
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
   <div class="marquee-strip">
     <div class="marquee-track">
-      <span>NATIVE ANDROID ART</span><span class="m-dot">&bull;</span>
-      <span>KOTLIN COROUTINES</span><span class="m-dot">&bull;</span>
-      <span>TAPSTREAM AUDIO ENGINE</span><span class="m-dot">&bull;</span>
-      <span>AES-256-GCM KEYSTORE</span><span class="m-dot">&bull;</span>
-      <span>ZERO FLASH WEAR RING BUFFERS</span><span class="m-dot">&bull;</span>
-      <span>TELEGRAM BOT API 7.0</span><span class="m-dot">&bull;</span>
-      <span>PHYSICAL ROOM SPEAKER OUTPUT</span><span class="m-dot">&bull;</span>
-      <span>24/7 ZERO BUFFER RADIO</span><span class="m-dot">&bull;</span>
-      <span>BATTERY OPTIMIZATION EXEMPT</span><span class="m-dot">&bull;</span>
-      <!-- Seamless loop duplicate -->
-      <span>NATIVE ANDROID ART</span><span class="m-dot">&bull;</span>
-      <span>KOTLIN COROUTINES</span><span class="m-dot">&bull;</span>
-      <span>TAPSTREAM AUDIO ENGINE</span><span class="m-dot">&bull;</span>
-      <span>AES-256-GCM KEYSTORE</span><span class="m-dot">&bull;</span>
-      <span>ZERO FLASH WEAR RING BUFFERS</span><span class="m-dot">&bull;</span>
-      <span>TELEGRAM BOT API 7.0</span><span class="m-dot">&bull;</span>
-      <span>PHYSICAL ROOM SPEAKER OUTPUT</span><span class="m-dot">&bull;</span>
-      <span>24/7 ZERO BUFFER RADIO</span><span class="m-dot">&bull;</span>
-      <span>BATTERY OPTIMIZATION EXEMPT</span><span class="m-dot">&bull;</span>
+      <span>NATIVE ANDROID ART</span><span class="m-sep">/</span>
+      <span>KOTLIN BYTECODE</span><span class="m-sep">/</span>
+      <span>TAPSTREAM AUDIO ENGINE</span><span class="m-sep">/</span>
+      <span>AES-256-GCM KEYSTORE</span><span class="m-sep">/</span>
+      <span>ZERO FLASH WEAR RING BUFFERS</span><span class="m-sep">/</span>
+      <span>TELEGRAM BOT API 7.0</span><span class="m-sep">/</span>
+      <span>PHYSICAL ROOM SPEAKER STREAMING</span><span class="m-sep">/</span>
+      <span>320 KBPS ZERO-BUFFER RADIO</span><span class="m-sep">/</span>
+      <!-- Loop duplicate -->
+      <span>NATIVE ANDROID ART</span><span class="m-sep">/</span>
+      <span>KOTLIN BYTECODE</span><span class="m-sep">/</span>
+      <span>TAPSTREAM AUDIO ENGINE</span><span class="m-sep">/</span>
+      <span>AES-256-GCM KEYSTORE</span><span class="m-sep">/</span>
+      <span>ZERO FLASH WEAR RING BUFFERS</span><span class="m-sep">/</span>
+      <span>TELEGRAM BOT API 7.0</span><span class="m-sep">/</span>
+      <span>PHYSICAL ROOM SPEAKER STREAMING</span><span class="m-sep">/</span>
+      <span>320 KBPS ZERO-BUFFER RADIO</span><span class="m-sep">/</span>
     </div>
   </div>
 
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
-  <!-- ARCHITECTURE TIMELINE (PINNED HORIZONTAL SCROLL)                         -->
+  <!-- ARCHITECTURE PIPELINE (HORIZONTAL PIN)                                  -->
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
   <section id="how">
     <div class="how-header">
-      <span class="section-tag" data-reveal="fade">On-Device Architecture</span>
+      <span class="section-tag" data-reveal="fade">// ARCHITECTURE</span>
       <h2 class="section-h2" data-reveal="chars">Three minutes from drawer to server.</h2>
       <p class="section-p">No Linux rooting. No Termux workarounds. Just a compiled Android service running directly on native ART.</p>
     </div>
@@ -211,9 +219,9 @@
         <article class="how-card spotlight-card" data-tilt>
           <div class="how-card-spotlight"></div>
           <span class="how-num">01</span>
-          <div class="how-tag">STEP 1 &middot; DEPLOYMENT</div>
+          <div class="how-tag">PHASE 01 // DEPLOYMENT</div>
           <h3>Install Standalone APK</h3>
-          <p>Sideload a clean, single 19.3 MB binary. Compatible with Android 8.0 up to Android 15+. Requires zero Google Play Services or root permissions.</p>
+          <p>Sideload a single 19.3 MB binary. Compatible with Android 8.0 up to Android 15+. Operates completely decoupled from Google Play Services.</p>
           <div class="code-pill">
             <code>adb install tapbot-v2.2.0.apk</code>
           </div>
@@ -222,9 +230,9 @@
         <article class="how-card spotlight-card" data-tilt>
           <div class="how-card-spotlight"></div>
           <span class="how-num">02</span>
-          <div class="how-tag">STEP 2 &middot; ENCRYPTION</div>
-          <h3>Android Keystore Enrollment</h3>
-          <p>Create a bot via <strong>@BotFather</strong> on Telegram. Paste your bot token into TapBot. The token is encrypted inside the hardware security enclave with AES-256-GCM.</p>
+          <div class="how-tag">PHASE 02 // ENCLAVE</div>
+          <h3>Keystore Token Sealing</h3>
+          <p>Obtain an API token via <strong>@BotFather</strong> on Telegram. TapBot locks the credential directly in the Android Keystore enclave with AES-256-GCM authenticated cipher.</p>
           <div class="code-pill">
             <code>Keystore.encrypt(token, AES_GCM)</code>
           </div>
@@ -233,9 +241,9 @@
         <article class="how-card spotlight-card" data-tilt>
           <div class="how-card-spotlight"></div>
           <span class="how-num">03</span>
-          <div class="how-tag">STEP 3 &middot; AUDIO STREAMING</div>
-          <h3>Select TapStream Music Bot</h3>
-          <p>Choose <b>TapStream Music</b> or <b>TapBot Commander</b>. Tap Start. TapStream connects to Telegram's long-polling gateway in under 200 milliseconds.</p>
+          <div class="how-tag">PHASE 03 // AUDIO ENGINE</div>
+          <h3>Launch TapStream</h3>
+          <p>Select <b>TapStream Music</b> or <b>TapBot Commander</b> and tap Start. The process connects to Telegram's long-polling gateway via OkHttp WebSockets in under 200ms.</p>
           <div class="code-pill">
             <code>OkHttp.newWebSocket(tg_gateway)</code>
           </div>
@@ -244,11 +252,11 @@
         <article class="how-card spotlight-card" data-tilt>
           <div class="how-card-spotlight"></div>
           <span class="how-num">04</span>
-          <div class="how-tag">STEP 4 &middot; IMMORTAL UPTIME</div>
-          <h3>Drawer Retirement</h3>
-          <p>TapBot secures a partial CPU wake lock and foreground service notification. Plug in the charger, put the phone in a drawer, and enjoy your free 24/7 server.</p>
+          <div class="how-tag">PHASE 04 // PERSISTENCE</div>
+          <h3>Immortal Foreground State</h3>
+          <p>TapBot acquires a partial CPU wake lock and background service notification. Plug in the device charger, put the phone in a drawer, and your server runs permanently.</p>
           <div class="code-pill">
-            <code>WakeLock.acquire() &middot; Uptime: &infin;</code>
+            <code>WakeLock.acquire() // Uptime: INF</code>
           </div>
         </article>
 
@@ -257,36 +265,35 @@
   </section>
 
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
-  <!-- BENTO GRID FEATURES WITH MOUSE SPOTLIGHT BEAMS                          -->
+  <!-- BENTO SPECIFICATIONS                                                    -->
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
   <section id="features">
     <div class="features-inner">
-      <span class="section-tag" data-reveal="fade">Engine Capabilities</span>
-      <h2 class="section-h2" data-reveal="chars">Engineered for hardware immortality.</h2>
+      <span class="section-tag" data-reveal="fade">// SPECIFICATIONS</span>
+      <h2 class="section-h2" data-reveal="chars">Engineered for hardware longevity.</h2>
 
       <div class="bento">
         
         <!-- Large Card 1: TapStream Audio Engine -->
         <div class="bento-card bento-lg spotlight-card" data-tilt data-reveal="slide-up">
-          <div class="card-spotlight"></div>
           <div class="bento-head">
-            <div class="bento-icon icon-music">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"/></svg>
+            <div class="bento-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"/></svg>
             </div>
-            <div class="bento-badge">TAPSTREAM MUSIC ENGINE</div>
+            <div class="bento-badge">TAPSTREAM AUDIO ENGINE</div>
           </div>
           
-          <h3 class="bento-title">High-Fidelity Audio Streaming & Dual Routing</h3>
+          <h3 class="bento-title">Audio Streaming & Dual Output Routing</h3>
           <p class="bento-desc">
-            Send <code>/play &lt;song&gt;</code> or <code>/radio &lt;genre&gt;</code> in Telegram. Audio is dynamically decoded via yt-dlp endpoints and routed to physical phone speakers, connected Bluetooth hi-fi systems, or uploaded directly as an in-chat Telegram audio track.
+            Resolve tracks via yt-dlp API endpoints or stream 6 curated 24/7 internet radio stations. Playback routes to the phone's physical loudspeaker, connected Bluetooth DACs, or uploads as an in-chat Telegram audio track.
           </p>
 
-          <!-- Interactive Live Equalizer & Stations Bar inside the card -->
+          <!-- Equalizer & Station Selector -->
           <div class="interactive-equalizer-module">
             <div class="eq-meta">
               <div class="eq-now-playing">
                 <span class="eq-pulse-circle"></span>
-                <span id="card-eq-title">Lofi Girl Study Beats (24/7 Chill)</span>
+                <span id="card-eq-title">Lofi Study Stream (24/7 Zero-Buffer)</span>
               </div>
               <div class="eq-bars-cluster">
                 <span class="eq-bar"></span>
@@ -300,7 +307,7 @@
               </div>
             </div>
 
-            <!-- Radio Station Quick-Select Chips -->
+            <!-- Radio Station Selector -->
             <div class="station-chip-row">
               <button class="st-chip active" data-st="lofi">Lofi Beats</button>
               <button class="st-chip" data-st="synthwave">Nightwave Plaza</button>
@@ -311,86 +318,82 @@
           </div>
 
           <div class="bento-tags">
-            <span>yt-dlp Streamer</span>
-            <span>320 kbps High-Bitrate</span>
-            <span>Speaker + Chat Output</span>
-            <span>Volume Control (0-100%)</span>
+            <span>yt-dlp Resolver</span>
+            <span>320 kbps Bitrate</span>
+            <span>Speaker + Chat Routing</span>
+            <span>Hardware Volume (0-100%)</span>
           </div>
         </div>
 
-        <!-- Card 2: Keystore Enclave Encryption -->
+        <!-- Card 2: Keystore Encryption -->
         <div class="bento-card spotlight-card" data-tilt data-reveal="slide-up">
-          <div class="card-spotlight"></div>
           <div class="bento-head">
-            <div class="bento-icon icon-lock">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+            <div class="bento-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
             </div>
-            <div class="bento-badge">SECURITY ENCLAVE</div>
+            <div class="bento-badge">KEYSTORE ENCLAVE</div>
           </div>
-          <h3 class="bento-title">Hardware Keystore Encryption</h3>
+          <h3 class="bento-title">Hardware Token Encryption</h3>
           <p class="bento-desc">
-            Telegram bot tokens are sealed within Android's hardware security module (KeyStore) using AES-256-GCM. Plaintext tokens never hit flash memory.
+            Bot tokens are sealed inside Android's hardware security module (KeyStore) using AES-256-GCM. Unencrypted tokens never touch flash memory.
           </p>
           <div class="spec-list">
-            <div>&bull; AES-256-GCM authenticated cipher</div>
-            <div>&bull; Android KeyStore secure enclave</div>
+            <div>&bull; Authenticated AES-GCM cipher</div>
+            <div>&bull; Hardware-backed key isolation</div>
           </div>
         </div>
 
-        <!-- Card 3: Zero Flash Wear In-Memory Buffers -->
+        <!-- Card 3: Zero Flash Wear -->
         <div class="bento-card spotlight-card" data-tilt data-reveal="slide-up">
-          <div class="card-spotlight"></div>
           <div class="bento-head">
-            <div class="bento-icon icon-flash">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+            <div class="bento-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
             </div>
-            <div class="bento-badge">ZERO WEAR ENGINE</div>
+            <div class="bento-badge">MEMORY INTEGRITY</div>
           </div>
-          <h3 class="bento-title">0 Bytes Flash Wear</h3>
+          <h3 class="bento-title">0 Bytes Flash Storage Wear</h3>
           <p class="bento-desc">
-            Traditional servers constantly write log files that degrade phone eMMC/UFS memory. TapBot runs log rings strictly in RAM buffers, writing 0 bytes to storage per hour.
+            Logging engines constantly degrade internal phone eMMC/UFS storage. TapBot stores telemetry strictly in RAM ring buffers, writing 0 bytes to disk.
           </p>
           <div class="spec-list">
-            <div>&bull; Circular in-memory RAM log buffers</div>
-            <div>&bull; Prolongs device lifespan for years</div>
+            <div>&bull; In-memory volatile circular ring</div>
+            <div>&bull; Eliminates eMMC wear completely</div>
           </div>
         </div>
 
         <!-- Card 4: Native Android ART Compilation -->
         <div class="bento-card spotlight-card" data-tilt data-reveal="slide-up">
-          <div class="card-spotlight"></div>
           <div class="bento-head">
-            <div class="bento-icon icon-art">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+            <div class="bento-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
             </div>
-            <div class="bento-badge">NATIVE ART RUNTIME</div>
+            <div class="bento-badge">ART JIT/AOT</div>
           </div>
-          <h3 class="bento-title">Direct Bytecode JIT Execution</h3>
+          <h3 class="bento-title">Native ART Execution</h3>
           <p class="bento-desc">
-            No bloated Node.js runtimes or slow Python interpreters. Compiled Kotlin runs directly on Android ART with Coroutines Flow, consuming only 14.2 MB of heap memory.
+            No heavy Node.js runtime layers or slow Python interpreters. Compiled Kotlin bytecode executes directly on native Android ART with Coroutines Flow.
           </p>
           <div class="spec-list">
-            <div>&bull; AOT / JIT optimized bytecode</div>
-            <div>&bull; 14.2 MB Heap / ~0.17% system RAM</div>
+            <div>&bull; 14.2 MB Heap RAM allocation</div>
+            <div>&bull; Pure non-blocking Coroutine I/O</div>
           </div>
         </div>
 
         <!-- Card 5: Background Immortality -->
         <div class="bento-card spotlight-card" data-tilt data-reveal="slide-up">
-          <div class="card-spotlight"></div>
           <div class="bento-head">
-            <div class="bento-icon icon-shield">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+            <div class="bento-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
             </div>
-            <div class="bento-badge">DOZE RESISTANT</div>
+            <div class="bento-badge">PERSISTENCE</div>
           </div>
-          <h3 class="bento-title">24/7 Doze Immunity</h3>
+          <h3 class="bento-title">Doze Mode Immunity</h3>
           <p class="bento-desc">
-            Foreground service lifecycle with sticky restarts and battery optimization exemption. TapBot stays alive through aggressive OEM task managers and network transitions.
+            Foreground service execution backed by sticky process flags and battery optimization exemption. TapBot persists through aggressive OEM task killers.
           </p>
           <div class="spec-list">
             <div>&bull; PARTIAL_WAKE_LOCK protection</div>
-            <div>&bull; Auto-reconnect on Wi-Fi/4G drops</div>
+            <div>&bull; Automatic network reconnect</div>
           </div>
         </div>
 
@@ -399,22 +402,22 @@
   </section>
 
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
-  <!-- INTERACTIVE PLAYGROUND (3D PHONE SIMULATOR + COMMAND CENTER)            -->
+  <!-- INTERACTIVE PLAYGROUND (3D DEVICE CONSOLE)                              -->
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
   <section id="playground">
     <div class="playground-inner">
       
-      <!-- Left Column: Command & Feature Explainer -->
+      <!-- Left Column: Controls & Trigger Chips -->
       <div class="play-left-col">
-        <span class="section-tag" data-reveal="fade">Live Bot Simulation</span>
+        <span class="section-tag" data-reveal="fade">// INTERACTIVE CONSOLE</span>
         <h2 class="section-h2" data-reveal="chars">Test the live engine in your browser.</h2>
         <p class="section-p" data-reveal="words">
-          This 3D phone simulator runs the exact command parsing and routing logic of TapStream v2.2.0. Tap command chips or type in the console below to test music playback, volume control, and telemetry.
+          This hardware preview simulates TapStream's command pipeline and audio routing logic. Trigger command chips or enter custom commands below to test real-time state changes.
         </p>
 
-        <!-- Command Palette Chips -->
+        <!-- Command Chips -->
         <div class="chip-container" data-reveal="fade">
-          <div class="chip-label">Quick Trigger Commands:</div>
+          <div class="chip-label">Quick Command Dispatch:</div>
           <div class="chip-grid">
             <button class="cmd-chip" data-cmd="/play lofi girl" data-magnetic>
               <span class="chip-dot"></span><span>/play lofi</span>
@@ -440,9 +443,8 @@
           </div>
         </div>
 
-        <!-- Audio Output Mode Selector -->
+        <!-- Output Routing Box -->
         <div class="mode-selector-box spotlight-card" data-tilt data-reveal="slide-up">
-          <div class="card-spotlight"></div>
           <div class="mode-header">
             <span class="mode-title">Active Playback Output Route:</span>
             <span id="active-mode-badge" class="mode-badge">BOTH (SPEAKER + CHAT)</span>
@@ -455,7 +457,7 @@
         </div>
       </div>
 
-      <!-- Right Column: 3D Photorealistic Smartphone Simulator -->
+      <!-- Right Column: 3D Simulated Device -->
       <div class="play-right-col" data-reveal="slide-up">
         <div class="phone-stage">
           
@@ -463,13 +465,13 @@
             
             <div class="phone-chassis">
               
-              <!-- Dynamic Island & Speaker Earpiece -->
+              <!-- Dynamic Island Notch -->
               <div class="phone-island">
                 <div class="island-cam"></div>
                 <div class="island-mic"></div>
               </div>
 
-              <!-- Telegram Chat Top Bar -->
+              <!-- Telegram Chat Header -->
               <div class="phone-tg-header">
                 <div class="tg-avatar">TS</div>
                 <div class="tg-title-wrap">
@@ -482,23 +484,22 @@
                 <div class="tg-ver-pill">LIVE</div>
               </div>
 
-              <!-- Telegram Live Chat Message Feed -->
+              <!-- Telegram Chat Feed -->
               <div class="phone-chat-feed" id="phone-chat-feed">
                 <div class="tg-bubble-bot">
-                  👋 <b>TapStream v2.2.0 Active!</b><br/>
-                  On-device music bot running inside Android ART.<br/>
-                  Tap any command chip on the left to see live response.
+                  <b>TapStream v2.2.0 Active</b><br/>
+                  On-device music server initialized on Android ART.<br/>
+                  Dispatch a command chip or type in the console below.
                 </div>
               </div>
 
-              <!-- In-Chat Interactive Audio Player Component -->
+              <!-- In-Chat Audio Card Component -->
               <div class="phone-audio-player" id="phone-audio-player">
                 <div class="player-top-row">
                   <div class="player-info">
                     <div class="player-title" id="player-track-title">Lofi Girl Study Beats</div>
                     <div class="player-sub" id="player-track-artist">Lofi Girl 24/7 &middot; 320kbps</div>
                   </div>
-                  <!-- Mini bouncing equalizer -->
                   <div class="player-eq">
                     <span class="p-eq-bar"></span>
                     <span class="p-eq-bar"></span>
@@ -507,29 +508,31 @@
                   </div>
                 </div>
 
-                <!-- Interactive Scrubber Timeline -->
+                <!-- Scrubber Bar -->
                 <div class="player-scrubber-track">
                   <div class="player-scrubber-fill" id="player-scrubber-fill"></div>
                 </div>
 
-                <!-- Player Bottom Controls -->
+                <!-- Bottom Player Status -->
                 <div class="player-bottom-row">
                   <span class="player-time" id="player-time-display">01:42 / 03:45</span>
                   <div class="player-actions">
                     <span class="player-vol" id="player-vol-display">Vol: 80%</span>
                     <button class="player-play-btn" id="player-play-toggle" aria-label="Toggle playback">
-                      <span id="player-play-icon">❚❚</span>
+                      <svg id="player-play-svg" width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
+                        <rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>
+                      </svg>
                     </button>
                   </div>
                 </div>
               </div>
 
-              <!-- Smartphone Input Bar -->
+              <!-- Input Console Bar -->
               <div class="phone-input-bar">
                 <span class="input-prompt">/</span>
                 <input type="text" id="phone-user-input" placeholder="Type command..." autocomplete="off" spellcheck="false">
                 <button class="input-send-btn" id="phone-send-btn" aria-label="Send Command">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M12 5l7 7-7 7"/></svg>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M12 5l7 7-7 7"/></svg>
                 </button>
               </div>
 
@@ -548,11 +551,10 @@
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
   <section id="dev">
     <div class="dev-inner">
-      <span class="section-tag" data-reveal="fade">The Creator</span>
+      <span class="section-tag" data-reveal="fade">// DEV ORIGIN</span>
       <h2 class="section-h2" data-reveal="chars">Built to reclaim abandoned hardware.</h2>
 
       <div class="dev-card spotlight-card" data-tilt data-reveal="slide-up">
-        <div class="card-spotlight"></div>
         <div class="dev-card-top">
           <div class="dev-avatar">VD</div>
           <div>
@@ -589,15 +591,15 @@
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
   <section id="download">
     <div class="dl-inner">
-      <div class="dl-badge" data-reveal="fade">OFFICIAL RELEASE v2.2.0</div>
+      <div class="dl-badge" data-reveal="fade">RELEASE v2.2.0 // STABLE</div>
       <h2 class="dl-h2" data-reveal="chars">Get TapBot for Android.</h2>
       <p class="dl-sub" data-reveal="words">
-        No subscription. No tracking. Pure native performance.
+        No cloud subscriptions. Zero trackers. Direct on-device execution.
       </p>
 
       <div class="dl-action-wrap" data-reveal="fade">
         <a href="releases/tapbot-v2.2.0-tapstream-music.apk" download class="btn-primary btn-dl" data-magnetic>
-          <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
           <div class="dl-text-wrap">
             <span class="dl-main-text">Download Official APK</span>
             <span class="dl-meta-text">tapbot-v2.2.0-tapstream-music.apk &middot; 19.3 MB</span>
@@ -606,17 +608,16 @@
       </div>
 
       <div class="quick-setup-card spotlight-card" data-tilt data-reveal="slide-up">
-        <div class="card-spotlight"></div>
-        <div class="qs-title">3-Minute Setup Walkthrough:</div>
+        <div class="qs-title">Setup Protocol (3 Minutes):</div>
         <ol class="qs-steps">
-          <li><strong>1. Sideload APK:</strong> Transfer the 19.3 MB APK to your phone and install.</li>
-          <li><strong>2. Get Token:</strong> Message <code>@BotFather</code> on Telegram, send <code>/newbot</code>, and copy your token.</li>
-          <li><strong>3. Paste &amp; Start:</strong> Open TapBot, select <em>TapStream Music</em>, paste token, and tap Start!</li>
+          <li><strong>1. Sideload APK:</strong> Transfer the 19.3 MB APK to your target Android phone and install.</li>
+          <li><strong>2. Provision Token:</strong> Message <code>@BotFather</code> on Telegram, send <code>/newbot</code>, and copy the API key.</li>
+          <li><strong>3. Initialize Service:</strong> Open TapBot, select <em>TapStream Music</em>, paste your token, and tap Start!</li>
         </ol>
       </div>
 
       <p class="dl-compat" data-reveal="fade">
-        Compatible with Android 8.0 through Android 15+ &middot; No root required &middot; Apache-2.0 Open Source
+        Compatible with Android 8.0 &ndash; 15+ &middot; No root required &middot; Apache-2.0 Open Source
       </p>
     </div>
   </section>
@@ -628,13 +629,13 @@
     <div class="footer-inner">
       <div class="footer-left">
         <span class="footer-brand">TapBot &amp; TapStream</span>
-        <span class="footer-sep">&middot;</span>
-        <span>Open Source under Apache-2.0</span>
-        <span class="footer-sep">&middot;</span>
-        <span>Crafted by VarshuDev</span>
+        <span class="footer-sep">/</span>
+        <span>Apache-2.0</span>
+        <span class="footer-sep">/</span>
+        <span>Engineered by VarshuDev</span>
       </div>
       <div class="footer-right">
-        <span>Zero Analytics &middot; 100% On-Device &middot; Android Keystore Encrypted</span>
+        <span>Zero Analytics &middot; 100% On-Device &middot; Keystore Encrypted</span>
       </div>
     </div>
   </footer>

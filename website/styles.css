@@ -937,28 +937,32 @@ body.cursor-hover .cursor-follower {
   margin-bottom: 44px;
 }
 
-.how-track-wrapper {
-  overflow: hidden;
-}
-
-.how-track {
-  display: flex;
+.how-pipeline-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
   gap: 20px;
+  position: relative;
 }
 
 .how-card {
-  flex-shrink: 0;
-  width: 360px;
-  padding: 34px 28px;
+  display: flex;
+  flex-direction: column;
+  padding: 30px 22px;
   background: var(--bg-card);
+  border: 1px solid var(--border);
   border-radius: var(--radius);
   transform-style: preserve-3d;
   will-change: transform;
+  transition: border-color 0.25s, transform 0.25s, box-shadow 0.25s;
+}
+
+.how-card:hover {
+  transform: translateY(-4px);
 }
 
 .how-num {
   font-family: var(--mono);
-  font-size: 46px;
+  font-size: 42px;
   font-weight: 700;
   line-height: 1;
   display: block;
@@ -1013,7 +1017,7 @@ body.cursor-hover .cursor-follower {
 .tag-azure  { color: var(--azure) !important; }
 
 .how-card h3 {
-  font-size: 19px;
+  font-size: 18px;
   font-weight: 600;
   letter-spacing: -0.4px;
   margin-bottom: 10px;
@@ -1024,16 +1028,25 @@ body.cursor-hover .cursor-follower {
   color: var(--text-2);
   line-height: 1.6;
   margin-bottom: 16px;
+  flex-grow: 1;
+}
+
+.code-pill {
+  margin-top: auto;
 }
 
 .code-pill code {
-  display: inline-block;
-  padding: 4px 10px;
+  display: block;
+  width: 100%;
+  padding: 5px 9px;
   border-radius: 6px;
   background: var(--bg-elev);
   border: 1px solid var(--border);
   color: var(--text-2);
-  font-size: 11px;
+  font-size: 10.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* ─── Bento Specifications Grid ─── */
@@ -2099,6 +2112,10 @@ footer {
   .fleet-grid {
     grid-template-columns: 1fr 1fr;
   }
+  .how-pipeline-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
   .playground-inner {
     grid-template-columns: 1fr;
     gap: 36px;
@@ -2116,6 +2133,9 @@ footer {
 
 @media (max-width: 680px) {
   .fleet-grid {
+    grid-template-columns: 1fr;
+  }
+  .how-pipeline-grid {
     grid-template-columns: 1fr;
   }
   .bento {
@@ -2138,9 +2158,6 @@ footer {
     flex-direction: column;
     gap: 10px;
     align-items: flex-start;
-  }
-  .how-card {
-    width: 300px;
   }
   .phone-3d-wrap {
     width: 290px;

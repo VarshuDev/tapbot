@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TapBot & TapStream — On-Device Android Telegram Bot Engine</title>
-  <meta name="description" content="Host production Telegram bots and stream high-bitrate audio 24/7 on native Android ART. Zero cloud fees, Keystore encryption, and zero flash wear.">
+  <title>TapBot — Autonomous Multi-Bot Android Server & Hardware Engine</title>
+  <meta name="description" content="Turn any Android phone into a 24/7 autonomous Telegram bot server. Run hardware Commander, TapStream music streaming, Gemini AI, and Exon moderation concurrently with $0 cloud VPS fees.">
   
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2'><path stroke-linecap='round' stroke-linejoin='round' d='M13 10V3L4 14h7v7l9-11h-7z'/></svg>">
 
@@ -24,6 +24,15 @@
 
   <!-- Top Scroll Progress -->
   <div id="scroll-progress"></div>
+
+  <!-- Ambient Aurora Glow Orbs (Soft, rich floating gradients) -->
+  <div class="aurora-container" aria-hidden="true">
+    <div class="aurora-orb orb-indigo"></div>
+    <div class="aurora-orb orb-violet"></div>
+    <div class="aurora-orb orb-coral"></div>
+    <div class="aurora-orb orb-amber"></div>
+    <div class="aurora-orb orb-azure"></div>
+  </div>
 
   <!-- Background Oscilloscope Visualizer -->
   <canvas id="bg-visualizer"></canvas>
@@ -53,6 +62,7 @@
       </a>
 
       <div class="nav-links">
+        <a href="#bots" data-magnetic>Bot Fleet</a>
         <a href="#how" data-magnetic>Architecture</a>
         <a href="#features" data-magnetic>Specs</a>
         <a href="#playground" data-magnetic>Live Console</a>
@@ -84,19 +94,43 @@
       <!-- Precision Engineering Status Badge -->
       <div class="hero-badge" data-reveal="fade">
         <span class="badge-dot"></span>
-        <span class="badge-text">ON-DEVICE ART RUNTIME &middot; HARDWARE ENCLAVE &middot; ZERO CLOUD DEPENDENCY</span>
+        <span class="badge-text">ON-DEVICE ART RUNTIME &middot; MULTI-BOT FLEET RUNNER &middot; ZERO CLOUD VPS</span>
       </div>
 
       <!-- Main Headline -->
       <h1 class="hero-h1">
-        <span class="hero-line" data-reveal="chars">Your spare phone is</span>
-        <span class="hero-line" data-reveal="chars">a dedicated <em>server.</em></span>
+        <span class="hero-line" data-reveal="chars">Your spare phone is an</span>
+        <span class="hero-line" data-reveal="chars">autonomous <em class="hero-gradient-text">Telegram bot server.</em></span>
       </h1>
 
-      <!-- Subtitle -->
+      <!-- Subtitle explaining all bots & features -->
       <p class="hero-sub" data-reveal="words">
-        TapBot turns any spare Android phone into a 24/7 Telegram bot server and room audio streamer. Stream music through connected hardware with <b>TapStream</b>, monitor low-level telemetry, and eliminate monthly VPS invoices.
+        TapBot turns any Android device into an on-device bot server running multiple bots concurrently with $0/month in cloud VPS bills. Control hardware with <b>Commander Bot</b>, stream room audio with <b>TapStream</b>, deploy <b>Gemini AI</b>, automate supergroups with <b>Exon</b>, and install packages from the built-in <b>Edge Bot Store</b>.
       </p>
+
+      <!-- Bot Fleet Pill Quick Bar -->
+      <div class="hero-pill-bar" data-reveal="fade">
+        <span class="hero-pill pill-cyan">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          Commander Node
+        </span>
+        <span class="hero-pill pill-rose">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"/></svg>
+          TapStream Audio
+        </span>
+        <span class="hero-pill pill-violet">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+          Gemini AI Assistant
+        </span>
+        <span class="hero-pill pill-amber">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          Exon Group Guardian
+        </span>
+        <span class="hero-pill pill-indigo">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+          Edge Bot Store
+        </span>
+      </div>
 
       <!-- Action Buttons -->
       <div class="hero-ctas" data-reveal="fade">
@@ -111,11 +145,11 @@
       </div>
     </div>
 
-    <!-- Precision Telemetry Ribbon (Vector SVGs, No Emojis) -->
+    <!-- Precision Telemetry Ribbon (Vector SVGs with Warm Accent Tints) -->
     <div class="telemetry-ribbon" data-reveal="fade">
       
       <div class="telem-item">
-        <div class="telem-icon">
+        <div class="telem-icon icon-tint-indigo">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
         </div>
         <div class="telem-info">
@@ -127,7 +161,7 @@
       <div class="telem-sep"></div>
 
       <div class="telem-item">
-        <div class="telem-icon">
+        <div class="telem-icon icon-tint-violet">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="15" x2="23" y2="15"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="15" x2="4" y2="15"/></svg>
         </div>
         <div class="telem-info">
@@ -139,7 +173,7 @@
       <div class="telem-sep"></div>
 
       <div class="telem-item">
-        <div class="telem-icon">
+        <div class="telem-icon icon-tint-amber">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="16" height="10" rx="2"/><line x1="22" y1="11" x2="22" y2="13"/><line x1="6" y1="10" x2="6" y2="14"/></svg>
         </div>
         <div class="telem-info">
@@ -151,7 +185,7 @@
       <div class="telem-sep"></div>
 
       <div class="telem-item">
-        <div class="telem-icon">
+        <div class="telem-icon icon-tint-azure">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
         </div>
         <div class="telem-info">
@@ -184,24 +218,163 @@
   <div class="marquee-strip">
     <div class="marquee-track">
       <span>NATIVE ANDROID ART</span><span class="m-sep">/</span>
-      <span>KOTLIN BYTECODE</span><span class="m-sep">/</span>
-      <span>TAPSTREAM AUDIO ENGINE</span><span class="m-sep">/</span>
+      <span>COMMANDER HARDWARE NODE</span><span class="m-sep">/</span>
+      <span>TAPSTREAM 320 KBPS AUDIO</span><span class="m-sep">/</span>
+      <span>GEMINI AI ASSISTANT</span><span class="m-sep">/</span>
+      <span>EXON GROUP GUARDIAN</span><span class="m-sep">/</span>
+      <span>EDGE BOT STORE (.BOTPKG)</span><span class="m-sep">/</span>
+      <span>MULTI-BOT CONCURRENCY</span><span class="m-sep">/</span>
       <span>AES-256-GCM KEYSTORE</span><span class="m-sep">/</span>
-      <span>ZERO FLASH WEAR RING BUFFERS</span><span class="m-sep">/</span>
-      <span>TELEGRAM BOT API 7.0</span><span class="m-sep">/</span>
-      <span>PHYSICAL ROOM SPEAKER STREAMING</span><span class="m-sep">/</span>
-      <span>320 KBPS ZERO-BUFFER RADIO</span><span class="m-sep">/</span>
+      <span>ZERO FLASH WEAR</span><span class="m-sep">/</span>
       <!-- Loop duplicate -->
       <span>NATIVE ANDROID ART</span><span class="m-sep">/</span>
-      <span>KOTLIN BYTECODE</span><span class="m-sep">/</span>
-      <span>TAPSTREAM AUDIO ENGINE</span><span class="m-sep">/</span>
+      <span>COMMANDER HARDWARE NODE</span><span class="m-sep">/</span>
+      <span>TAPSTREAM 320 KBPS AUDIO</span><span class="m-sep">/</span>
+      <span>GEMINI AI ASSISTANT</span><span class="m-sep">/</span>
+      <span>EXON GROUP GUARDIAN</span><span class="m-sep">/</span>
+      <span>EDGE BOT STORE (.BOTPKG)</span><span class="m-sep">/</span>
+      <span>MULTI-BOT CONCURRENCY</span><span class="m-sep">/</span>
       <span>AES-256-GCM KEYSTORE</span><span class="m-sep">/</span>
-      <span>ZERO FLASH WEAR RING BUFFERS</span><span class="m-sep">/</span>
-      <span>TELEGRAM BOT API 7.0</span><span class="m-sep">/</span>
-      <span>PHYSICAL ROOM SPEAKER STREAMING</span><span class="m-sep">/</span>
-      <span>320 KBPS ZERO-BUFFER RADIO</span><span class="m-sep">/</span>
+      <span>ZERO FLASH WEAR</span><span class="m-sep">/</span>
     </div>
   </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <!-- PRE-INSTALLED BOT FLEET SHOWCASE                                        -->
+  <!-- ═══════════════════════════════════════════════════════════════════════ -->
+  <section id="bots">
+    <div class="fleet-inner">
+      <div class="fleet-header">
+        <span class="section-tag" data-reveal="fade">// PRE-INSTALLED BOT FLEET</span>
+        <h2 class="section-h2" data-reveal="chars">A complete bot ecosystem in one APK.</h2>
+        <p class="section-p">TapBot is not just a single bot. It is a full on-device operating runtime with a pre-installed fleet of specialized bots and a built-in Edge Store to download community packages.</p>
+      </div>
+
+      <div class="fleet-grid">
+        
+        <!-- Fleet Card 1: Commander Bot -->
+        <article class="fleet-card spotlight-card card-azure" data-tilt data-reveal="slide-up">
+          <div class="fleet-card-head">
+            <div class="fleet-icon icon-tint-azure">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="3"/><line x1="12" y1="18" x2="12.01" y2="18"/><path d="M9 6h6"/></svg>
+            </div>
+            <span class="fleet-badge badge-azure">FLAGSHIP // HARDWARE NODE</span>
+          </div>
+          <h3 class="fleet-title">TapBot Commander</h3>
+          <p class="fleet-desc">
+            Turns your Android phone into an interactive IoT node managed via Telegram. Check battery diagnostics and CPU thermals, toggle the camera torch, trigger haptic vibrations, send high-priority system notifications, and distribute signed APK binaries directly over chat.
+          </p>
+          <div class="fleet-cmds">
+            <code>/status</code><code>/torch on</code><code>/vibrate 500</code><code>/notify</code><code>/apk</code><code>/fleet</code>
+          </div>
+          <div class="fleet-footer">
+            <span class="fleet-spec-tag">Autonomous DeviceWatchdog Protection</span>
+          </div>
+        </article>
+
+        <!-- Fleet Card 2: TapStream Music Bot -->
+        <article class="fleet-card spotlight-card card-coral" data-tilt data-reveal="slide-up">
+          <div class="fleet-card-head">
+            <div class="fleet-icon icon-tint-coral">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"/></svg>
+            </div>
+            <span class="fleet-badge badge-coral">AUDIO // DUAL OUTPUT ROUTING</span>
+          </div>
+          <h3 class="fleet-title">TapStream Music Engine</h3>
+          <p class="fleet-desc">
+            Stream music out loud through your phone's physical speakers or connected Bluetooth DACs, while simultaneously delivering playable tracks to Telegram chats. Features yt-dlp API resolution, 6 zero-buffer 24/7 internet radio stations, and hardware volume control.
+          </p>
+          <div class="fleet-cmds">
+            <code>/play [song]</code><code>/radio synthwave</code><code>/nowplaying</code><code>/volume 90</code><code>/mode both</code>
+          </div>
+          <div class="fleet-footer">
+            <span class="fleet-spec-tag">Speaker + Chat Dual Routing &middot; 320kbps</span>
+          </div>
+        </article>
+
+        <!-- Fleet Card 3: Gemini AI Assistant -->
+        <article class="fleet-card spotlight-card card-violet" data-tilt data-reveal="slide-up">
+          <div class="fleet-card-head">
+            <div class="fleet-icon icon-tint-violet">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+            </div>
+            <span class="fleet-badge badge-violet">AI // ON-DEVICE REASONING</span>
+          </div>
+          <h3 class="fleet-title">Gemini Smart Assistant</h3>
+          <p class="fleet-desc">
+            Run your own private 24/7 conversational AI assistant on Telegram powered by Google Gemini. Provides multi-turn reasoning, coding debugging, and text summaries. Your Gemini API key is sealed safely inside the Android Keystore enclave &mdash; zero cloud middleman servers.
+          </p>
+          <div class="fleet-cmds">
+            <code>/ask [query]</code><code>/code [snippet]</code><code>/summarize</code><code>/model</code>
+          </div>
+          <div class="fleet-footer">
+            <span class="fleet-spec-tag">Hardware Keystore Encryption (AES-256-GCM)</span>
+          </div>
+        </article>
+
+        <!-- Fleet Card 4: Exon Group Guardian -->
+        <article class="fleet-card spotlight-card card-amber" data-tilt data-reveal="slide-up">
+          <div class="fleet-card-head">
+            <div class="fleet-icon icon-tint-amber">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            </div>
+            <span class="fleet-badge badge-amber">SECURITY // GROUP GUARDIAN</span>
+          </div>
+          <h3 class="fleet-title">Exon Robot Guardian</h3>
+          <p class="fleet-desc">
+            High-performance Telegram supergroup management inspired by ExonRobot. Protect communities with automated anti-flood mitigation, spam protection, customizable welcome greetings with inline buttons, rule enforcement, and fast mute/ban administrative tools.
+          </p>
+          <div class="fleet-cmds">
+            <code>/admin</code><code>/warn @user</code><code>/mute 10m</code><code>/antiflood on</code><code>/rules</code>
+          </div>
+          <div class="fleet-footer">
+            <span class="fleet-spec-tag">Zero-Latency MTProto + Bot API Execution</span>
+          </div>
+        </article>
+
+        <!-- Fleet Card 5: Edge Bot Store -->
+        <article class="fleet-card spotlight-card card-indigo" data-tilt data-reveal="slide-up">
+          <div class="fleet-card-head">
+            <div class="fleet-icon icon-tint-indigo">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+            </div>
+            <span class="fleet-badge badge-indigo">ECOSYSTEM // CLOUDFLARE EDGE</span>
+          </div>
+          <h3 class="fleet-title">Edge Bot Store</h3>
+          <p class="fleet-desc">
+            Discover, install, update, and rollback cryptographically signed <code>.botpkg</code> packages right inside the Android app. Backed by global Cloudflare Workers edge nodes, serverless D1 SQLite databases, and R2 zero-egress object storage with SHA-256 tamper verification.
+          </p>
+          <div class="fleet-cmds">
+            <code>1-Tap Install</code><code>Atomic State Machine</code><code>Anti-Downgrade Defense</code>
+          </div>
+          <div class="fleet-footer">
+            <span class="fleet-spec-tag">Powered by Cloudflare Workers, D1 &middot; R2</span>
+          </div>
+        </article>
+
+        <!-- Fleet Card 6: Multi-Bot Fleet Concurrency -->
+        <article class="fleet-card spotlight-card card-emerald" data-tilt data-reveal="slide-up">
+          <div class="fleet-card-head">
+            <div class="fleet-icon icon-tint-green">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            </div>
+            <span class="fleet-badge badge-green">FLEET // MULTI-BOT CONCURRENCY</span>
+          </div>
+          <h3 class="fleet-title">Run Multiple Bots in Parallel</h3>
+          <p class="fleet-desc">
+            Host your Commander Bot, Music Streamer, AI Assistant, and Community Guardian all running concurrently on a single phone! Each bot runs in an isolated Coroutine memory space (8-12 MB RAM) under one unified battery-optimized foreground service.
+          </p>
+          <div class="fleet-cmds">
+            <code>8-12 MB Heap RAM/Bot</code><code>&lt;0.1% CPU Idle</code><code>0 Flash Wear</code>
+          </div>
+          <div class="fleet-footer">
+            <span class="fleet-spec-tag">Survives Doze Mode &amp; OEM Task Killers</span>
+          </div>
+        </article>
+
+      </div>
+    </div>
+  </section>
 
   <!-- ═══════════════════════════════════════════════════════════════════════ -->
   <!-- ARCHITECTURE PIPELINE (HORIZONTAL PIN)                                  -->
@@ -216,10 +389,10 @@
     <div class="how-track-wrapper">
       <div class="how-track">
         
-        <article class="how-card spotlight-card" data-tilt>
+        <article class="how-card spotlight-card how-card-indigo" data-tilt>
           <div class="how-card-spotlight"></div>
-          <span class="how-num">01</span>
-          <div class="how-tag">PHASE 01 // DEPLOYMENT</div>
+          <span class="how-num num-indigo">01</span>
+          <div class="how-tag tag-indigo">PHASE 01 // DEPLOYMENT</div>
           <h3>Install Standalone APK</h3>
           <p>Sideload a single 19.3 MB binary. Compatible with Android 8.0 up to Android 15+. Operates completely decoupled from Google Play Services.</p>
           <div class="code-pill">
@@ -227,10 +400,10 @@
           </div>
         </article>
 
-        <article class="how-card spotlight-card" data-tilt>
+        <article class="how-card spotlight-card how-card-violet" data-tilt>
           <div class="how-card-spotlight"></div>
-          <span class="how-num">02</span>
-          <div class="how-tag">PHASE 02 // ENCLAVE</div>
+          <span class="how-num num-violet">02</span>
+          <div class="how-tag tag-violet">PHASE 02 // ENCLAVE</div>
           <h3>Keystore Token Sealing</h3>
           <p>Obtain an API token via <strong>@BotFather</strong> on Telegram. TapBot locks the credential directly in the Android Keystore enclave with AES-256-GCM authenticated cipher.</p>
           <div class="code-pill">
@@ -238,10 +411,10 @@
           </div>
         </article>
 
-        <article class="how-card spotlight-card" data-tilt>
+        <article class="how-card spotlight-card how-card-rose" data-tilt>
           <div class="how-card-spotlight"></div>
-          <span class="how-num">03</span>
-          <div class="how-tag">PHASE 03 // AUDIO ENGINE</div>
+          <span class="how-num num-rose">03</span>
+          <div class="how-tag tag-coral">PHASE 03 // AUDIO ENGINE</div>
           <h3>Launch TapStream</h3>
           <p>Select <b>TapStream Music</b> or <b>TapBot Commander</b> and tap Start. The process connects to Telegram's long-polling gateway via OkHttp WebSockets in under 200ms.</p>
           <div class="code-pill">
@@ -249,10 +422,10 @@
           </div>
         </article>
 
-        <article class="how-card spotlight-card" data-tilt>
+        <article class="how-card spotlight-card how-card-amber" data-tilt>
           <div class="how-card-spotlight"></div>
-          <span class="how-num">04</span>
-          <div class="how-tag">PHASE 04 // PERSISTENCE</div>
+          <span class="how-num num-amber">04</span>
+          <div class="how-tag tag-amber">PHASE 04 // PERSISTENCE</div>
           <h3>Immortal Foreground State</h3>
           <p>TapBot acquires a partial CPU wake lock and background service notification. Plug in the device charger, put the phone in a drawer, and your server runs permanently.</p>
           <div class="code-pill">
@@ -275,15 +448,15 @@
       <div class="bento">
         
         <!-- Large Card 1: TapStream Audio Engine -->
-        <div class="bento-card bento-lg spotlight-card" data-tilt data-reveal="slide-up">
+        <div class="bento-card bento-lg spotlight-card bento-audio" data-tilt data-reveal="slide-up">
           <div class="bento-head">
-            <div class="bento-icon">
+            <div class="bento-icon icon-tint-coral">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"/></svg>
             </div>
-            <div class="bento-badge">TAPSTREAM AUDIO ENGINE</div>
+            <div class="bento-badge badge-coral">TAPSTREAM AUDIO ENGINE</div>
           </div>
           
-          <h3 class="bento-title">Audio Streaming & Dual Output Routing</h3>
+          <h3 class="bento-title">Audio Streaming &amp; Dual Output Routing</h3>
           <p class="bento-desc">
             Resolve tracks via yt-dlp API endpoints or stream 6 curated 24/7 internet radio stations. Playback routes to the phone's physical loudspeaker, connected Bluetooth DACs, or uploads as an in-chat Telegram audio track.
           </p>
@@ -296,42 +469,42 @@
                 <span id="card-eq-title">Lofi Study Stream (24/7 Zero-Buffer)</span>
               </div>
               <div class="eq-bars-cluster">
-                <span class="eq-bar"></span>
-                <span class="eq-bar"></span>
-                <span class="eq-bar"></span>
-                <span class="eq-bar"></span>
-                <span class="eq-bar"></span>
-                <span class="eq-bar"></span>
-                <span class="eq-bar"></span>
-                <span class="eq-bar"></span>
+                <span class="eq-bar bar-coral"></span>
+                <span class="eq-bar bar-rose"></span>
+                <span class="eq-bar bar-violet"></span>
+                <span class="eq-bar bar-indigo"></span>
+                <span class="eq-bar bar-azure"></span>
+                <span class="eq-bar bar-violet"></span>
+                <span class="eq-bar bar-rose"></span>
+                <span class="eq-bar bar-amber"></span>
               </div>
             </div>
 
             <!-- Radio Station Selector -->
             <div class="station-chip-row">
-              <button class="st-chip active" data-st="lofi">Lofi Beats</button>
-              <button class="st-chip" data-st="synthwave">Nightwave Plaza</button>
-              <button class="st-chip" data-st="rock">Classic Rock</button>
-              <button class="st-chip" data-st="jazz">Jazz Lounge</button>
-              <button class="st-chip" data-st="space">Ambient Space</button>
+              <button class="st-chip active st-lofi" data-st="lofi">Lofi Beats</button>
+              <button class="st-chip st-synth" data-st="synthwave">Nightwave Plaza</button>
+              <button class="st-chip st-rock" data-st="rock">Classic Rock</button>
+              <button class="st-chip st-jazz" data-st="jazz">Jazz Lounge</button>
+              <button class="st-chip st-space" data-st="space">Ambient Space</button>
             </div>
           </div>
 
           <div class="bento-tags">
-            <span>yt-dlp Resolver</span>
-            <span>320 kbps Bitrate</span>
-            <span>Speaker + Chat Routing</span>
-            <span>Hardware Volume (0-100%)</span>
+            <span class="tag-pill-coral">yt-dlp Resolver</span>
+            <span class="tag-pill-violet">320 kbps Bitrate</span>
+            <span class="tag-pill-indigo">Speaker + Chat Routing</span>
+            <span class="tag-pill-amber">Hardware Volume (0-100%)</span>
           </div>
         </div>
 
         <!-- Card 2: Keystore Encryption -->
-        <div class="bento-card spotlight-card" data-tilt data-reveal="slide-up">
+        <div class="bento-card spotlight-card bento-violet" data-tilt data-reveal="slide-up">
           <div class="bento-head">
-            <div class="bento-icon">
+            <div class="bento-icon icon-tint-violet">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
             </div>
-            <div class="bento-badge">KEYSTORE ENCLAVE</div>
+            <div class="bento-badge badge-violet">KEYSTORE ENCLAVE</div>
           </div>
           <h3 class="bento-title">Hardware Token Encryption</h3>
           <p class="bento-desc">
@@ -344,12 +517,12 @@
         </div>
 
         <!-- Card 3: Zero Flash Wear -->
-        <div class="bento-card spotlight-card" data-tilt data-reveal="slide-up">
+        <div class="bento-card spotlight-card bento-azure" data-tilt data-reveal="slide-up">
           <div class="bento-head">
-            <div class="bento-icon">
+            <div class="bento-icon icon-tint-azure">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
             </div>
-            <div class="bento-badge">MEMORY INTEGRITY</div>
+            <div class="bento-badge badge-azure">MEMORY INTEGRITY</div>
           </div>
           <h3 class="bento-title">0 Bytes Flash Storage Wear</h3>
           <p class="bento-desc">
@@ -362,12 +535,12 @@
         </div>
 
         <!-- Card 4: Native Android ART Compilation -->
-        <div class="bento-card spotlight-card" data-tilt data-reveal="slide-up">
+        <div class="bento-card spotlight-card bento-indigo" data-tilt data-reveal="slide-up">
           <div class="bento-head">
-            <div class="bento-icon">
+            <div class="bento-icon icon-tint-indigo">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
             </div>
-            <div class="bento-badge">ART JIT/AOT</div>
+            <div class="bento-badge badge-indigo">ART JIT/AOT</div>
           </div>
           <h3 class="bento-title">Native ART Execution</h3>
           <p class="bento-desc">
@@ -380,12 +553,12 @@
         </div>
 
         <!-- Card 5: Background Immortality -->
-        <div class="bento-card spotlight-card" data-tilt data-reveal="slide-up">
+        <div class="bento-card spotlight-card bento-amber" data-tilt data-reveal="slide-up">
           <div class="bento-head">
-            <div class="bento-icon">
+            <div class="bento-icon icon-tint-amber">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
             </div>
-            <div class="bento-badge">PERSISTENCE</div>
+            <div class="bento-badge badge-amber">PERSISTENCE</div>
           </div>
           <h3 class="bento-title">Doze Mode Immunity</h3>
           <p class="bento-desc">
@@ -409,44 +582,117 @@
       
       <!-- Left Column: Controls & Trigger Chips -->
       <div class="play-left-col">
-        <span class="section-tag" data-reveal="fade">// INTERACTIVE CONSOLE</span>
-        <h2 class="section-h2" data-reveal="chars">Test the live engine in your browser.</h2>
+        <span class="section-tag" data-reveal="fade">// INTERACTIVE MULTI-BOT CONSOLE</span>
+        <h2 class="section-h2" data-reveal="chars">Test every bot directly in your browser.</h2>
         <p class="section-p" data-reveal="words">
-          This hardware preview simulates TapStream's command pipeline and audio routing logic. Trigger command chips or enter custom commands below to test real-time state changes.
+          This live interactive console simulates TapBot's multi-bot execution pipeline. Switch between runtimes below to test remote hardware controls, audio streaming, generative AI, and supergroup moderation.
         </p>
 
-        <!-- Command Chips -->
+        <!-- Bot Switcher Tabs -->
+        <div class="bot-switcher-tabs" data-reveal="fade">
+          <button class="bot-tab active" data-bot="commander" data-magnetic>
+            <span class="tab-indicator tab-azure"></span>
+            <span>Commander Node</span>
+          </button>
+          <button class="bot-tab" data-bot="music" data-magnetic>
+            <span class="tab-indicator tab-coral"></span>
+            <span>TapStream Music</span>
+          </button>
+          <button class="bot-tab" data-bot="ai" data-magnetic>
+            <span class="tab-indicator tab-violet"></span>
+            <span>Gemini AI</span>
+          </button>
+          <button class="bot-tab" data-bot="exon" data-magnetic>
+            <span class="tab-indicator tab-amber"></span>
+            <span>Exon Guardian</span>
+          </button>
+        </div>
+
+        <!-- Command Chips Groups for each bot -->
         <div class="chip-container" data-reveal="fade">
-          <div class="chip-label">Quick Command Dispatch:</div>
-          <div class="chip-grid">
-            <button class="cmd-chip" data-cmd="/play lofi girl" data-magnetic>
-              <span class="chip-dot"></span><span>/play lofi</span>
+          <div class="chip-label" id="chip-group-label">Commander Bot Commands:</div>
+          
+          <!-- Commander Chips (Active by default) -->
+          <div class="chip-grid bot-chips" id="chips-commander">
+            <button class="cmd-chip chip-azure" data-cmd="/status" data-magnetic>
+              <span class="chip-dot dot-azure"></span><span>/status</span>
             </button>
-            <button class="cmd-chip" data-cmd="/radio synthwave" data-magnetic>
-              <span class="chip-dot"></span><span>/radio synthwave</span>
+            <button class="cmd-chip chip-amber" data-cmd="/torch on" data-magnetic>
+              <span class="chip-dot dot-amber"></span><span>/torch on</span>
             </button>
-            <button class="cmd-chip" data-cmd="/radio rock" data-magnetic>
-              <span class="chip-dot"></span><span>/radio rock</span>
+            <button class="cmd-chip chip-rose" data-cmd="/vibrate 500" data-magnetic>
+              <span class="chip-dot dot-rose"></span><span>/vibrate 500ms</span>
             </button>
-            <button class="cmd-chip" data-cmd="/nowplaying" data-magnetic>
-              <span class="chip-dot"></span><span>/nowplaying</span>
+            <button class="cmd-chip chip-indigo" data-cmd="/notify Server health optimal" data-magnetic>
+              <span class="chip-dot dot-indigo"></span><span>/notify</span>
             </button>
-            <button class="cmd-chip" data-cmd="/volume 95" data-magnetic>
-              <span class="chip-dot"></span><span>/volume 95%</span>
+            <button class="cmd-chip chip-emerald" data-cmd="/apk" data-magnetic>
+              <span class="chip-dot dot-emerald"></span><span>/apk (send binary)</span>
             </button>
-            <button class="cmd-chip" data-cmd="/mode both" data-magnetic>
-              <span class="chip-dot"></span><span>/mode both</span>
+            <button class="cmd-chip chip-azure" data-cmd="/fleet" data-magnetic>
+              <span class="chip-dot dot-azure"></span><span>/fleet (list bots)</span>
             </button>
-            <button class="cmd-chip" data-cmd="/status" data-magnetic>
-              <span class="chip-dot"></span><span>/status</span>
+          </div>
+
+          <!-- TapStream Music Chips -->
+          <div class="chip-grid bot-chips" id="chips-music" style="display:none;">
+            <button class="cmd-chip chip-rose" data-cmd="/play lofi girl" data-magnetic>
+              <span class="chip-dot dot-rose"></span><span>/play lofi</span>
+            </button>
+            <button class="cmd-chip chip-violet" data-cmd="/radio synthwave" data-magnetic>
+              <span class="chip-dot dot-violet"></span><span>/radio synthwave</span>
+            </button>
+            <button class="cmd-chip chip-amber" data-cmd="/radio rock" data-magnetic>
+              <span class="chip-dot dot-amber"></span><span>/radio rock</span>
+            </button>
+            <button class="cmd-chip chip-coral" data-cmd="/nowplaying" data-magnetic>
+              <span class="chip-dot dot-coral"></span><span>/nowplaying</span>
+            </button>
+            <button class="cmd-chip chip-azure" data-cmd="/volume 95" data-magnetic>
+              <span class="chip-dot dot-azure"></span><span>/volume 95%</span>
+            </button>
+            <button class="cmd-chip chip-indigo" data-cmd="/mode both" data-magnetic>
+              <span class="chip-dot dot-indigo"></span><span>/mode both</span>
+            </button>
+          </div>
+
+          <!-- Gemini AI Chips -->
+          <div class="chip-grid bot-chips" id="chips-ai" style="display:none;">
+            <button class="cmd-chip chip-violet" data-cmd="/ask why host bots on Android?" data-magnetic>
+              <span class="chip-dot dot-violet"></span><span>/ask why Android?</span>
+            </button>
+            <button class="cmd-chip chip-indigo" data-cmd="/code kotlin coroutine flow" data-magnetic>
+              <span class="chip-dot dot-indigo"></span><span>/code coroutine flow</span>
+            </button>
+            <button class="cmd-chip chip-azure" data-cmd="/summarize architecture" data-magnetic>
+              <span class="chip-dot dot-azure"></span><span>/summarize specs</span>
+            </button>
+            <button class="cmd-chip chip-rose" data-cmd="/model" data-magnetic>
+              <span class="chip-dot dot-rose"></span><span>/model</span>
+            </button>
+          </div>
+
+          <!-- Exon Guardian Chips -->
+          <div class="chip-grid bot-chips" id="chips-exon" style="display:none;">
+            <button class="cmd-chip chip-amber" data-cmd="/admin" data-magnetic>
+              <span class="chip-dot dot-amber"></span><span>/admin status</span>
+            </button>
+            <button class="cmd-chip chip-rose" data-cmd="/antiflood on" data-magnetic>
+              <span class="chip-dot dot-rose"></span><span>/antiflood on</span>
+            </button>
+            <button class="cmd-chip chip-azure" data-cmd="/rules" data-magnetic>
+              <span class="chip-dot dot-azure"></span><span>/rules</span>
+            </button>
+            <button class="cmd-chip chip-indigo" data-cmd="/warn @spambot flood detected" data-magnetic>
+              <span class="chip-dot dot-indigo"></span><span>/warn user</span>
             </button>
           </div>
         </div>
 
-        <!-- Output Routing Box -->
-        <div class="mode-selector-box spotlight-card" data-tilt data-reveal="slide-up">
+        <!-- Output Routing Box (shown for TapStream) -->
+        <div class="mode-selector-box spotlight-card" id="mode-selector-box" data-tilt data-reveal="slide-up">
           <div class="mode-header">
-            <span class="mode-title">Active Playback Output Route:</span>
+            <span class="mode-title" id="mode-box-title">TapStream Audio Routing Route:</span>
             <span id="active-mode-badge" class="mode-badge">BOTH (SPEAKER + CHAT)</span>
           </div>
           <div class="mode-btn-group">
@@ -464,6 +710,7 @@
           <div class="phone-3d-wrap" id="phone-3d" data-tilt>
             
             <div class="phone-chassis">
+              <div class="phone-border-beam" aria-hidden="true"></div>
               
               <!-- Dynamic Island Notch -->
               <div class="phone-island">
@@ -473,38 +720,47 @@
 
               <!-- Telegram Chat Header -->
               <div class="phone-tg-header">
-                <div class="tg-avatar">TS</div>
+                <div class="tg-avatar" id="sim-avatar">CMD</div>
                 <div class="tg-title-wrap">
-                  <div class="tg-bot-name">TapStream Bot</div>
-                  <div class="tg-bot-sub">
+                  <div class="tg-bot-name" id="sim-bot-name">TapBot Commander</div>
+                  <div class="tg-bot-sub" id="sim-bot-sub">
                     <span class="tg-live-dot"></span>
-                    <span>Android ART &middot; 320kbps</span>
+                    <span id="sim-bot-status-text">Hardware Node &middot; Watchdog Active</span>
                   </div>
                 </div>
-                <div class="tg-ver-pill">LIVE</div>
+                <div class="tg-ver-pill" id="sim-ver-pill">LIVE</div>
               </div>
 
               <!-- Telegram Chat Feed -->
               <div class="phone-chat-feed" id="phone-chat-feed">
                 <div class="tg-bubble-bot">
-                  <b>TapStream v2.2.0 Active</b><br/>
-                  On-device music server initialized on Android ART.<br/>
-                  Dispatch a command chip or type in the console below.
+                  <b>TapBot Commander v2.2.0 Active</b><br/>
+                  On-device hardware controller online on Android ART.<br/>
+                  Select a command chip or type a custom command below.
+                </div>
+                <!-- Animated typing indicator (toggled via JS) -->
+                <div class="tg-typing-row" id="tg-typing" style="display:none;">
+                  <span class="tg-typing-dot"></span>
+                  <span class="tg-typing-dot"></span>
+                  <span class="tg-typing-dot"></span>
                 </div>
               </div>
 
-              <!-- In-Chat Audio Card Component -->
+              <!-- In-Chat Audio Card Component (Toggled in Music Mode) -->
               <div class="phone-audio-player" id="phone-audio-player">
                 <div class="player-top-row">
+                  <div class="player-vinyl spinning" id="player-vinyl">
+                    <div class="vinyl-center"></div>
+                  </div>
                   <div class="player-info">
                     <div class="player-title" id="player-track-title">Lofi Girl Study Beats</div>
                     <div class="player-sub" id="player-track-artist">Lofi Girl 24/7 &middot; 320kbps</div>
                   </div>
                   <div class="player-eq">
-                    <span class="p-eq-bar"></span>
-                    <span class="p-eq-bar"></span>
-                    <span class="p-eq-bar"></span>
-                    <span class="p-eq-bar"></span>
+                    <span class="p-eq-bar bar-1"></span>
+                    <span class="p-eq-bar bar-2"></span>
+                    <span class="p-eq-bar bar-3"></span>
+                    <span class="p-eq-bar bar-4"></span>
                   </div>
                 </div>
 

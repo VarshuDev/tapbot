@@ -93,10 +93,30 @@ class OscilloscopeVisualizer {
     this.genre = 'precision';
 
     this.presets = {
-      precision: { color1: 'rgba(255, 255, 255, 0.32)', color2: 'rgba(161, 161, 170, 0.18)', waves: 3, amp: 40, freq: 0.0035, speed: 0.012 },
-      lofi: { color1: 'rgba(228, 228, 231, 0.28)', color2: 'rgba(113, 113, 122, 0.14)', waves: 3, amp: 32, freq: 0.0028, speed: 0.010 },
-      synth: { color1: 'rgba(255, 255, 255, 0.38)', color2: 'rgba(161, 161, 170, 0.22)', waves: 4, amp: 58, freq: 0.006, speed: 0.022 },
-      ambient: { color1: 'rgba(212, 212, 216, 0.22)', color2: 'rgba(82, 82, 91, 0.12)', waves: 2, amp: 26, freq: 0.002, speed: 0.007 }
+      precision: {
+        color1: 'rgba(56, 189, 248, 0.7)',
+        color2: 'rgba(99, 102, 241, 0.5)',
+        glow: 'rgba(56, 189, 248, 0.35)',
+        waves: 3, amp: 44, freq: 0.0035, speed: 0.012
+      },
+      lofi: {
+        color1: 'rgba(168, 85, 247, 0.7)',
+        color2: 'rgba(244, 63, 94, 0.5)',
+        glow: 'rgba(244, 63, 94, 0.35)',
+        waves: 3, amp: 38, freq: 0.0028, speed: 0.010
+      },
+      synth: {
+        color1: 'rgba(236, 72, 153, 0.75)',
+        color2: 'rgba(245, 158, 11, 0.55)',
+        glow: 'rgba(245, 158, 11, 0.4)',
+        waves: 4, amp: 62, freq: 0.0055, speed: 0.020
+      },
+      ambient: {
+        color1: 'rgba(52, 211, 153, 0.6)',
+        color2: 'rgba(14, 165, 233, 0.45)',
+        glow: 'rgba(52, 211, 153, 0.3)',
+        waves: 2, amp: 30, freq: 0.002, speed: 0.007
+      }
     };
 
     window.addEventListener('resize', () => this.resize());
@@ -155,9 +175,9 @@ class OscilloscopeVisualizer {
       grad.addColorStop(1, cfg.color2);
 
       this.ctx.strokeStyle = grad;
-      this.ctx.lineWidth = 1.4;
-      this.ctx.shadowBlur = 8;
-      this.ctx.shadowColor = 'rgba(255, 255, 255, 0.15)';
+      this.ctx.lineWidth = 1.8;
+      this.ctx.shadowBlur = 14;
+      this.ctx.shadowColor = cfg.glow;
       this.ctx.stroke();
     }
   }
@@ -220,7 +240,17 @@ function init3DTilt() {
 class PhoneBotSimulator {
   constructor(visualizer) {
     this.visualizer = visualizer;
+    this.activeBot = 'commander';
+
     this.chatFeed = document.getElementById('phone-chat-feed');
+    this.simAvatar = document.getElementById('sim-avatar');
+    this.simBotName = document.getElementById('sim-bot-name');
+    this.simBotSub = document.getElementById('sim-bot-sub');
+    this.simBotStatusText = document.getElementById('sim-bot-status-text');
+    this.chipGroupLabel = document.getElementById('chip-group-label');
+    this.phoneAudioPlayer = document.getElementById('phone-audio-player');
+    this.modeSelectorBox = document.getElementById('mode-selector-box');
+
     this.trackTitle = document.getElementById('player-track-title');
     this.trackArtist = document.getElementById('player-track-artist');
     this.timeDisplay = document.getElementById('player-time-display');
@@ -244,9 +274,18 @@ class PhoneBotSimulator {
 
     this.initEvents();
     this.startScrubberTicker();
+    this.switchBot('commander', true);
   }
 
   initEvents() {
+    // Bot Switcher Tabs
+    document.querySelectorAll('.bot-tab').forEach(tab => {
+      tab.addEventListener('click', (e) => {
+        const botId = e.currentTarget.getAttribute('data-bot');
+        this.switchBot(botId);
+      });
+    });
+
     if (this.playBtn) {
       this.playBtn.addEventListener('click', () => this.togglePlay());
     }
@@ -291,6 +330,98 @@ class PhoneBotSimulator {
     });
   }
 
+  switchBot(botId, isInitial = false) {
+    this.activeBot = botId;
+    if (!isInitial) sfx.playClick(620);
+
+    // Update active tab button
+    document.querySelectorAll('.bot-tab').forEach(t => {
+      t.classList.toggle('active', t.getAttribute('data-bot') === botId);
+    });
+
+    // Show corresponding chips
+    document.querySelectorAll('.bot-chips').forEach(grid => {
+      grid.style.display = 'none';
+    });
+    const targetChips = document.getElementById(`chips-${botId}`);
+    if (targetChips) targetChips.style.display = 'flex';
+
+    // Show/hide music-specific widgets
+    if (this.phoneAudioPlayer) {
+      this.phoneAudioPlayer.style.display = botId === 'music' ? 'block' : 'none';
+    }
+    if (this.modeSelectorBox) {
+      this.modeSelectorBox.style.display = botId === 'music' ? 'block' : 'none';
+    }
+
+    // Configure phone header according to bot
+    if (botId === 'commander') {
+      if (this.chipGroupLabel) this.chipGroupLabel.textContent = 'Commander Hardware Commands:';
+      if (this.simAvatar) {
+        this.simAvatar.textContent = 'CMD';
+        this.simAvatar.style.background = 'linear-gradient(135deg, #0ea5e9, #6366f1)';
+      }
+      if (this.simBotName) this.simBotName.textContent = 'TapBot Commander';
+      if (this.simBotStatusText) this.simBotStatusText.textContent = 'Hardware Node · Watchdog Active';
+      this.resetChatFeed(
+        '<b>TapBot Commander v2.2.0 Online</b><br/>' +
+        'Native hardware controller bound to Android ART.<br/>' +
+        'Click a command chip or type to trigger remote phone hardware.'
+      );
+    } else if (botId === 'music') {
+      if (this.chipGroupLabel) this.chipGroupLabel.textContent = 'TapStream Music Commands:';
+      if (this.simAvatar) {
+        this.simAvatar.textContent = 'TS';
+        this.simAvatar.style.background = 'linear-gradient(135deg, #f43f5e, #8b5cf6)';
+      }
+      if (this.simBotName) this.simBotName.textContent = 'TapStream Audio';
+      if (this.simBotStatusText) this.simBotStatusText.textContent = 'Android ART · 320kbps Streamer';
+      this.resetChatFeed(
+        '<b>TapStream Music Engine Active</b><br/>' +
+        'High-bitrate audio pipeline ready.<br/>' +
+        'Routes to phone loudspeaker and in-chat audio tracks.'
+      );
+    } else if (botId === 'ai') {
+      if (this.chipGroupLabel) this.chipGroupLabel.textContent = 'Gemini AI Assistant Commands:';
+      if (this.simAvatar) {
+        this.simAvatar.textContent = 'AI';
+        this.simAvatar.style.background = 'linear-gradient(135deg, #8b5cf6, #fb7185)';
+      }
+      if (this.simBotName) this.simBotName.textContent = 'Gemini Assistant';
+      if (this.simBotStatusText) this.simBotStatusText.textContent = 'Gemini 2.0 · Keystore Enclave';
+      this.resetChatFeed(
+        '<b>Gemini Smart Assistant Initialized</b><br/>' +
+        'Generative AI runtime operating via on-device Keystore enclave.<br/>' +
+        'Ask questions, request code, or summarize documents.'
+      );
+    } else if (botId === 'exon') {
+      if (this.chipGroupLabel) this.chipGroupLabel.textContent = 'Exon Group Guardian Commands:';
+      if (this.simAvatar) {
+        this.simAvatar.textContent = 'EX';
+        this.simAvatar.style.background = 'linear-gradient(135deg, #f59e0b, #f43f5e)';
+      }
+      if (this.simBotName) this.simBotName.textContent = 'Exon Guardian';
+      if (this.simBotStatusText) this.simBotStatusText.textContent = 'Supergroup Shield · Anti-Flood';
+      this.resetChatFeed(
+        '<b>Exon Guardian v1.0.0 Active</b><br/>' +
+        'Supergroup protection enabled on Android ART.<br/>' +
+        'Anti-flood, spam filters, and admin tools standing by.'
+      );
+    }
+  }
+
+  resetChatFeed(initialBotHtml) {
+    if (!this.chatFeed) return;
+    this.chatFeed.innerHTML = `
+      <div class="tg-bubble-bot">${initialBotHtml}</div>
+      <div class="tg-typing-row" id="tg-typing" style="display:none;">
+        <span class="tg-typing-dot"></span>
+        <span class="tg-typing-dot"></span>
+        <span class="tg-typing-dot"></span>
+      </div>
+    `;
+  }
+
   togglePlay() {
     this.isPlaying = !this.isPlaying;
     sfx.playClick(this.isPlaying ? 600 : 380);
@@ -299,6 +430,15 @@ class PhoneBotSimulator {
       svgWrap.innerHTML = this.isPlaying
         ? `<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>`
         : `<polygon points="5 3 19 12 5 21 5 3"/>`;
+    }
+    const vinyl = document.getElementById('player-vinyl');
+    if (vinyl) {
+      if (this.isPlaying) {
+        vinyl.classList.remove('paused');
+        vinyl.classList.add('spinning');
+      } else {
+        vinyl.classList.add('paused');
+      }
     }
     const eqBars = document.querySelectorAll('.p-eq-bar, .eq-bar');
     eqBars.forEach(bar => {
@@ -328,17 +468,35 @@ class PhoneBotSimulator {
     }, 400);
   }
 
+  showTyping() {
+    const typing = document.getElementById('tg-typing');
+    if (typing && this.chatFeed) {
+      this.chatFeed.appendChild(typing);
+      typing.style.display = 'flex';
+      this.chatFeed.scrollTop = this.chatFeed.scrollHeight;
+    }
+  }
+
+  hideTyping() {
+    const typing = document.getElementById('tg-typing');
+    if (typing) {
+      typing.style.display = 'none';
+    }
+  }
+
   executeCommand(rawText, fromDemo = false) {
     const text = rawText.trim();
     if (!text) return;
 
     if (!fromDemo) sfx.playClick(580);
     this.appendUserMessage(text);
+    this.showTyping();
 
     setTimeout(() => {
+      this.hideTyping();
       this.resolveCommand(text);
       if (!fromDemo) sfx.playChirp();
-    }, 200);
+    }, 420);
   }
 
   resolveCommand(text) {
@@ -346,7 +504,57 @@ class PhoneBotSimulator {
     const cmd = parts[0].toLowerCase();
     const arg = parts.slice(1).join(' ').trim();
 
-    if (cmd === '/play') {
+    // ─── COMMANDER BOT COMMANDS ───
+    if (cmd === '/status') {
+      this.appendBotMessage(
+        `<b>TELEMETRY // ART PROCESS PID 8412</b><br/>` +
+        `BATTERY: <b>88% [CHARGING_AC]</b><br/>` +
+        `THERMAL: <b>31.4°C [NOMINAL]</b><br/>` +
+        `HEAP RAM: <b>14.2 MB / 8 GB (0.17%)</b><br/>` +
+        `STORAGE: <b>0 Bytes/hr [RAM_RING_BUFFER]</b><br/>` +
+        `UPTIME: <b>42d 18h 34m</b><br/>` +
+        `WATCHDOG: <b>ACTIVE [AUTO_RECOVERY_ARMED]</b>`
+      );
+    } else if (cmd === '/torch') {
+      const state = arg.toLowerCase() === 'off' ? 'DISABLED' : 'ENABLED (MAX)';
+      this.appendBotMessage(
+        `<b>HARDWARE // CameraManager</b><br/>` +
+        `TORCH STATE: <b>${state}</b><br/>` +
+        `ACTION: Dispatched LED controller command to physical camera unit.`
+      );
+    } else if (cmd === '/vibrate') {
+      const ms = parseInt(arg, 10) || 500;
+      this.appendBotMessage(
+        `<b>HAPTIC // Android Vibrator</b><br/>` +
+        `DURATION: <b>${ms}ms</b> waveform<br/>` +
+        `STATUS: Physical haptic motor pulse dispatched successfully.`
+      );
+    } else if (cmd === '/notify') {
+      const msg = arg || 'Server health optimal';
+      this.appendBotMessage(
+        `<b>NOTIFICATION // NotificationHelper</b><br/>` +
+        `CHANNEL: <code>tapbot_high_priority</code><br/>` +
+        `MESSAGE: <i>"${msg}"</i><br/>` +
+        `STATUS: Posted to Android system notification tray.`
+      );
+    } else if (cmd === '/apk' || cmd === '/download') {
+      this.appendBotMessage(
+        `<b>DELIVERY // ApkDeliveryService</b><br/>` +
+        `PACKAGE: <code>tapbot-v2.2.0-tapstream-music.apk</code><br/>` +
+        `SIZE: <b>19.3 MB</b> &middot; Android 8.0 &ndash; 15+<br/>` +
+        `STATUS: Streaming signed binary directly to Telegram document pipe.`
+      );
+    } else if (cmd === '/fleet') {
+      this.appendBotMessage(
+        `<b>FLEET // Active On-Device Bots</b><br/>` +
+        `1. <b>CommanderBot</b> &middot; PID 8412 &middot; <span style="color:#10b981">ONLINE</span> (3.2 MB)<br/>` +
+        `2. <b>TapStream</b> &middot; PID 8413 &middot; <span style="color:#10b981">ONLINE</span> (5.8 MB)<br/>` +
+        `3. <b>GeminiAI</b> &middot; PID 8414 &middot; <span style="color:#10b981">ONLINE</span> (4.1 MB)<br/>` +
+        `TOTAL HEAP: <b>13.1 MB</b> (0.16% of device RAM)`
+      );
+    }
+    // ─── TAPSTREAM MUSIC COMMANDS ───
+    else if (cmd === '/play') {
       const songName = arg ? arg.charAt(0).toUpperCase() + arg.slice(1) : 'Lofi Study Beats';
       this.currentTrack = {
         title: songName,
@@ -360,7 +568,7 @@ class PhoneBotSimulator {
         `NOW PLAYING: <b>${songName}</b><br/>` +
         `CODEC: 320 kbps (yt-dlp stream)<br/>` +
         `ROUTE: <b>${this.currentMode}</b><br/>` +
-        `STATUS: In-chat track delivered.`
+        `STATUS: Playback initiated through Android audio track.`
       );
     } else if (cmd === '/radio') {
       const genre = arg.toLowerCase() || 'synthwave';
@@ -381,36 +589,94 @@ class PhoneBotSimulator {
         `TUNER: 24/7 Radio Stream Active<br/>` +
         `STATION: <b>${match.title}</b><br/>` +
         `CHANNEL: <i>${match.artist}</i> &middot; 320 kbps<br/>` +
-        `BUFFER: 0ms (In-Memory RAM)`
+        `BUFFER: 0ms (In-Memory RAM Ring Buffer)`
       );
     } else if (cmd === '/nowplaying' || cmd === '/np') {
       this.appendBotMessage(
         `STATUS: <b>${this.currentTrack.title}</b><br/>` +
-        `STREAM: <i>${this.currentTrack.artist}</i><br/>` +
-        `ROUTE: <b>${this.currentMode}</b> (Vol: ${this.currentVolume}%)`
+        `<code>PLAY [01:42 / 03:45] ====o--------</code><br/>` +
+        `STREAM: <i>${this.currentTrack.artist}</i> &middot; ${this.currentMode}`
       );
     } else if (cmd === '/volume') {
       const val = parseInt(arg, 10);
       if (!isNaN(val)) {
         this.currentVolume = Math.max(0, Math.min(100, val));
         if (this.volDisplay) this.volDisplay.textContent = `Vol: ${this.currentVolume}%`;
-        this.appendBotMessage(`VOLUME: Media volume adjusted to <b>${this.currentVolume}%</b>`);
+        this.appendBotMessage(`VOLUME: AudioManager hardware level adjusted to <b>${this.currentVolume}%</b>`);
       } else {
         this.appendBotMessage(`VOLUME: Current level is <b>${this.currentVolume}%</b> (use <code>/volume 0-100</code>)`);
       }
     } else if (cmd === '/mode') {
       this.setMode(arg.toUpperCase());
-    } else if (cmd === '/status') {
+    }
+    // ─── GEMINI AI ASSISTANT COMMANDS ───
+    else if (cmd === '/ask') {
       this.appendBotMessage(
-        `TELEMETRY // ART PROCESS PID 8412<br/>` +
-        `BATTERY: <b>88% [CHARGING_AC]</b><br/>` +
-        `HEAP RAM: <b>14.2 MB / 8 GB (0.17%)</b><br/>` +
-        `STORAGE: <b>0 Bytes/hr [RAM_RING_BUFFER]</b><br/>` +
-        `UPTIME: <b>42d 18h 34m</b><br/>` +
-        `DAEMON: <b>ACTIVE [FOREGROUND_SERVICE]</b>`
+        `<b>GEMINI 2.0 // ON-DEVICE INFERENCE</b><br/>` +
+        `Android phones make extraordinary autonomous servers: low-power multi-core ARM chips, internal battery failover, Wi-Fi connectivity, and native ART execution without heavy Docker or Node.js runtime layers.`
       );
-    } else {
-      this.appendBotMessage(`INPUT: <code>${text}</code><br/>Commands: <code>/play</code>, <code>/radio</code>, <code>/status</code>, <code>/nowplaying</code>`);
+    } else if (cmd === '/code') {
+      this.appendBotMessage(
+        `<b>KOTLIN // Non-Blocking Coroutine Flow</b><br/>` +
+        `<pre style="background:#090d15;padding:7px;border-radius:5px;font-family:monospace;font-size:10px;color:#c084fc;margin-top:5px;overflow-x:auto;"><code>fun pollUpdates(): Flow&lt;Update&gt; = flow {
+  while (isActive) {
+    val updates = client.getUpdates(offset)
+    emitAll(updates.asFlow())
+  }
+}</code></pre>`
+      );
+    } else if (cmd === '/summarize') {
+      this.appendBotMessage(
+        `<b>AI SPECIFICATION SUMMARY //</b><br/>` +
+        `&bull; 100% on-device Android ART execution<br/>` +
+        `&bull; Cryptographic Keystore token encryption<br/>` +
+        `&bull; RAM ring buffers eliminate flash wear<br/>` +
+        `&bull; Runs multiple production bots for $0.00/mo`
+      );
+    } else if (cmd === '/model') {
+      this.appendBotMessage(
+        `<b>AI MODEL CONFIGURATION //</b><br/>` +
+        `ENGINE: Google Gemini 2.0 Flash<br/>` +
+        `KEYSTORE: StrongBox / TEE Hardware Sealed (AES-256-GCM)<br/>` +
+        `PRIVACY: Direct outbound TLS 1.3 to official endpoints.`
+      );
+    }
+    // ─── EXON GUARDIAN COMMANDS ───
+    else if (cmd === '/admin') {
+      this.appendBotMessage(
+        `<b>EXON // Supergroup Administrator Shield</b><br/>` +
+        `COMMUNITY: TapBot Global Hub<br/>` +
+        `ANTI-FLOOD: <span style="color:#10b981">ARMED [5 msgs / 10s]</span><br/>` +
+        `SPAM FILTER: <span style="color:#10b981">ACTIVE</span><br/>` +
+        `STATUS: All group members protected.`
+      );
+    } else if (cmd === '/antiflood') {
+      this.appendBotMessage(
+        `<b>EXON // Anti-Flood Settings</b><br/>` +
+        `STATUS: <b>ENABLED</b><br/>` +
+        `RATE LIMIT: Maximum 5 messages in 10 seconds.<br/>` +
+        `ACTION ON FLOOD: Automatic 2-hour mute applied.`
+      );
+    } else if (cmd === '/rules') {
+      this.appendBotMessage(
+        `<b>COMMUNITY RULES //</b><br/>` +
+        `1. Be respectful to all builders & users.<br/>` +
+        `2. No unauthorized spam, ads, or referral links.<br/>` +
+        `3. Enjoy autonomous, decentralized bot hosting!`
+      );
+    } else if (cmd === '/warn' || cmd === '/mute') {
+      this.appendBotMessage(
+        `<b>MODERATION // Action Dispatched</b><br/>` +
+        `ACTION: Issued formal infraction warning.<br/>` +
+        `AUDIT LOG: Timestamped and recorded in local ART memory.`
+      );
+    }
+    // ─── DEFAULT FALLBACK ───
+    else {
+      this.appendBotMessage(
+        `INPUT: <code>${text}</code><br/>` +
+        `Active bot commands available: <code>/status</code>, <code>/torch</code>, <code>/play</code>, <code>/ask</code>, <code>/admin</code>, <code>/apk</code>`
+      );
     }
   }
 
@@ -431,6 +697,7 @@ class PhoneBotSimulator {
 
   appendBotMessage(html) {
     if (!this.chatFeed) return;
+    this.hideTyping();
     const div = document.createElement('div');
     div.className = 'tg-bubble-bot';
     div.innerHTML = html;

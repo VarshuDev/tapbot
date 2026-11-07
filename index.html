@@ -385,54 +385,52 @@
       <p class="section-p">No Linux rooting. No Termux workarounds. Just a compiled Android service running directly on native ART.</p>
     </div>
 
-    <div class="how-track-wrapper">
-      <div class="how-track">
-        
-        <article class="how-card spotlight-card how-card-indigo" data-tilt>
-          <div class="how-card-spotlight"></div>
-          <span class="how-num num-indigo">01</span>
-          <div class="how-tag tag-indigo">PHASE 01 // DEPLOYMENT</div>
-          <h3>Install Standalone APK</h3>
-          <p>Sideload a single 19.3 MB binary. Compatible with Android 8.0 up to Android 15+. Operates completely decoupled from Google Play Services.</p>
-          <div class="code-pill">
-            <code>adb install tapbot-v2.2.0.apk</code>
-          </div>
-        </article>
+    <div class="how-pipeline-grid">
+      
+      <article class="how-card spotlight-card how-card-indigo" data-tilt data-reveal="slide-up">
+        <div class="how-card-spotlight"></div>
+        <span class="how-num num-indigo">01</span>
+        <div class="how-tag tag-indigo">PHASE 01 // DEPLOYMENT</div>
+        <h3>Install Standalone APK</h3>
+        <p>Sideload a single 19.3 MB binary. Compatible with Android 8.0 up to Android 15+. Operates completely decoupled from Google Play Services.</p>
+        <div class="code-pill">
+          <code>adb install tapbot-v2.2.0.apk</code>
+        </div>
+      </article>
 
-        <article class="how-card spotlight-card how-card-violet" data-tilt>
-          <div class="how-card-spotlight"></div>
-          <span class="how-num num-violet">02</span>
-          <div class="how-tag tag-violet">PHASE 02 // ENCLAVE</div>
-          <h3>Keystore Token Sealing</h3>
-          <p>Obtain an API token via <strong>@BotFather</strong> on Telegram. TapBot locks the credential directly in the Android Keystore enclave with AES-256-GCM authenticated cipher.</p>
-          <div class="code-pill">
-            <code>Keystore.encrypt(token, AES_GCM)</code>
-          </div>
-        </article>
+      <article class="how-card spotlight-card how-card-violet" data-tilt data-reveal="slide-up">
+        <div class="how-card-spotlight"></div>
+        <span class="how-num num-violet">02</span>
+        <div class="how-tag tag-violet">PHASE 02 // ENCLAVE</div>
+        <h3>Keystore Token Sealing</h3>
+        <p>Obtain an API token via <strong>@BotFather</strong> on Telegram. TapBot locks the credential directly in the Android Keystore enclave with AES-256-GCM authenticated cipher.</p>
+        <div class="code-pill">
+          <code>Keystore.encrypt(token, AES_GCM)</code>
+        </div>
+      </article>
 
-        <article class="how-card spotlight-card how-card-rose" data-tilt>
-          <div class="how-card-spotlight"></div>
-          <span class="how-num num-rose">03</span>
-          <div class="how-tag tag-coral">PHASE 03 // AUDIO ENGINE</div>
-          <h3>Launch TapStream</h3>
-          <p>Select <b>TapStream Music</b> or <b>TapBot Commander</b> and tap Start. The process connects to Telegram's long-polling gateway via OkHttp WebSockets in under 200ms.</p>
-          <div class="code-pill">
-            <code>OkHttp.newWebSocket(tg_gateway)</code>
-          </div>
-        </article>
+      <article class="how-card spotlight-card how-card-rose" data-tilt data-reveal="slide-up">
+        <div class="how-card-spotlight"></div>
+        <span class="how-num num-rose">03</span>
+        <div class="how-tag tag-coral">PHASE 03 // RUNTIME</div>
+        <h3>Launch Multi-Bot Fleet</h3>
+        <p>Select your active runtimes &mdash; <b>Commander Node</b>, <b>TapStream Audio</b>, <b>Gemini AI</b>, or <b>Exon</b> &mdash; and tap Start. Connects to Telegram in under 200ms.</p>
+        <div class="code-pill">
+          <code>TapBotService.start(MultiFleet)</code>
+        </div>
+      </article>
 
-        <article class="how-card spotlight-card how-card-amber" data-tilt>
-          <div class="how-card-spotlight"></div>
-          <span class="how-num num-amber">04</span>
-          <div class="how-tag tag-amber">PHASE 04 // PERSISTENCE</div>
-          <h3>Immortal Foreground State</h3>
-          <p>TapBot acquires a partial CPU wake lock and background service notification. Plug in the device charger, put the phone in a drawer, and your server runs permanently.</p>
-          <div class="code-pill">
-            <code>WakeLock.acquire() // Uptime: INF</code>
-          </div>
-        </article>
+      <article class="how-card spotlight-card how-card-amber" data-tilt data-reveal="slide-up">
+        <div class="how-card-spotlight"></div>
+        <span class="how-num num-amber">04</span>
+        <div class="how-tag tag-amber">PHASE 04 // PERSISTENCE</div>
+        <h3>Immortal Foreground State</h3>
+        <p>TapBot acquires an Android CPU partial wake lock and battery-exempt notification. Plug into power, stash the phone in a drawer, and your server runs permanently.</p>
+        <div class="code-pill">
+          <code>WakeLock.acquire() // Uptime: INF</code>
+        </div>
+      </article>
 
-      </div>
     </div>
   </section>
 

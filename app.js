@@ -825,7 +825,7 @@ function initGSAPAnimations() {
       opacity: 0,
       y: 32,
       duration: 0.7,
-      delay: (i % 3) * 0.05,
+      delay: (i % 4) * 0.08,
       ease: 'power2.out',
       scrollTrigger: {
         trigger: el,
@@ -834,25 +834,6 @@ function initGSAPAnimations() {
       }
     });
   });
-
-  // Pinned Horizontal Architecture Track (Scrub: 0.2 for zero-lag 1:1 response)
-  const track = document.querySelector('.how-track');
-  if (track) {
-    const totalDist = track.scrollWidth - window.innerWidth + 240;
-    gsap.to(track, {
-      x: () => -totalDist,
-      ease: 'none',
-      scrollTrigger: {
-        trigger: '#how',
-        start: 'top top',
-        end: () => `+=${totalDist}`,
-        scrub: 0.2,
-        pin: true,
-        anticipatePin: 1,
-        invalidateOnRefresh: true,
-      }
-    });
-  }
 
   document.querySelectorAll('[data-count]').forEach(el => {
     const target = parseFloat(el.getAttribute('data-count'));

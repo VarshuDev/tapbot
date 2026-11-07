@@ -835,6 +835,57 @@ function initGSAPAnimations() {
     });
   });
 
+  // Vertical Architecture Spine Fill & Cascading Downward Reveals
+  const spineFill = document.getElementById('spine-fill');
+  const pipelineFlow = document.getElementById('pipeline-flow');
+  if (spineFill && pipelineFlow) {
+    ScrollTrigger.create({
+      trigger: pipelineFlow,
+      start: 'top 80%',
+      end: 'bottom 85%',
+      scrub: true,
+      onUpdate: (self) => {
+        spineFill.style.height = `${Math.min(100, Math.max(0, self.progress * 100))}%`;
+      }
+    });
+  }
+
+  // Downward cascade animation for pipeline steps
+  document.querySelectorAll('.pipeline-step').forEach((step) => {
+    const node = step.querySelector('.step-node');
+    const card = step.querySelector('.pipeline-card');
+
+    if (node) {
+      gsap.from(node, {
+        scale: 0.5,
+        opacity: 0,
+        duration: 0.55,
+        ease: 'back.out(1.8)',
+        scrollTrigger: {
+          trigger: step,
+          start: 'top 86%',
+          once: true,
+        }
+      });
+    }
+
+    if (card) {
+      gsap.from(card, {
+        opacity: 0,
+        y: 45,
+        scale: 0.96,
+        duration: 0.75,
+        delay: 0.08,
+        ease: 'power2.out',
+        scrollTrigger: {
+          trigger: step,
+          start: 'top 86%',
+          once: true,
+        }
+      });
+    }
+  });
+
   document.querySelectorAll('[data-count]').forEach(el => {
     const target = parseFloat(el.getAttribute('data-count'));
     const prefix = el.getAttribute('data-prefix') || '';

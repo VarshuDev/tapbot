@@ -385,51 +385,125 @@
       <p class="section-p">No Linux rooting. No Termux workarounds. Just a compiled Android service running directly on native ART.</p>
     </div>
 
-    <div class="how-pipeline-grid">
-      
-      <article class="how-card spotlight-card how-card-indigo" data-tilt data-reveal="slide-up">
-        <div class="how-card-spotlight"></div>
-        <span class="how-num num-indigo">01</span>
-        <div class="how-tag tag-indigo">PHASE 01 // DEPLOYMENT</div>
-        <h3>Install Standalone APK</h3>
-        <p>Sideload a single 19.3 MB binary. Compatible with Android 8.0 up to Android 15+. Operates completely decoupled from Google Play Services.</p>
-        <div class="code-pill">
-          <code>adb install tapbot-v2.2.0.apk</code>
-        </div>
-      </article>
+    <div class="pipeline-flow" id="pipeline-flow">
+      <!-- Animated Vertical Spine Track -->
+      <div class="pipeline-spine" aria-hidden="true">
+        <div class="spine-line-bg"></div>
+        <div class="spine-line-fill" id="spine-fill"></div>
+        <div class="spine-laser-pulse"></div>
+      </div>
 
-      <article class="how-card spotlight-card how-card-violet" data-tilt data-reveal="slide-up">
-        <div class="how-card-spotlight"></div>
-        <span class="how-num num-violet">02</span>
-        <div class="how-tag tag-violet">PHASE 02 // ENCLAVE</div>
-        <h3>Keystore Token Sealing</h3>
-        <p>Obtain an API token via <strong>@BotFather</strong> on Telegram. TapBot locks the credential directly in the Android Keystore enclave with AES-256-GCM authenticated cipher.</p>
-        <div class="code-pill">
-          <code>Keystore.encrypt(token, AES_GCM)</code>
+      <!-- Step 01 -->
+      <div class="pipeline-step step-1" data-step="1">
+        <div class="step-node node-indigo">
+          <div class="node-halo"></div>
+          <span class="node-num">01</span>
         </div>
-      </article>
+        <article class="pipeline-card spotlight-card card-indigo" data-tilt>
+          <div class="p-card-header">
+            <span class="p-phase-tag tag-indigo">PHASE 01 // DEPLOYMENT</span>
+            <span class="p-status-pill pill-indigo">NO ROOT REQUIRED</span>
+          </div>
+          <h3 class="p-title">Install Standalone APK Binary</h3>
+          <p class="p-desc">
+            Sideload a single lightweight 19.3 MB compiled binary onto any spare Android phone (Android 8.0 up to Android 15+). TapBot runs 100% independently of Google Play Services, Termux, or Docker emulation layers.
+          </p>
+          <div class="p-code-box">
+            <span class="p-code-prompt">$</span>
+            <code>adb install -r releases/tapbot-v2.2.0.apk</code>
+            <span class="p-code-badge">SHA-256 VERIFIED</span>
+          </div>
+          <div class="p-spec-row">
+            <span>&bull; Pure Kotlin Bytecode</span>
+            <span>&bull; Zero GMS Dependency</span>
+            <span>&bull; Android 8.0 &ndash; 15+ Compatible</span>
+          </div>
+        </article>
+      </div>
 
-      <article class="how-card spotlight-card how-card-rose" data-tilt data-reveal="slide-up">
-        <div class="how-card-spotlight"></div>
-        <span class="how-num num-rose">03</span>
-        <div class="how-tag tag-coral">PHASE 03 // RUNTIME</div>
-        <h3>Launch Multi-Bot Fleet</h3>
-        <p>Select your active runtimes &mdash; <b>Commander Node</b>, <b>TapStream Audio</b>, <b>Gemini AI</b>, or <b>Exon</b> &mdash; and tap Start. Connects to Telegram in under 200ms.</p>
-        <div class="code-pill">
-          <code>TapBotService.start(MultiFleet)</code>
+      <!-- Step 02 -->
+      <div class="pipeline-step step-2" data-step="2">
+        <div class="step-node node-violet">
+          <div class="node-halo"></div>
+          <span class="node-num">02</span>
         </div>
-      </article>
+        <article class="pipeline-card spotlight-card card-violet" data-tilt>
+          <div class="p-card-header">
+            <span class="p-phase-tag tag-violet">PHASE 02 // HARDWARE ENCLAVE</span>
+            <span class="p-status-pill pill-violet">AES-256-GCM SEALED</span>
+          </div>
+          <h3 class="p-title">Keystore Credential Sealing</h3>
+          <p class="p-desc">
+            Provision bot tokens via <b>@BotFather</b> on Telegram. TapBot locks your Bot API token and Gemini API keys directly inside the dedicated Android KeyStore hardware security enclave. Cleartext secrets never touch flash storage.
+          </p>
+          <div class="p-code-box">
+            <span class="p-code-prompt">&gt;</span>
+            <code>AndroidKeyStore.encrypt(token, Cipher.AES_GCM)</code>
+            <span class="p-code-badge">ENCLAVE LOCKED</span>
+          </div>
+          <div class="p-spec-row">
+            <span>&bull; Hardware TEE Protected</span>
+            <span>&bull; Authenticated Cipher</span>
+            <span>&bull; Zero Plaintext Flash Writes</span>
+          </div>
+        </article>
+      </div>
 
-      <article class="how-card spotlight-card how-card-amber" data-tilt data-reveal="slide-up">
-        <div class="how-card-spotlight"></div>
-        <span class="how-num num-amber">04</span>
-        <div class="how-tag tag-amber">PHASE 04 // PERSISTENCE</div>
-        <h3>Immortal Foreground State</h3>
-        <p>TapBot acquires an Android CPU partial wake lock and battery-exempt notification. Plug into power, stash the phone in a drawer, and your server runs permanently.</p>
-        <div class="code-pill">
-          <code>WakeLock.acquire() // Uptime: INF</code>
+      <!-- Step 03 -->
+      <div class="pipeline-step step-3" data-step="3">
+        <div class="step-node node-rose">
+          <div class="node-halo"></div>
+          <span class="node-num">03</span>
         </div>
-      </article>
+        <article class="pipeline-card spotlight-card card-coral" data-tilt>
+          <div class="p-card-header">
+            <span class="p-phase-tag tag-coral">PHASE 03 // RUNTIME INITIALIZATION</span>
+            <span class="p-status-pill pill-coral">&lt;200MS LATENCY</span>
+          </div>
+          <h3 class="p-title">Launch Autonomous Multi-Bot Fleet</h3>
+          <p class="p-desc">
+            Toggle your selected bots &mdash; <b>TapBot Commander</b>, <b>TapStream Audio</b>, <b>Gemini AI</b>, and <b>Exon Guardian</b> &mdash; and tap Start. TapBot negotiates Telegram's long-polling gateway via OkHttp WebSockets with sub-200ms response time.
+          </p>
+          <div class="p-code-box">
+            <span class="p-code-prompt">&gt;</span>
+            <code>TapBotFleet.startAll(Commander, Music, Gemini, Exon)</code>
+            <span class="p-code-badge">ALL BOTS ONLINE</span>
+          </div>
+          <div class="p-spec-row">
+            <span>&bull; Multi-Bot Parallelism</span>
+            <span>&bull; 8-12 MB Heap RAM/Bot</span>
+            <span>&bull; In-Memory Dispatcher</span>
+          </div>
+        </article>
+      </div>
+
+      <!-- Step 04 -->
+      <div class="pipeline-step step-4" data-step="4">
+        <div class="step-node node-amber">
+          <div class="node-halo"></div>
+          <span class="node-num">04</span>
+        </div>
+        <article class="pipeline-card spotlight-card card-amber" data-tilt>
+          <div class="p-card-header">
+            <span class="p-phase-tag tag-amber">PHASE 04 // 24/7 IMMORTAL PERSISTENCE</span>
+            <span class="p-status-pill pill-amber">UPTIME: PERMANENT</span>
+          </div>
+          <h3 class="p-title">Immortal Foreground Service &amp; Watchdog</h3>
+          <p class="p-desc">
+            TapBot binds a partial CPU wake lock and sticky foreground notification, completely bypassing aggressive OEM task killers and Android Doze battery optimizations. Plug the phone into a charger, drop it in a drawer, and your server runs permanently.
+          </p>
+          <div class="p-code-box">
+            <span class="p-code-prompt">&gt;</span>
+            <code>WakeLock.acquire() &amp;&amp; DeviceWatchdog.arm(24x7)</code>
+            <span class="p-code-badge">WATCHDOG ARMED</span>
+          </div>
+          <div class="p-spec-row">
+            <span>&bull; Immune to Doze Mode</span>
+            <span>&bull; 0 Storage Wear / RAM Buffers</span>
+            <span>&bull; Auto-Crash Self-Healing</span>
+          </div>
+        </article>
+      </div>
 
     </div>
   </section>

@@ -55,9 +55,10 @@ class MockCatalogApi : CatalogApi {
             packageInfo = BotPackageInfo(
                 packageUrl = "packages/tapbot-commander_1.0.0.botpkg",
                 sha256Checksum = "51dd47dec8e9bbc0c88b094887c1a05da4c6835c2894f350986e25684edeb7f3",
-                runtimeType = "native_art"
+                runtimeType = "native_art",
+                packageSizeBytes = 1703L
             ),
-            permissionsRequired = listOf("INTERNET", "FOREGROUND_SERVICE", "POST_NOTIFICATIONS", "VIBRATE", "FLASHLIGHT")
+            permissionsRequired = listOf("INTERNET", "FOREGROUND_SERVICE", "POST_NOTIFICATIONS", "VIBRATE", "FLASHLIGHT", "ACCESS_WIFI_STATE", "ACCESS_COARSE_LOCATION")
         ),
         BotMetadata(
             id = "bot_echo",
@@ -74,9 +75,10 @@ class MockCatalogApi : CatalogApi {
             ),
             packageInfo = BotPackageInfo(
                 packageUrl = "https://assets.tapbot.internal/packages/bot_echo_1.0.0.botpkg",
-                sha256Checksum = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                sha256Checksum = "be89e34e178e8be6643a5e7dc0416d7309f43cb140f627080b33f1002f23cbff",
                 runtimeType = "built-in",
-                entryClass = "com.tapbot.core.runner.engine.EchoBotEngine"
+                entryClass = "com.tapbot.core.runner.engine.EchoBotEngine",
+                packageSizeBytes = 1113L
             ),
             permissionsRequired = listOf("INTERNET", "FOREGROUND_SERVICE")
         ),
@@ -84,7 +86,7 @@ class MockCatalogApi : CatalogApi {
             id = "bot_rss_notifier",
             name = "RSS Channel Broadcaster",
             summary = "Periodically checks your favorite RSS/Atom feeds and broadcasts new articles to your Telegram channel.",
-            description = "Runs on your Android device 24/7. Configure your target Telegram Channel ID and feed URL. The bot tracks published items in local SQLite storage and pushes instant alerts with rich formatting.",
+            description = "Runs on your Android device 24/7. Configure your target Telegram Channel ID and feed URL. The bot tracks published items in local storage with deduplication and pushes instant alerts with rich formatting.",
             author = "OpenFeed Community",
             version = "1.2.0",
             iconUrl = "https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=200",
@@ -107,13 +109,22 @@ class MockCatalogApi : CatalogApi {
                     isSecret = false,
                     isRequired = true,
                     placeholder = "https://news.ycombinator.com/rss"
+                ),
+                BotCredentialSpec(
+                    key = "poll_interval_minutes",
+                    label = "Poll Interval (minutes)",
+                    description = "How often to scan subscribed feeds for new posts (default: 15)",
+                    isSecret = false,
+                    isRequired = false,
+                    placeholder = "15"
                 )
             ),
             packageInfo = BotPackageInfo(
                 packageUrl = "https://assets.tapbot.internal/packages/bot_rss_1.2.0.botpkg",
-                sha256Checksum = "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
+                sha256Checksum = "91f367ada04dae04ff3536a8a334d0b18aa411fb51faded21d17ce775663015b",
                 runtimeType = "built-in",
-                entryClass = "com.tapbot.core.runner.engine.RssNotifierBotEngine"
+                entryClass = "com.tapbot.core.runner.runtime.RssNotifierBotRuntime",
+                packageSizeBytes = 1248L
             ),
             permissionsRequired = listOf("INTERNET", "FOREGROUND_SERVICE")
         ),
@@ -137,13 +148,30 @@ class MockCatalogApi : CatalogApi {
                     isRequired = true,
                     placeholder = "AIzaSy...",
                     helpUrl = "https://aistudio.google.com"
+                ),
+                BotCredentialSpec(
+                    key = "gemini_model",
+                    label = "Gemini Model",
+                    description = "Optional model ID (default: gemini-2.5-flash)",
+                    isSecret = false,
+                    isRequired = false,
+                    placeholder = "gemini-2.5-flash"
+                ),
+                BotCredentialSpec(
+                    key = "system_prompt",
+                    label = "System Instruction",
+                    description = "Optional custom persona or instructions sent with every prompt",
+                    isSecret = false,
+                    isRequired = false,
+                    placeholder = "You are a concise, helpful assistant."
                 )
             ),
             packageInfo = BotPackageInfo(
                 packageUrl = "https://assets.tapbot.internal/packages/bot_ai_assistant_2.1.0.botpkg",
-                sha256Checksum = "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+                sha256Checksum = "44c098853cd5d46484141cefa70e3bbb763915e30c71848bd67316cb8ff9c185",
                 runtimeType = "built-in",
-                entryClass = "com.tapbot.core.runner.engine.GeminiBotEngine"
+                entryClass = "com.tapbot.core.runner.runtime.AIBotRuntime",
+                packageSizeBytes = 1212L
             ),
             permissionsRequired = listOf("INTERNET", "FOREGROUND_SERVICE")
         ),
@@ -188,9 +216,10 @@ class MockCatalogApi : CatalogApi {
             packageInfo = BotPackageInfo(
                 packageUrl = "packages/tapstream-music-1.0.0.botpkg",
                 sha256Checksum = "178434b2d9ff07199455a3ae04373be2d13bec341e398baa99529c4635550b0a",
-                runtimeType = "native_art"
+                runtimeType = "native_art",
+                packageSizeBytes = 1827L
             ),
-            permissionsRequired = listOf("INTERNET", "FOREGROUND_SERVICE", "MODIFY_AUDIO_SETTINGS", "WAKE_LOCK")
+            permissionsRequired = listOf("INTERNET", "FOREGROUND_SERVICE", "MODIFY_AUDIO_SETTINGS", "WAKE_LOCK", "FOREGROUND_SERVICE_MEDIA_PLAYBACK")
         ),
         BotMetadata(
             id = "bot_music",
@@ -215,8 +244,9 @@ class MockCatalogApi : CatalogApi {
             ),
             packageInfo = BotPackageInfo(
                 packageUrl = "https://assets.tapbot.internal/packages/bot_music_1.0.0.botpkg",
-                sha256Checksum = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-                runtimeType = "native_art"
+                sha256Checksum = "8c12f7ae7b3134dc5a27ee7c8c0b5396f6101fe1b97b26d61da498d926f7b391",
+                runtimeType = "native_art",
+                packageSizeBytes = 1139L
             ),
             permissionsRequired = listOf("INTERNET", "FOREGROUND_SERVICE")
         ),
@@ -231,12 +261,30 @@ class MockCatalogApi : CatalogApi {
             category = "Productivity",
             tags = listOf("ai", "assistant", "productivity"),
             requiredCredentials = listOf(
-                BotCredentialSpec.TELEGRAM_BOT_TOKEN
+                BotCredentialSpec.TELEGRAM_BOT_TOKEN,
+                BotCredentialSpec(
+                    key = "gemini_api_key",
+                    label = "Gemini API Key",
+                    description = "Optional Google AI Studio API key (https://aistudio.google.com) for live Gemini responses",
+                    isSecret = true,
+                    isRequired = false,
+                    placeholder = "AIzaSy...",
+                    helpUrl = "https://aistudio.google.com"
+                ),
+                BotCredentialSpec(
+                    key = "gemini_model",
+                    label = "Gemini Model",
+                    description = "Optional Gemini model name (default: gemini-2.5-flash)",
+                    isSecret = false,
+                    isRequired = false,
+                    placeholder = "gemini-2.5-flash"
+                )
             ),
             packageInfo = BotPackageInfo(
                 packageUrl = "https://assets.tapbot.internal/packages/bot_ai_1.0.0.botpkg",
-                sha256Checksum = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-                runtimeType = "native_art"
+                sha256Checksum = "f8f130c0af3050937663f80df9a09766aa743dc7a4a99444d25abe4246913b0e",
+                runtimeType = "native_art",
+                packageSizeBytes = 1139L
             ),
             permissionsRequired = listOf("INTERNET", "FOREGROUND_SERVICE")
         ),
@@ -255,8 +303,9 @@ class MockCatalogApi : CatalogApi {
             ),
             packageInfo = BotPackageInfo(
                 packageUrl = "https://assets.tapbot.internal/packages/bot_utility_1.0.0.botpkg",
-                sha256Checksum = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-                runtimeType = "native_art"
+                sha256Checksum = "18207df14e1e7d811cf672f930e5a7286dedd331653b47224e8da4cca6f1663b",
+                runtimeType = "native_art",
+                packageSizeBytes = 1104L
             ),
             permissionsRequired = listOf("INTERNET", "FOREGROUND_SERVICE")
         ),
@@ -264,7 +313,7 @@ class MockCatalogApi : CatalogApi {
             id = "bot_1790084493920_n4l8lj",
             name = "Exon Robot",
             summary = "Advanced Telegram group management bot with ban, mute, pin, and moderation capabilities.",
-            description = "High-performance Telegram group management bot inspired by ExonRobot. Runs directly on your Android device via ART runtime with MTProto and Bot API support.",
+            description = "High-performance Telegram group management bot inspired by ExonRobot. Runs directly on your Android device via ART runtime with MTProto, timed moderation, persisted locks & antiflood, welcome greetings, and inline controls.",
             author = "VarshuDev",
             version = "1.0.0",
             iconUrl = "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=200",
@@ -300,8 +349,9 @@ class MockCatalogApi : CatalogApi {
             ),
             packageInfo = BotPackageInfo(
                 packageUrl = "packages/bot_exon_1.0.0.botpkg",
-                sha256Checksum = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-                runtimeType = "native_art"
+                sha256Checksum = "e269c5351b048201ad1b7e417e954c47a2a745e0d8522b68ff2de03a581d65d0",
+                runtimeType = "native_art",
+                packageSizeBytes = 1213L
             ),
             permissionsRequired = listOf("INTERNET", "FOREGROUND_SERVICE")
         )
@@ -316,7 +366,7 @@ class MockCatalogApi : CatalogApi {
                 packageUrl = "packages/tapbot-commander_1.0.0.botpkg",
                 sha256 = "51dd47dec8e9bbc0c88b094887c1a05da4c6835c2894f350986e25684edeb7f3",
                 packageSize = 1703L,
-                releaseNotes = "• Flagship on-device remote controller & fleet manager\n• Real-time hardware telemetry (/status, /battery, /ram, /disk)\n• Remote phone controls (/ring, /torch, /notify, /clipboard, /vibrate)\n• Direct APK document delivery via Telegram (/apk, /download)\n• Autonomous background watchdog with low battery & crash alerts",
+                releaseNotes = "• Flagship on-device remote controller & fleet manager\n• Real-time hardware telemetry (/status, /battery, /ram, /disk)\n• Remote phone controls (/ring, /torch, /notify, /clipboard, /vibrate, /tts, /wifi, /location)\n• Direct APK document delivery via Telegram (/apk, /download)\n• Autonomous background watchdog, scheduled alerts & inline HUD",
                 minimumAppVersion = 1,
                 minimumRuntimeVersion = "1.0.0",
                 isPublished = true,
@@ -331,11 +381,56 @@ class MockCatalogApi : CatalogApi {
                 packageUrl = "packages/tapbot-commander_1.0.0.botpkg",
                 sha256 = "51dd47dec8e9bbc0c88b094887c1a05da4c6835c2894f350986e25684edeb7f3",
                 packageSize = 1703L,
-                releaseNotes = "• Flagship on-device remote controller & fleet manager\n• Real-time hardware telemetry (/status, /battery, /ram, /disk)\n• Remote phone controls (/ring, /torch, /notify, /clipboard, /vibrate)\n• Direct APK document delivery via Telegram (/apk, /download)\n• Autonomous background watchdog with low battery & crash alerts",
+                releaseNotes = "• Flagship on-device remote controller & fleet manager\n• Real-time hardware telemetry (/status, /battery, /ram, /disk)\n• Remote phone controls (/ring, /torch, /notify, /clipboard, /vibrate, /tts, /wifi, /location)\n• Direct APK document delivery via Telegram (/apk, /download)\n• Autonomous background watchdog, scheduled alerts & inline HUD",
                 minimumAppVersion = 1,
                 minimumRuntimeVersion = "1.0.0",
                 isPublished = true,
                 publishedAt = "2026-10-22T00:00:00Z"
+            )
+        ),
+        "bot_echo" to listOf(
+            BotVersion(
+                id = "ver_echo_100",
+                botId = "bot_echo",
+                version = "1.0.0",
+                packageUrl = "https://assets.tapbot.internal/packages/bot_echo_1.0.0.botpkg",
+                sha256 = "be89e34e178e8be6643a5e7dc0416d7309f43cb140f627080b33f1002f23cbff",
+                packageSize = 1113L,
+                releaseNotes = "Initial release of Echo Assistant Bot with structured latency diagnostics.",
+                minimumAppVersion = 1,
+                minimumRuntimeVersion = "1.0.0",
+                isPublished = true,
+                publishedAt = "2026-09-19T01:00:00Z"
+            )
+        ),
+        "bot_rss_notifier" to listOf(
+            BotVersion(
+                id = "ver_rss_notifier_120",
+                botId = "bot_rss_notifier",
+                version = "1.2.0",
+                packageUrl = "https://assets.tapbot.internal/packages/bot_rss_1.2.0.botpkg",
+                sha256 = "91f367ada04dae04ff3536a8a334d0b18aa411fb51faded21d17ce775663015b",
+                packageSize = 1248L,
+                releaseNotes = "• RSS 2.0 & Atom 1.0 feed parser with restart deduplication\n• Interactive /feed, /check, and /clearcache commands",
+                minimumAppVersion = 1,
+                minimumRuntimeVersion = "1.0.0",
+                isPublished = true,
+                publishedAt = "2026-09-19T02:00:00Z"
+            )
+        ),
+        "bot_ai_assistant" to listOf(
+            BotVersion(
+                id = "ver_ai_assistant_210",
+                botId = "bot_ai_assistant",
+                version = "2.1.0",
+                packageUrl = "https://assets.tapbot.internal/packages/bot_ai_assistant_2.1.0.botpkg",
+                sha256 = "44c098853cd5d46484141cefa70e3bbb763915e30c71848bd67316cb8ff9c185",
+                packageSize = 1212L,
+                releaseNotes = "• Real Google Gemini API integration with per-chat conversation history\n• /ask, /summarize, /code, /model, /system, /clear and 4096-char auto chunking",
+                minimumAppVersion = 1,
+                minimumRuntimeVersion = "1.0.0",
+                isPublished = true,
+                publishedAt = "2026-10-01T00:00:00Z"
             )
         ),
         "bot_music_streamer" to listOf(
@@ -346,11 +441,26 @@ class MockCatalogApi : CatalogApi {
                 packageUrl = "packages/tapstream-music-1.0.0.botpkg",
                 sha256 = "178434b2d9ff07199455a3ae04373be2d13bec341e398baa99529c4635550b0a",
                 packageSize = 1827L,
-                releaseNotes = "• Initial release of TapStream Music Bot\n• Dual phone speaker & Telegram in-chat playback\n• YouTube/yt-dlp stream resolution & 24/7 internet radio stations\n• Full queue navigation & ASCII now-playing HUD",
+                releaseNotes = "• Initial release of TapStream Music Bot\n• Dual phone speaker & Telegram in-chat playback with AudioFocus\n• YouTube/yt-dlp stream resolution & 24/7 internet radio stations\n• Full queue navigation, /shuffle, /loop, /seek, and inline player controls",
                 minimumAppVersion = 1,
                 minimumRuntimeVersion = "1.0.0",
                 isPublished = true,
                 publishedAt = "2026-11-04T00:00:00Z"
+            )
+        ),
+        "bot_1790084493920_n4l8lj" to listOf(
+            BotVersion(
+                id = "ver_exon_100",
+                botId = "bot_1790084493920_n4l8lj",
+                version = "1.0.0",
+                packageUrl = "packages/bot_exon_1.0.0.botpkg",
+                sha256 = "e269c5351b048201ad1b7e417e954c47a2a745e0d8522b68ff2de03a581d65d0",
+                packageSize = 1213L,
+                releaseNotes = "• Exon Robot group management for TapBot ART runtime\n• Timed /tmute, /tban, /promote, /demote, persisted /locks, /setwelcome, /antiflood, and inline menus",
+                minimumAppVersion = 1,
+                minimumRuntimeVersion = "1.0.0",
+                isPublished = true,
+                publishedAt = "2026-09-22T00:00:00Z"
             )
         ),
         "bot_music" to listOf(
@@ -359,9 +469,9 @@ class MockCatalogApi : CatalogApi {
                 botId = "bot_music",
                 version = "1.4.0",
                 packageUrl = "https://assets.tapbot.internal/packages/bot_music_1.4.0.botpkg",
-                sha256 = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-                packageSize = 245760L,
-                releaseNotes = "• Added high-resolution audio streaming\n• Queue persistence across reboots\n• Enhanced volume normalization",
+                sha256 = "c58161d93bdefe662e41d1c63f5dde7b1343478a9a90d231bd39d20d1d28360a",
+                packageSize = 1189L,
+                releaseNotes = "• Added high-resolution audio streaming with AudioFocus\n• /shuffle, /loop, /seek, /remove and inline playback controls",
                 minimumAppVersion = 1,
                 minimumRuntimeVersion = "1.0.0",
                 isPublished = true,
@@ -372,8 +482,8 @@ class MockCatalogApi : CatalogApi {
                 botId = "bot_music",
                 version = "1.0.0",
                 packageUrl = "https://assets.tapbot.internal/packages/bot_music_1.0.0.botpkg",
-                sha256 = "feedbeef100",
-                packageSize = 204800L,
+                sha256 = "8c12f7ae7b3134dc5a27ee7c8c0b5396f6101fe1b97b26d61da498d926f7b391",
+                packageSize = 1139L,
                 releaseNotes = "Initial release of Music Bot for Android",
                 minimumAppVersion = 1,
                 minimumRuntimeVersion = "1.0.0",
@@ -387,9 +497,9 @@ class MockCatalogApi : CatalogApi {
                 botId = "bot_ai",
                 version = "1.2.0",
                 packageUrl = "https://assets.tapbot.internal/packages/bot_ai_1.2.0.botpkg",
-                sha256 = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-                packageSize = 312000L,
-                releaseNotes = "• Faster token generation\n• Markdown code formatting improvements",
+                sha256 = "564fad24f79189a8f9409ad950964eae9b28bbd4a7384fa1a52df3aa5f3cc5f4",
+                packageSize = 1167L,
+                releaseNotes = "• Gemini 2.5 Flash support with multi-turn memory\n• /summarize, /code, /model, /system & auto-chunking",
                 minimumAppVersion = 1,
                 minimumRuntimeVersion = "1.0.0",
                 isPublished = true,
@@ -400,8 +510,8 @@ class MockCatalogApi : CatalogApi {
                 botId = "bot_ai",
                 version = "1.0.0",
                 packageUrl = "https://assets.tapbot.internal/packages/bot_ai_1.0.0.botpkg",
-                sha256 = "feedbeefai100",
-                packageSize = 280000L,
+                sha256 = "f8f130c0af3050937663f80df9a09766aa743dc7a4a99444d25abe4246913b0e",
+                packageSize = 1139L,
                 releaseNotes = "Initial release of AI Assistant Bot",
                 minimumAppVersion = 1,
                 minimumRuntimeVersion = "1.0.0",
@@ -415,13 +525,26 @@ class MockCatalogApi : CatalogApi {
                 botId = "bot_utility",
                 version = "1.1.0",
                 packageUrl = "https://assets.tapbot.internal/packages/bot_utility_1.1.0.botpkg",
-                sha256 = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-                packageSize = 180000L,
+                sha256 = "1b4c04c33aec952bca1809257ca0c3dbbc9b588471373264299b0dce49134afe",
+                packageSize = 1101L,
                 releaseNotes = "• Battery thermal reporting\n• Thread pool introspection",
                 minimumAppVersion = 1,
                 minimumRuntimeVersion = "1.0.0",
                 isPublished = true,
                 publishedAt = "2026-09-15T15:00:00Z"
+            ),
+            BotVersion(
+                id = "ver_util_100",
+                botId = "bot_utility",
+                version = "1.0.0",
+                packageUrl = "https://assets.tapbot.internal/packages/bot_utility_1.0.0.botpkg",
+                sha256 = "18207df14e1e7d811cf672f930e5a7286dedd331653b47224e8da4cca6f1663b",
+                packageSize = 1104L,
+                releaseNotes = "Initial release of Utility Bot",
+                minimumAppVersion = 1,
+                minimumRuntimeVersion = "1.0.0",
+                isPublished = true,
+                publishedAt = "2026-09-01T10:00:00Z"
             )
         )
     )

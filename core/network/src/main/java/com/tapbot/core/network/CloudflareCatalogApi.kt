@@ -18,10 +18,22 @@ import java.io.IOException
  * Dispatches requests to /api/v1/bots and /api/v1/bots/{id}.
  */
 class CloudflareCatalogApi(
-    private val baseUrl: String = DEFAULT_BASE_URL,
+    private val baseUrlProvider: () -> String,
     private val client: OkHttpClient = OkHttpClient(),
     private val fallback: CatalogApi? = MockCatalogApi()
 ) : CatalogApi {
+
+    constructor(
+        baseUrl: String = DEFAULT_BASE_URL,
+        client: OkHttpClient = OkHttpClient(),
+        fallback: CatalogApi? = MockCatalogApi()
+    ) : this(
+        baseUrlProvider = { baseUrl },
+        client = client,
+        fallback = fallback
+    )
+
+    private fun currentBaseUrl(): String = baseUrlProvider().trim().trimEnd('/')
 
     private val json = Json {
         ignoreUnknownKeys = true
@@ -31,7 +43,7 @@ class CloudflareCatalogApi(
 
     override suspend fun getBots(): Result<List<BotMetadata>> = withContext(Dispatchers.IO) {
         runCatching {
-            val url = "${baseUrl.trimEnd('/')}/api/v1/bots"
+            val url = "${currentBaseUrl()}/api/v1/bots"
             val request = Request.Builder()
                 .url(url)
                 .header("Accept", "application/json")
@@ -63,7 +75,7 @@ class CloudflareCatalogApi(
 
     override suspend fun getBotDetails(botId: String): Result<BotMetadata> = withContext(Dispatchers.IO) {
         runCatching {
-            val url = "${baseUrl.trimEnd('/')}/api/v1/bots/$botId"
+            val url = "${currentBaseUrl()}/api/v1/bots/$botId"
             val request = Request.Builder()
                 .url(url)
                 .header("Accept", "application/json")
@@ -97,7 +109,7 @@ class CloudflareCatalogApi(
 
     override suspend fun getBotVersions(botId: String): Result<List<BotVersion>> = withContext(Dispatchers.IO) {
         runCatching {
-            val url = "${baseUrl.trimEnd('/')}/api/v1/bots/$botId/versions"
+            val url = "${currentBaseUrl()}/api/v1/bots/$botId/versions"
             val request = Request.Builder()
                 .url(url)
                 .header("Accept", "application/json")
@@ -128,7 +140,7 @@ class CloudflareCatalogApi(
 
     override suspend fun getLatestVersion(botId: String): Result<BotVersion?> = withContext(Dispatchers.IO) {
         runCatching {
-            val url = "${baseUrl.trimEnd('/')}/api/v1/bots/$botId/versions/latest"
+            val url = "${currentBaseUrl()}/api/v1/bots/$botId/versions/latest"
             val request = Request.Builder()
                 .url(url)
                 .header("Accept", "application/json")

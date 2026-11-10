@@ -1,5 +1,8 @@
 package com.tapbot.core.runner
 
+import com.tapbot.core.model.InlineKeyboardMarkup
+import com.tapbot.core.model.TelegramCallbackQuery
+import com.tapbot.core.model.TelegramChat
 import com.tapbot.core.model.TelegramMessage
 import com.tapbot.core.model.TelegramUpdate
 import com.tapbot.core.model.TelegramUser
@@ -16,6 +19,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -28,6 +32,9 @@ class MusicBotRuntimeTest {
 
     private class MockTelegramApiClient : TelegramApiClient() {
         val sentMessages = mutableListOf<Triple<Long, String, String?>>()
+        val sentMarkups = mutableListOf<Pair<String, InlineKeyboardMarkup?>>()
+        val editedMessages = mutableListOf<Triple<Long, Long, String>>()
+        val answeredCallbacks = mutableListOf<Pair<String, String?>>()
         val sentAudios = mutableListOf<Triple<Long, String, String?>>() // chatId, audioUrl, title
         val updatesQueue = mutableListOf<List<TelegramUpdate>>()
 
@@ -46,6 +53,54 @@ class MusicBotRuntimeTest {
 
         override suspend fun sendMessage(token: String, chatId: Long, text: String, parseMode: String?): Result<Boolean> {
             sentMessages.add(Triple(chatId, text, parseMode))
+            sentMarkups.add(text to null)
+            return Result.success(true)
+        }
+
+        override suspend fun sendMessage(
+            token: String,
+            chatId: Long,
+            text: String,
+            parseMode: String?,
+            replyToMessageId: Long?
+        ): Result<Boolean> {
+            sentMessages.add(Triple(chatId, text, parseMode))
+            sentMarkups.add(text to null)
+            return Result.success(true)
+        }
+
+        override suspend fun sendMessage(
+            token: String,
+            chatId: Long,
+            text: String,
+            parseMode: String?,
+            replyToMessageId: Long?,
+            replyMarkup: InlineKeyboardMarkup?
+        ): Result<Boolean> {
+            sentMessages.add(Triple(chatId, text, parseMode))
+            sentMarkups.add(text to replyMarkup)
+            return Result.success(true)
+        }
+
+        override suspend fun answerCallbackQuery(
+            token: String,
+            callbackQueryId: String,
+            text: String?,
+            showAlert: Boolean
+        ): Result<Boolean> {
+            answeredCallbacks.add(callbackQueryId to text)
+            return Result.success(true)
+        }
+
+        override suspend fun editMessageText(
+            token: String,
+            chatId: Long,
+            messageId: Long,
+            text: String,
+            parseMode: String?,
+            replyMarkup: InlineKeyboardMarkup?
+        ): Result<Boolean> {
+            editedMessages.add(Triple(chatId, messageId, text))
             return Result.success(true)
         }
 
@@ -94,6 +149,11 @@ class MusicBotRuntimeTest {
             resolver = streamResolver,
             player = audioPlayer
         )
+    }
+
+    @After
+    fun tearDown() {
+        audioPlayer.release()
     }
 
     @Test
@@ -230,5 +290,74 @@ class MusicBotRuntimeTest {
 
         val runtime4 = com.tapbot.core.runner.runtime.BotRuntimeFactory.createRuntime("any_id", "TapStream Music Bot")
         assertTrue("TapStream Music Bot name maps to MusicBotRuntime", runtime4 is MusicBotRuntime)
+    }
+
+    @Test
+    fun `supports seek, loop, shuffle, remove commands and inline player callbacks`() = runBlocking {
+        val ctx = createCtx()
+        musicRuntime.initialize(ctx)
+
+        // Queue direct track with finite 240s duration and two radio tracks
+        musicRuntime.handleCommand(ctx, "TOKEN", 12345L, "/play https://cdn.example.com/synthwave.mp3")
+        musicRuntime.handleCommand(ctx, "TOKEN", 12345L, "/play lofi")
+        musicRuntime.handleCommand(ctx, "TOKEN", 12345L, "/play jazz")
+
+        // Verify /seek on track 1
+        assertEquals(90_000L, MusicBotRuntime.parseSeekMilliseconds("1:30"))
+        assertEquals(45_000L, MusicBotRuntime.parseSeekMilliseconds("45"))
+        val seekReply = musicRuntime.handleCommand(ctx, "TOKEN", 12345L, "/seek 45")
+        assertTrue(seekReply.contains("Seeked"))
+        assertEquals(45_000L, audioPlayer.playbackState.value.elapsedMs)
+
+        // Verify /loop
+        val loopOneReply = musicRuntime.handleCommand(ctx, "TOKEN", 12345L, "/loop one")
+        assertTrue(loopOneReply.contains("ONE"))
+        val loopAllReply = musicRuntime.handleCommand(ctx, "TOKEN", 12345L, "/loop all")
+        assertTrue(loopAllReply.contains("ALL"))
+
+        // Verify /shuffle & /remove
+        val shuffleReply = musicRuntime.handleCommand(ctx, "TOKEN", 12345L, "/shuffle")
+        assertTrue(shuffleReply.contains("Shuffled playback queue"))
+        val removeReply = musicRuntime.handleCommand(ctx, "TOKEN", 12345L, "/remove 2")
+        assertTrue(removeReply.contains("Removed (#2)"))
+
+        // Verify /nowplaying attaches inline keyboard
+        musicRuntime.handleCommand(ctx, "TOKEN", 12345L, "/nowplaying")
+        val npMarkup = fakeApi.sentMarkups.lastOrNull()?.second
+        assertNotNull("NowPlaying must attach inline player buttons", npMarkup)
+        assertTrue(npMarkup!!.inlineKeyboard.flatten().any { it.callbackData == "music:toggle" })
+
+        // Verify live polling handles music:* callback queries
+        val user = TelegramUser(id = 42, isBot = false, firstName = "Listener")
+        val chat = TelegramChat(id = 12345L, type = "private")
+        fakeApi.updatesQueue.add(
+            listOf(
+                TelegramUpdate(
+                    updateId = 901,
+                    callbackQuery = TelegramCallbackQuery(
+                        id = "cb_pause",
+                        from = user,
+                        message = TelegramMessage(10, user, chat, 100L, "np"),
+                        data = "music:toggle"
+                    )
+                ),
+                TelegramUpdate(
+                    updateId = 902,
+                    callbackQuery = TelegramCallbackQuery(
+                        id = "cb_vol",
+                        from = user,
+                        message = TelegramMessage(10, user, chat, 100L, "np"),
+                        data = "music:volup"
+                    )
+                )
+            )
+        )
+        musicRuntime.start()
+        delay(200)
+        musicRuntime.stop()
+
+        assertTrue(fakeApi.answeredCallbacks.any { it.first == "cb_pause" && it.second?.contains("Paused") == true })
+        assertTrue(fakeApi.answeredCallbacks.any { it.first == "cb_vol" && it.second?.contains("Volume") == true })
+        assertTrue(fakeApi.editedMessages.isNotEmpty())
     }
 }

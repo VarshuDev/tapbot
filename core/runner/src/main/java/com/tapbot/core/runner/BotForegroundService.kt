@@ -97,7 +97,7 @@ class BotForegroundService : Service() {
         val targetInstallationId = intent?.getStringExtra(EXTRA_INSTALLATION_ID)
             ?: intent?.getStringExtra(EXTRA_BOT_ID)
 
-        if (action == ACTION_START_BOT || action == ACTION_RESTART_BOT) {
+        if (action == ACTION_START_BOT || action == ACTION_RESTART_BOT || action == ACTION_RECOVER_ACTIVE) {
             val count = maxOf(activeExecutions.size, 1)
             val names = activeExecutions.values.map { it.botName }.ifEmpty { listOf(targetInstallationId ?: "Bot") }
             val notification = notificationHelper.buildForegroundNotification(count, names)
@@ -120,6 +120,12 @@ class BotForegroundService : Service() {
                     val id = targetInstallationId ?: DEFAULT_BOT_ID
                     stopBotInstance(id)
                     startBotInstance(id)
+                }
+            }
+            ACTION_RECOVER_ACTIVE -> {
+                val explicitIds = intent?.getStringArrayExtra(EXTRA_INSTALLATION_IDS)?.toList().orEmpty()
+                serviceScope.launch {
+                    recoverActiveInstances(explicitIds)
                 }
             }
             ACTION_STOP_ALL -> {
@@ -148,11 +154,14 @@ class BotForegroundService : Service() {
         val instance = manager?.getInstance(installationId)
             ?: manager?.getInstanceByBotId(installationId)
 
+        val effectiveInstallationId = instance?.installationId ?: installationId
         val botId = instance?.botId ?: installationId
         val botName = instance?.name ?: "Telegram Bot"
 
         // 1. Duplicate Process Check: is this instance or bot already active?
-        if (activeExecutions.containsKey(installationId) || activeExecutions.values.any { it.botId == botId || it.installationId == installationId }) {
+        if (activeExecutions.containsKey(effectiveInstallationId) ||
+            activeExecutions.values.any { it.botId == botId || it.installationId == effectiveInstallationId }
+        ) {
             return@withLock
         }
 
@@ -164,7 +173,7 @@ class BotForegroundService : Service() {
         if (token.isNullOrBlank()) {
             val err = "Cannot start '$botName': Token not found in secure storage."
             logRepo?.appendLog(botId, LogLevel.ERROR, TAG, err)
-            manager?.updateInstanceStatus(installationId, BotInstanceStatus.Crashed(err))
+            manager?.updateInstanceStatus(effectiveInstallationId, BotInstanceStatus.Crashed(err))
             _runtimeState.value = BotRuntimeState.Error(err)
             _botStates.update { it + (botId to BotRunState.Error(err)) }
             checkOrphanedService()
@@ -173,10 +182,10 @@ class BotForegroundService : Service() {
 
         // 2. Duplicate Telegram Connection Check: is this exact token already polled by another bot?
         for (active in activeExecutions.values) {
-            if (active.token == token && active.installationId != installationId) {
+            if (active.token == token && active.installationId != effectiveInstallationId) {
                 val err = "Duplicate Telegram connection prevented: Token is already active on '${active.botName}'"
                 logRepo?.appendLog(botId, LogLevel.WARN, TAG, err)
-                manager?.updateInstanceStatus(installationId, BotInstanceStatus.Crashed(err))
+                manager?.updateInstanceStatus(effectiveInstallationId, BotInstanceStatus.Crashed(err))
                 _botStates.update { it + (botId to BotRunState.Error(err)) }
                 checkOrphanedService()
                 return@withLock
@@ -184,7 +193,7 @@ class BotForegroundService : Service() {
         }
 
         // Update state
-        manager?.updateInstanceStatus(installationId, BotInstanceStatus.Starting)
+        manager?.updateInstanceStatus(effectiveInstallationId, BotInstanceStatus.Starting)
         _runtimeState.value = BotRuntimeState.Starting
         _botStates.update { it + (botId to BotRunState.Starting) }
 
@@ -194,9 +203,9 @@ class BotForegroundService : Service() {
         val crashHandler = CoroutineExceptionHandler { _, throwable ->
             val crashMsg = throwable.message ?: "Uncaught runtime crash in $botName"
             logRepo?.appendLog(botId, LogLevel.ERROR, TAG, "CRASH DETECTED in '$botName': $crashMsg")
-            manager?.recordCrash(installationId, crashMsg)
+            manager?.recordCrash(effectiveInstallationId, crashMsg)
             _botStates.update { it + (botId to BotRunState.Error(crashMsg)) }
-            activeExecutions.remove(installationId)
+            activeExecutions.remove(effectiveInstallationId)
             updateNotification()
             checkOrphanedService()
         }
@@ -206,7 +215,7 @@ class BotForegroundService : Service() {
                 when (st) {
                     is BotRuntimeState.Running -> {
                         manager?.updateInstanceStatus(
-                            installationId,
+                            effectiveInstallationId,
                             BotInstanceStatus.Running(
                                 pollCount = st.pollCount,
                                 messageCount = st.messageCount,
@@ -226,11 +235,11 @@ class BotForegroundService : Service() {
                     }
                     is BotRuntimeState.Error -> {
                         logRepo?.appendLog(botId, LogLevel.ERROR, TAG, "Runtime error: ${st.message}")
-                        manager?.recordCrash(installationId, st.message)
+                        manager?.recordCrash(effectiveInstallationId, st.message)
                         _botStates.update { it + (botId to BotRunState.Error(st.message)) }
                     }
                     is BotRuntimeState.Stopped -> {
-                        manager?.updateInstanceStatus(installationId, BotInstanceStatus.Stopped)
+                        manager?.updateInstanceStatus(effectiveInstallationId, BotInstanceStatus.Stopped)
                         _botStates.update { it + (botId to BotRunState.Stopped) }
                     }
                     else -> {}
@@ -239,14 +248,14 @@ class BotForegroundService : Service() {
         }
 
         val execution = ActiveExecution(
-            installationId = installationId,
+            installationId = effectiveInstallationId,
             botId = botId,
             botName = botName,
             token = token,
             runtime = runtime,
             job = childJob
         )
-        activeExecutions[installationId] = execution
+        activeExecutions[effectiveInstallationId] = execution
 
         val allCreds = credStore?.getAllCredentials(botId) ?: emptyMap()
         val context = RuntimeContext(
@@ -275,8 +284,8 @@ class BotForegroundService : Service() {
         } catch (e: Exception) {
             val err = "Initialization failed: ${e.message}"
             logRepo?.appendLog(botId, LogLevel.ERROR, TAG, err)
-            manager?.recordCrash(installationId, err)
-            activeExecutions.remove(installationId)
+            manager?.recordCrash(effectiveInstallationId, err)
+            activeExecutions.remove(effectiveInstallationId)
             childJob.cancel()
         }
 
@@ -304,6 +313,10 @@ class BotForegroundService : Service() {
             ServiceLocator.botInstanceManager?.updateInstanceStatus(execution.installationId, BotInstanceStatus.Stopped)
             _botStates.update { it + (execution.botId to BotRunState.Stopped) }
         } else {
+            val resolvedInstId = ServiceLocator.botInstanceManager?.getInstance(installationId)?.installationId
+                ?: ServiceLocator.botInstanceManager?.getInstanceByBotId(installationId)?.installationId
+                ?: installationId
+            ServiceLocator.botInstanceManager?.updateInstanceStatus(resolvedInstId, BotInstanceStatus.Stopped)
             _botStates.update { it + (installationId to BotRunState.Stopped) }
         }
 
@@ -327,11 +340,14 @@ class BotForegroundService : Service() {
         stopSelf()
     }
 
-    private suspend fun recoverActiveInstances() {
+    private suspend fun recoverActiveInstances(explicitIds: List<String> = emptyList()) {
         val manager = ServiceLocator.botInstanceManager ?: return
-        val runningInstances = manager.instances.value.filter { it.status.isRunning }
-        for (inst in runningInstances) {
-            startBotInstance(inst.installationId)
+        val managerRunningIds = manager.instances.value
+            .filter { it.status.isRunning }
+            .map { it.installationId }
+        val allIds = (explicitIds + managerRunningIds).distinct()
+        for (instId in allIds) {
+            startBotInstance(instId)
         }
     }
 
@@ -426,8 +442,10 @@ class BotForegroundService : Service() {
         const val ACTION_STOP_BOT = "com.tapbot.action.STOP_BOT"
         const val ACTION_STOP_ALL = "com.tapbot.action.STOP_ALL"
         const val ACTION_RESTART_BOT = "com.tapbot.action.RESTART_BOT"
+        const val ACTION_RECOVER_ACTIVE = "com.tapbot.action.RECOVER_ACTIVE"
         const val EXTRA_BOT_ID = "extra_bot_id"
         const val EXTRA_INSTALLATION_ID = "extra_installation_id"
+        const val EXTRA_INSTALLATION_IDS = "extra_installation_ids"
         const val DEFAULT_BOT_ID = "bot_pingpong_poc"
         private const val TAG = "BotForegroundService"
         private const val PREFS_NAME = "tapbot_service_state"
@@ -458,4 +476,6 @@ object ServiceLocator {
     var logRepository: BotLogRepository? = null
     var telegramApiClient: TelegramApiClient? = null
     var botInstanceManager: BotInstanceManager? = null
+    var appPreferencesRepository: com.tapbot.core.network.AppPreferencesRepository? = null
+    var customBotRepository: com.tapbot.core.runner.custom.CustomBotRepository? = null
 }

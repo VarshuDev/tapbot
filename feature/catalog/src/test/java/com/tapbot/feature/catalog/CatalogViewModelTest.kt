@@ -286,4 +286,88 @@ class CatalogViewModelTest {
         val afterState = viewModel.uiState.value as CatalogUiState.Success
         assertEquals("1.4.0", afterState.installedInstances.first().version)
     }
+
+    @Test
+    fun uninstallBot_syncsWithLocalBotInstallationManager() = runTest(testDispatcher) {
+        val repo = FakeCatalogRepository(Result.success(listOf(sampleBot1)))
+        val fakeManager = FakeBotInstanceManager()
+        val installedBot = com.tapbot.core.model.BotInstance(
+            installationId = "inst_bot_1",
+            botId = "bot_1",
+            name = "Audio Player",
+            version = "1.0.0",
+            status = com.tapbot.core.model.BotInstanceStatus.Stopped
+        )
+        fakeManager.setInstalledInstances(listOf(installedBot))
+
+        var uninstalledBotId: String? = null
+        val fakeInstallManager = object : com.tapbot.core.network.LocalBotInstallationManager {
+            override fun isInstalled(botId: String) = botId == "bot_1" && uninstalledBotId != "bot_1"
+            override fun getInstalledVersion(botId: String) = if (isInstalled(botId)) "1.0.0" else null
+            override fun installBot(bot: BotMetadata, packageFile: java.io.File) = Result.success(Unit)
+            override fun uninstallBot(botId: String): Result<Unit> {
+                uninstalledBotId = botId
+                return Result.success(Unit)
+            }
+            override fun getInstalledBots() = emptyList<com.tapbot.core.network.InstalledBotRecord>()
+        }
+
+        val viewModel = CatalogViewModel(
+            catalogRepository = repo,
+            botInstanceManager = fakeManager,
+            installationManager = fakeInstallManager
+        )
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.uninstallBot("inst_bot_1")
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals("bot_1", uninstalledBotId)
+    }
+
+    @Test
+    fun customBotsAndPreferences_syncLiveWithCatalogViewModel() = runTest(testDispatcher) {
+        val repo = FakeCatalogRepository(Result.success(listOf(sampleBot1)))
+        val prefsRepo = com.tapbot.core.network.AppPreferencesRepository(storageFile = null)
+        val customRepo = com.tapbot.core.runner.custom.CustomBotRepository(storageFile = null)
+
+        val viewModel = CatalogViewModel(
+            catalogRepository = repo,
+            appPreferencesRepository = prefsRepo,
+            customBotRepository = customRepo
+        )
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // Add custom bot dynamically while Store is open
+        customRepo.saveDefinition(
+            com.tapbot.core.model.CustomBotDefinition(
+                id = "custom_alert_1",
+                name = "PagerDuty Alert",
+                summary = "Sends webhook triggers",
+                rules = listOf(com.tapbot.core.model.CommandRule(id = "r1", command = "/ack", responseTemplate = "Acked!"))
+            )
+        )
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val state = viewModel.uiState.value as CatalogUiState.Success
+        assertEquals(1, state.customBotCount)
+        assertTrue(state.categories.contains("Custom"))
+        assertTrue(state.bots.any { it.id == "custom_alert_1" })
+
+        viewModel.selectCategory("Custom")
+        val filtered = viewModel.uiState.value as CatalogUiState.Success
+        assertEquals(1, filtered.bots.size)
+        assertEquals("custom_alert_1", filtered.bots[0].id)
+
+        // Verify preference updates + catalog refresh on custom URL change
+        viewModel.setAutoStartOnBoot(false)
+        viewModel.setWifiOnlyDownloads(true)
+        viewModel.saveCustomCatalogUrl("https://my-custom-catalog.example.com")
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertFalse(viewModel.appPreferences.value.autoStartOnBoot)
+        assertTrue(viewModel.appPreferences.value.wifiOnlyDownloads)
+        assertEquals("https://my-custom-catalog.example.com", viewModel.appPreferences.value.customCatalogUrl)
+        assertTrue(repo.getBotsCount >= 2)
+    }
 }

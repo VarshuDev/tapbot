@@ -1,124 +1,47 @@
-# TapBot - Ralph Execution Progress
+# TapBot v2.3.0 - Ralph Multi-Phase Execution Progress
 
 ## Codebase Patterns
 - Multi-module Android architecture: `:app`, `:feature:catalog`, `:feature:botdetail`, `:core:runner`, `:core:model`, `:core:network`, `:core:security`, `:core:logging`.
-- Bot runtimes extend `BotRuntime` with `start()`, `stop()`, and `isRunning()` coroutine lifecycles.
-- Keystore credentials stored via Android Keystore AES-256-GCM in `EncryptedSharedPreferences`.
-- Telegram Long-Polling implemented in `core:runner` with backoff logic and cancelable coroutine jobs.
-- UI built with Jetpack Compose following OLED Dark Mode design system (`BotHubTheme`).
+- Pure JVM unit tests in `:core:runner` use `unitTests.isReturnDefaultValues = true` (no Robolectric) — always support `context: Context? = null` fallbacks and standard JDK APIs (`DocumentBuilderFactory`, `java.io.File`) for new services.
+- Keep existing constructors and `TelegramApiClient` / `BotDetailViewModel` / `CatalogViewModel` / `BotInstanceManager` signatures backward-compatible via defaults or overloads so existing unit tests compile cleanly.
+- Bot runtimes extend `BotRuntime` with `initialize()`, `start()`, `stop()`, and `state: StateFlow<BotRuntimeState>`.
+- Keystore credentials stored via Android Keystore AES-256-GCM in `KeystoreSecureCredentialStore`.
+- UI built with Jetpack Compose following OLED Dark Mode (`BotHubTheme`).
 
 ---
 
-## 2026-10-28 - US-001: Android Hardware Telemetry Service & Diagnostic DTOs
-- Implemented `DeviceTelemetryProvider` in `com.tapbot.core.runner.telemetry`.
-- Provides comprehensive hardware stats: Battery (level, charging state, temp, voltage, health, Doze whitelist status), RAM (physical memory, JVM heap), Storage (StatFs total/free/used, ASCII progress bar), Network (Wi-Fi, Cellular, Ethernet), and System HUD.
-- Added null-safe fallbacks for unit tests when running on local JVM without Robolectric (`Build.MANUFACTURER?.replaceFirstChar { it.uppercase() } ?: "Android"` and wrapped `SystemClock.elapsedRealtime()`).
-- Added unit tests in `DeviceTelemetryProviderTest.kt`. All 42 tests in `:core:runner:test` pass.
-
-## 2026-10-28 - US-002: Remote Android Hardware Actions Controller
-- Extracted and implemented `DeviceActionController` in `com.tapbot.core.runner.device`.
-- Supports hardware commands:
-  - Ring phone with maximum volume alert on `AudioManager.STREAM_ALARM` and auto-silencing timeout (clamped 5-60 seconds, default 15s).
-  - Stop ring immediate silence.
-  - CameraManager flashlight torch toggle and state tracking.
-  - Haptic feedback vibration (`VibratorManager` / `Vibrator`).
-  - Heads-up push notifications (`NotificationManager`).
-  - In-memory fallback and system clipboard sync.
-- Enforced owner authentication via `isOwnerAuthorized(configuredOwnerId, senderUserId)`.
-- Delegated command routing in `CommanderBotRuntime.kt` to `DeviceActionController`.
-- Created comprehensive unit tests in `DeviceActionControllerTest.kt`. All tests passed.
-
-## 2026-10-28 - US-003: Fleet Command Router & In-Telegram Bot Management
-- Created `FleetCommandRouter` in `com.tapbot.core.runner.fleet`.
-- Formats `/bots` fleet status with real-time emoji badges (🟢 RUNNING, 🟡 STARTING, 🟠 STOPPING, ⚪ STOPPED, 🔴 CRASHED), poll/message counts, and crash reasons.
-- Implemented `/startbot`, `/stopbot`, and `/restartbot` with bot ID resolution to `installationId`.
-- Implemented `/logs <id> [lines]` with automatic Telegram bot token regex redaction (`\b\d{8,10}:[A-Za-z0-9_-]{35}\b` -> `[REDACTED_BOT_TOKEN]`).
-- Created unit tests in `FleetCommandRouterTest.kt`. All unit tests passed.
-
-## 2026-10-28 - US-004: Autonomous Background Watchdog Coroutine
-- Created `DeviceWatchdog` in `com.tapbot.core.runner.watchdog`.
-- Detects low battery when battery <= threshold (default 15%) and discharging.
-- Enforces 30-minute debouncing between battery warnings (`lastLowBatteryAlertTime == 0L || currentTimeMillis - lastLowBatteryAlertTime >= debounceMillis`).
-- Detects and deduplicates bot fleet crash events via `checkCrashes(instances)`, alerting the configured owner with bot name, ID, crash reason, and recovery actions (`/logs`, `/restartbot`).
-- Delegated watchdog execution in `CommanderBotRuntime.kt` to `DeviceWatchdog`.
-- Created comprehensive unit tests in `DeviceWatchdogTest.kt`. All 55 tests passed.
-
-## 2026-10-28 - US-005: In-Chat Direct APK Document Delivery (/apk)
-- Created `ApkDeliveryService` in `com.tapbot.core.runner.delivery`.
-- Resolves host device APK from `context.applicationInfo.sourceDir` with fallbacks to workspace release builds.
-- Computes SHA-256 integrity checksum using standard streaming `MessageDigest`.
-- Enforces Telegram 50MB Bot API file upload ceiling with fallback instructions.
-- Formats rich release caption with version name, version code, size in MB, and SHA-256 hash.
-- Unit tested file hashing, size checking, limit triggers, and delivery upload. All unit tests passed.
-
-## 2026-10-28 - US-006: Catalog Store Registration & In-App Installation Flow
-- Verified `0006_commander_bot.sql` database migration with `bot_commander_flagship` (slug `tapbot-commander`), version `1.0.0`, and credential definitions.
-- Confirmed `tapbot-commander-1.0.0.botpkg` packaged in `app/src/main/assets/packages/`.
-- Verified `MockCatalogApi` and `BotDetailScreen` credential fields: `bot_token`, `owner_id`, `low_battery_threshold`.
-- Executed `./gradlew.bat assembleDebug` (211 tasks) and `./gradlew.bat test` (271 tasks) across all modules (`:app`, `:feature:catalog`, `:feature:botdetail`, `:core:runner`, `:core:network`, `:core:security`, `:core:logging`, `:core:model`). All tests passed.
-- Milestone Complete: All user stories US-001 through US-006 passing.
+## Milestone 3: TapBot v2.3.0 Feature & Architecture Upgrade (Phases 1-4)
+- Branch: `ralph/tapbot-v230`
+- PRD: `tasks/prd-tapbot-v230-all-phases.md`
+- Previous Milestone 2 archived under `archive/2026-11-04-music-streamer-bot/`.
 
 
----
-## Milestone 2: TapStream Music Streamer & Audio Bot (Ralph Execution)
-- Branch: `ralph/music-streamer-bot`
-- Goals:
-  - Add Telegram audio delivery (`sendAudio`) with streaming URL and file upload support.
-  - Implement `AudioStreamResolver` for resolving YouTube/yt-dlp search queries, direct audio links, and 24/7 internet radio stations.
-  - Implement `DeviceAudioPlayer` for hardware phone speaker/Bluetooth playback using Android `MediaPlayer`.
-  - Upgrade `MusicBotRuntime` with full playback controls, queue HUD, volume scaling, and dual playback routing.
-  - Register TapStream in store catalog and migration `0007_music_streamer_bot.sql`.
+### Phase 1 Completed — US-P1-01, US-P1-02, US-P1-03
+- **US-P1-01**: Synchronized `BotDetailViewModel` install/start/stop/load with `BotInstanceManager` and `CatalogViewModel` uninstall with `LocalBotInstallationManager`, injected both in `TapBotNavHost`, enabled `"built-in"`/`"custom"` runtime installation alongside `"native_art"`, and fixed `BotForegroundService` to resolve `effectiveInstallationId` when launched via `EXTRA_BOT_ID`.
+- **US-P1-02**: Added `GeminiApiClient` (`core:network`) supporting multi-turn `generateContent` + `systemInstruction`, added optional `gemini_model`/`system_prompt` catalog credential fields, and upgraded `AIBotRuntime` with real Gemini inference, sliding-window per-chat history, `/ask`, `/summarize`, `/code`, `/model`, `/system`, `/clear`, `/status`, PM natural chat, and 4000-char chunking.
+- **US-P1-03**: Added JVM-safe `RssFeedParser` (RSS 2.0, RDF, Atom 1.0) and `RssNotifierBotRuntime` with JSON persisted seen-GUID deduplication, multi-feed subscriptions, and interactive commands; mapped `"rss"`, `"feed"`, `"notifier"` in `BotRuntimeFactory`.
+- **Verified**: Full `./gradlew.bat test` passed across all 8 Gradle modules (exit code 0).
 
-## 2026-11-04 - US-M01: TelegramApiClient Audio Delivery Extensions (sendAudio)
-- Added `SendAudioPayload` data class to `core:model`.
-- Implemented `sendAudio(token, chatId, audioUrl, title, performer, duration, caption, parseMode)` in `TelegramApiClient`.
-- Implemented `sendAudio(token, chatId, file, title, performer, duration, caption, parseMode)` supporting multipart form audio file uploads.
-- Created unit tests in `TelegramApiAudioTest.kt` verifying stream URL serialization, multipart file upload, and API error description handling.
-- All 19 tests in `:core:network` passed.
 
-## 2026-11-04 - US-M02: Audio Stream Resolver Service (AudioStreamResolver)
-- Created `AudioStreamResolver` in `com.tapbot.core.runner.audio`.
-- Supports:
-  - Direct HTTP audio streams (`.mp3`, `.m4a`, `.aac`, `.ogg`, `.opus`).
-  - Custom yt-dlp API proxy endpoint querying (`title`, `uploader`, `url`, `duration`, `thumbnail`).
-  - Public audio stream extractor resolution (Piped/Invidious).
-  - 6 curated 24/7 internet radio stations across genres (lofi, synthwave, chillhop, rock, jazz, ambient).
-- Added comprehensive unit tests in `AudioStreamResolverTest.kt`. All tests passed.
+### Phase 2 Completed — US-P2-01, US-P2-02, US-P2-03, US-P2-04
+- **US-P2-01**: Extended `core:model` (`InlineKeyboardMarkup`, `InlineKeyboardButton`, `TelegramCallbackQuery`, `AnswerCallbackQueryPayload`, `EditMessageTextPayload`, `PromoteChatMemberPayload`, `TelegramMessage` media/join/entity fields) and `TelegramApiClient` (`replyMarkup`, `answerCallbackQuery`, `editMessageText`, timed `banChatMember`/`restrictChatMember`, `promoteChatMember`).
+- **US-P2-02**: Added atomic JSON `ExonModerationStore` and upgraded `ExonBotRuntime` with `/tmute`, `/tban`, `/promote`, `/demote`, `/setwelcome`, `/welcome`, `/clearwelcome`, `new_chat_members` auto-greetings & anti-bot ban, `/antiflood` 10s sliding window, active `/lock` enforcement (`deleteMessage`), and inline keyboard `/help`/`/rules` callbacks.
+- **US-P2-03**: Added `ACCESS_WIFI_STATE` and location permissions; extended `DeviceActionController` (`speakText`, `getWifiDetails`, `getLastKnownLocation`); upgraded `CommanderBotRuntime` with `/tts`, `/wifi`, `/location`, `/schedule`, `/schedules`, `/cancelschedule`, inline HUD keyboards (`cmd:*`), and persistent owner-checked callbacks.
+- **US-P2-04**: Added `FOREGROUND_SERVICE_MEDIA_PLAYBACK` and `dataSync|mediaPlayback` foregroundServiceType; upgraded `DeviceAudioPlayer` with `AudioManager` focus negotiation + 1s `elapsedMs` ticker; upgraded `MusicBotRuntime` with `LoopMode`, `/shuffle`, `/loop`, `/seek`, `/remove`, and `music:*` inline player controls.
+- **Verified**: Full `./gradlew.bat test` passed across all 8 modules with 0 failures.
 
-## 2026-11-04 - US-M03: On-Device Android Audio Player Engine (DeviceAudioPlayer)
-- Implemented `DeviceAudioPlayer` in `com.tapbot.core.runner.audio`.
-- Supports hardware media stream playback using Android's `MediaPlayer` and `AudioManager`.
-- Added volume scaling (0-100) mapped to `AudioManager.STREAM_MUSIC`.
-- Exposes observable `PlaybackState` flow (status, currentTrack, elapsedMs, durationMs, volumePct, errorMessage).
-- Added `formatProgressBar(barLength)` creating dynamic visual ASCII progress bars (`▶ 01:23 ━━━━●──────── 03:45`).
-- Created unit tests in `DeviceAudioPlayerTest.kt`. All tests passed.
 
-## 2026-11-04 - US-M04: TapStream Music Bot Runtime & Interactive Command Router
-- Upgraded `MusicBotRuntime` to integrate `AudioStreamResolver`, `DeviceAudioPlayer`, and Telegram audio delivery.
-- Added dual playback routing modes: `SPEAKER` (stream out loud on host phone), `CHAT` (send directly to Telegram chat via `sendAudio`), and `BOTH` (speaker + chat simultaneously).
-- Added comprehensive command router handling:
-  - `/play <query>`: Audio search, yt-dlp resolution, radio tuning, or direct stream link.
-  - `/pause`, `/resume`, `/stop`, `/skip`: Complete queue navigation and track progression.
-  - `/queue`: Formatted ASCII playlist status with duration and current pointer.
-  - `/nowplaying`: Dynamic visual progress bar HUD with volume and routing badge.
-  - `/volume <0-100>`: Device hardware speaker volume adjustment.
-  - `/send`: Chat-only audio dispatch.
-  - `/radio <station>`: Instant tuning to 24/7 curated internet radio stations.
-  - `/mode <speaker|chat|both>`: Dynamic runtime routing mode reconfiguration.
-- Created `MusicBotRuntimeTest.kt` with 8 comprehensive unit tests covering all playback commands.
-- Enhanced `AudioStreamResolver` with fast-path benchmark resolution and updated `PerformanceBenchmarkTest` with mock `sendAudio` / `sendChatAction`.
-- All 81 unit tests in `:core:runner` pass.
+### Phase 3 Completed — US-P3-01, US-P3-02, US-P3-03
+- **US-P3-01**: Bumped `app` version to `2.3.0` (`versionCode = 230`) and synced `ApkDeliveryService` / `CommanderBotRuntime`; added `AppPreferencesRepository` + dynamic `baseUrlProvider` in `CloudflareCatalogApi`/`CloudflareRemoteBotDataSource`; updated `BootCompletedReceiver` and `BotForegroundService` (`ACTION_RECOVER_ACTIVE`) to honor `autoStartOnBoot` and restart all active running bots; implemented full interactive dark OLED `SettingsScreen` dialogs (`Account`, `Preferences`, `Security`, `Storage & Cache` diagnostics export, `Background Execution`, `About v2.3.0`).
+- **US-P3-02**: Added `CustomBotDefinition`/`CommandRule`/`CustomHttpMethod` (`core:model`), `CustomBotRepository` JSON persistence, `CustomWorkflowBotRuntime` (variable substitution `{user}`, `{username}`, `{user_id}`, `{chat_id}`, `{args}`, `{date}`, `{webhook_response}`, OkHttp GET/POST webhooks, inline button callbacks, built-in `/start`/`/help`), and dynamic routing in `BotRuntimeFactory`.
+- **US-P3-03**: Built `CustomBotBuilderScreen` + `CustomBotBuilderViewModel`, preserved `bot_custom_` entries in `LocalCatalogCache`, live-merged custom bots into `CatalogViewModel` (`Custom` category filter + Settings handlers), and wired `Screen.CustomBotBuilder` + Fleet/Store build actions in `TapBotNavHost`, `CatalogScreen`, and `MyBotsScreen`.
+- **Verified**: `AppPreferencesRepositoryTest`, `BootCompletedReceiverTest`, `CustomBotRepositoryTest`, `CustomWorkflowBotRuntimeTest`, `CustomBotBuilderViewModelTest`, `CatalogViewModelTest`, and full 8-module `./gradlew.bat test` passed cleanly (0 failures).
 
-## 2026-11-04 - US-M05: Store Catalog Registration & Package Bundling
-- Created `0007_music_streamer_bot.sql` database migration registering `bot_music_streamer` (slug `tapstream-music`), version `1.0.0`, and credential definitions.
-- Updated `MockCatalogApi` registering TapStream with `bot_token`, `stream_resolver_url`, `default_volume`, and `default_playback_mode`.
-- Created `sample-bots/music-streamer-bot` manifest, entrypoint, icon, and dependencies.
-- Packaged valid zip archive `tapstream-music-1.0.0.botpkg` into `app/src/main/assets/packages/` (size 1827 bytes, sha256 `178434b2d9ff07199455a3ae04373be2d13bec341e398baa99529c4635550b0a`).
-- Updated `BotRuntimeFactory` mapping `stream`, `tapstream`, and `music` keywords to `MusicBotRuntime`.
-- Added unit tests in `CloudflareCatalogApiTest` and `MusicBotRuntimeTest`. All tests in `:core:network` and `:core:runner` passed.
 
-## 2026-11-04 - US-M06: End-to-End Build & Multi-Module Verification
-- Executed `./gradlew.bat test` across all modules: `:app`, `:feature:catalog`, `:feature:botdetail`, `:core:runner`, `:core:network`, `:core:security`, `:core:logging`, `:core:model`. All 271 tasks passed cleanly.
-- Executed `./gradlew.bat assembleDebug` (211 tasks executed). Successfully generated `app-debug.apk` (19.3MB).
-- All 6 user stories (`US-M01` through `US-M06`) in `prd.json` marked as `passes: true`.
-- Milestone 2 Complete: TapStream On-Device Music Streaming & Audio Bot fully verified and ready.
+
+### Phase 4 Completed — US-P4-01, US-P4-02
+- **US-P4-01**: Created deterministic `tools/package_all_bots.mjs` generating valid ZIP `.botpkg` archives in `app/src/main/assets/packages/` for `bot_exon`, `bot_echo`, `bot_rss` (`bot_rss_notifier` 1.2.0), `bot_ai_assistant` (2.1.0), `bot_music` (1.0.0 & 1.4.0), `bot_ai` (1.0.0 & 1.2.0), `bot_utility` (1.0.0 & 1.1.0), and `bot_ping_pong` (1.0.0), while preserving flagship `tapbot-commander_1.0.0.botpkg` and `tapstream-music-1.0.0.botpkg` archives; updated `TapBotApplication.seedBundledPackages` to refresh stale cached `.botpkg` files by byte comparison; synchronized `MockCatalogApi` URLs/SHA-256 checksums/sizes and `ManifestValidator` flagship slug aliases; added `BundledPackagesCatalogTest` verifying SHA-256 + manifest + offline cache downloads for every catalog bot and version; added `backend/migrations/0008_v230_catalog_sync.sql`.
+- **US-P4-02**: Passed full `./gradlew.bat test` across all 8 Gradle modules (0 failures), `backend` `tsc --noEmit` & `vitest run` (20/20 passed), `./gradlew.bat assembleDebug`, and signed `./gradlew.bat assembleRelease` (verified via `apksigner` v2 scheme). Copied signed APK to `releases/tapbot-v2.3.0.apk` (12.22 MB / 12,817,107 bytes, SHA-256 `55B367181A706F483E14F1148E4C4867D427AFFB2628CD0F030DF2E592F29E91`), updated `releases/README.md`, marked all 12 `prd.json` stories `passes: true`, and merged `ralph/tapbot-v230` cleanly into `main`.
+
+## Milestone 3 Complete — TapBot v2.3.0 (`versionCode = 230`)
+All 12 user stories (`US-P1-01` .. `US-P4-02`) complete and verified on `main`.

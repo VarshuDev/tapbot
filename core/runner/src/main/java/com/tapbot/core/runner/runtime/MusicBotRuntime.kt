@@ -1,6 +1,9 @@
 package com.tapbot.core.runner.runtime
 
+import com.tapbot.core.model.InlineKeyboardButton
+import com.tapbot.core.model.InlineKeyboardMarkup
 import com.tapbot.core.model.LogLevel
+import com.tapbot.core.model.TelegramCallbackQuery
 import com.tapbot.core.runner.ServiceLocator
 import com.tapbot.core.runner.audio.AudioSourceType
 import com.tapbot.core.runner.audio.AudioStreamResolver
@@ -23,14 +26,20 @@ enum class PlaybackRoutingMode {
     BOTH      // Plays out loud on speaker AND sends to chat
 }
 
+enum class LoopMode {
+    OFF,
+    ONE,
+    ALL
+}
+
 /**
- * Flagship on-device Music Streaming Bot runtime (TapStream).
+ * Flagship on-device Music Streaming Bot runtime (TapStream Audio 2.0).
  *
  * Features:
  * • Audio search and resolution using yt-dlp API proxy, direct links, and curated radio streams
- * • Physical Android speaker/Bluetooth audio streaming via DeviceAudioPlayer (MediaPlayer)
- * • Telegram native in-chat audio player delivery via sendAudio
- * • Interactive playback controls: /play, /pause, /resume, /skip, /stop, /queue, /nowplaying, /volume, /send, /radio, /mode
+ * • Physical Android speaker/Bluetooth audio streaming via DeviceAudioPlayer (MediaPlayer + AudioFocus + live ticker)
+ * • Telegram native in-chat audio player delivery via sendAudio + interactive inline player buttons
+ * • Full queue & playback controls: /play, /pause, /resume, /skip, /stop, /queue, /nowplaying, /volume, /send, /radio, /mode, /shuffle, /loop, /seek, /remove
  */
 class MusicBotRuntime(
     override val botId: String = "bot_music",
@@ -56,6 +65,7 @@ class MusicBotRuntime(
     private val queue = mutableListOf<AudioTrack>()
     private var currentTrackIndex: Int = -1
     private var routingMode = PlaybackRoutingMode.BOTH
+    private var loopMode = LoopMode.OFF
 
     override suspend fun initialize(context: RuntimeContext) {
         this.context = context
@@ -133,6 +143,14 @@ class MusicBotRuntime(
                         val updates = updatesResult.getOrThrow()
                         for (update in updates) {
                             lastUpdateId = update.updateId
+
+                            val callback = update.callbackQuery
+                            if (callback != null) {
+                                messageCounter++
+                                handleCallbackQuery(ctx, token, callback)
+                                continue
+                            }
+
                             val message = update.message ?: continue
                             val text = message.text?.trim().orEmpty()
                             val chatId = message.chat.id
@@ -150,14 +168,14 @@ class MusicBotRuntime(
                         )
                     } else {
                         val error = updatesResult.exceptionOrNull()
-                        val delayMs = backoff.recordFailure()
+                        backoff.recordFailure()
                         ctx.log(LogLevel.WARN, TAG, "TapStream getUpdates API failure: ${error?.message}")
                         backoff.delayWithBackoff(ctx.networkState)
                     }
                 } catch (c: CancellationException) {
                     break
                 } catch (e: Exception) {
-                    val delayMs = backoff.recordFailure()
+                    backoff.recordFailure()
                     ctx.log(LogLevel.WARN, TAG, "TapStream polling transient error: ${e.message}")
                     backoff.delayWithBackoff(ctx.networkState)
                 }
@@ -177,10 +195,16 @@ class MusicBotRuntime(
             .orEmpty()
         val query = parts.drop(1).joinToString(" ").trim()
 
+        var attachControls = false
+
         val reply = when (command) {
             "/start", "/help" -> formatHelpMessage()
 
-            "/play" -> handlePlayCommand(ctx, token, chatId, query, forceChatOnly = false)
+            "/play" -> {
+                val res = handlePlayCommand(ctx, token, chatId, query, forceChatOnly = false)
+                attachControls = audioPlayer.playbackState.value.currentTrack != null
+                res
+            }
 
             "/send", "/download" -> handlePlayCommand(ctx, token, chatId, query, forceChatOnly = true)
 
@@ -195,6 +219,7 @@ class MusicBotRuntime(
             "/resume" -> {
                 if (audioPlayer.resume()) {
                     val track = audioPlayer.playbackState.value.currentTrack
+                    attachControls = true
                     "▶️ *Resumed:* ${escapeMarkdown(track?.title ?: "Track")}"
                 } else {
                     "⚠️ No paused playback to resume. Use `/play <song>`."
@@ -212,7 +237,12 @@ class MusicBotRuntime(
 
             "/queue", "/playlist" -> formatQueueMessage()
 
-            "/nowplaying", "/np", "/status" -> formatNowPlayingMessage()
+            "/nowplaying", "/np", "/status" -> {
+                val track = audioPlayer.playbackState.value.currentTrack
+                val st = audioPlayer.playbackState.value.status
+                attachControls = track != null && st != PlaybackStatus.IDLE && st != PlaybackStatus.STOPPED
+                formatNowPlayingMessage()
+            }
 
             "/volume", "/vol" -> {
                 val volArg = query.toIntOrNull()
@@ -225,7 +255,19 @@ class MusicBotRuntime(
                 }
             }
 
-            "/radio" -> handleRadioCommand(ctx, token, chatId, query)
+            "/radio" -> {
+                val res = handleRadioCommand(query)
+                attachControls = query.isNotBlank() && audioPlayer.playbackState.value.currentTrack != null
+                res
+            }
+
+            "/shuffle" -> handleShuffleCommand()
+
+            "/loop", "/repeat" -> handleLoopCommand(query)
+
+            "/seek" -> handleSeekCommand(query)
+
+            "/remove", "/rm" -> handleRemoveCommand(query)
 
             "/mode" -> {
                 val modeArg = query.lowercase(Locale.ROOT)
@@ -244,10 +286,10 @@ class MusicBotRuntime(
                     }
                     else -> {
                         "🎛 *Active Playback Mode:* `${routingMode.name}`\n" +
-                                "Options:\n" +
-                                "• `/mode speaker` — Stream on host phone speaker/Bluetooth\n" +
-                                "• `/mode chat` — Send audio directly to Telegram chat\n" +
-                                "• `/mode both` — Both speaker and in-chat audio"
+                            "Options:\n" +
+                            "• `/mode speaker` — Stream on host phone speaker/Bluetooth\n" +
+                            "• `/mode chat` — Send audio directly to Telegram chat\n" +
+                            "• `/mode both` — Both speaker and in-chat audio"
                     }
                 }
             }
@@ -255,8 +297,113 @@ class MusicBotRuntime(
             else -> "🎵 TapStream received: `${escapeMarkdown(text)}`\nSend `/help` for music commands."
         }
 
-        ctx.telegramApi.sendMessage(token, chatId, reply, "Markdown")
+        if (attachControls) {
+            ctx.telegramApi.sendMessage(
+                token = token,
+                chatId = chatId,
+                text = reply,
+                parseMode = "Markdown",
+                replyToMessageId = null,
+                replyMarkup = buildPlayerKeyboard()
+            )
+        } else {
+            ctx.telegramApi.sendMessage(token, chatId, reply, "Markdown")
+        }
         return reply
+    }
+
+    private suspend fun handleCallbackQuery(
+        ctx: RuntimeContext,
+        token: String,
+        callback: TelegramCallbackQuery
+    ) {
+        val data = callback.data.orEmpty()
+        val msg = callback.message
+        val chatId = msg?.chat?.id
+        val messageId = msg?.messageId
+
+        var toast = "Updated"
+        when (data) {
+            "music:toggle" -> {
+                val cur = audioPlayer.playbackState.value
+                toast = when (cur.status) {
+                    PlaybackStatus.PLAYING -> {
+                        audioPlayer.pause()
+                        "⏸ Paused"
+                    }
+                    PlaybackStatus.PAUSED -> {
+                        audioPlayer.resume()
+                        "▶️ Resumed"
+                    }
+                    else -> {
+                        val first = queue.getOrNull(currentTrackIndex.coerceAtLeast(0))
+                        if (first != null) {
+                            currentTrackIndex = currentTrackIndex.coerceAtLeast(0)
+                            audioPlayer.playTrack(first)
+                            "▶️ Playing"
+                        } else {
+                            "Queue is empty"
+                        }
+                    }
+                }
+            }
+            "music:skip" -> {
+                handleSkipCommand(ctx, token, chatId ?: 0L)
+                toast = "⏭️ Next track"
+            }
+            "music:prev" -> {
+                if (currentTrackIndex > 0) {
+                    currentTrackIndex--
+                    audioPlayer.playTrack(queue[currentTrackIndex])
+                    toast = "⏮️ Previous track"
+                } else if (audioPlayer.playbackState.value.currentTrack != null) {
+                    audioPlayer.seekTo(0L)
+                    toast = "⏮️ Restarted track"
+                } else {
+                    toast = "Nothing playing"
+                }
+            }
+            "music:voldown" -> {
+                val newVol = audioPlayer.setVolume(audioPlayer.playbackState.value.volumePct - 15)
+                toast = "🔉 Volume: $newVol%"
+            }
+            "music:volup" -> {
+                val newVol = audioPlayer.setVolume(audioPlayer.playbackState.value.volumePct + 15)
+                toast = "🔊 Volume: $newVol%"
+            }
+            "music:stop" -> {
+                audioPlayer.stop()
+                queue.clear()
+                currentTrackIndex = -1
+                toast = "⏹ Stopped"
+            }
+            "music:loop" -> {
+                loopMode = when (loopMode) {
+                    LoopMode.OFF -> LoopMode.ONE
+                    LoopMode.ONE -> LoopMode.ALL
+                    LoopMode.ALL -> LoopMode.OFF
+                }
+                toast = "🔁 Loop: ${loopMode.name}"
+            }
+            "music:shuffle" -> {
+                shuffleUpcoming()
+                toast = "🔀 Queue shuffled"
+            }
+        }
+
+        ctx.telegramApi.answerCallbackQuery(token, callback.id, toast)
+
+        if (chatId != null && messageId != null) {
+            val markup = if (audioPlayer.playbackState.value.status == PlaybackStatus.STOPPED) null else buildPlayerKeyboard()
+            ctx.telegramApi.editMessageText(
+                token = token,
+                chatId = chatId,
+                messageId = messageId,
+                text = formatNowPlayingMessage(),
+                parseMode = "Markdown",
+                replyMarkup = markup
+            )
+        }
     }
 
     private suspend fun handlePlayCommand(
@@ -273,7 +420,7 @@ class MusicBotRuntime(
                 "▶️ *Resumed:* ${escapeMarkdown(cur.currentTrack?.title ?: "Current Track")}"
             } else {
                 "Usage: `/play <song title, artist, YouTube link, or stream URL>`\n" +
-                        "Example: `/play never gonna give you up` or `/play lofi`"
+                    "Example: `/play never gonna give you up` or `/play lofi`"
             }
         }
 
@@ -332,23 +479,33 @@ class MusicBotRuntime(
 
         return if (position == 1 || currentTrackIndex == position - 1) {
             "▶️ *Now Playing:* ${escapeMarkdown(track.title)}\n" +
-                    "👤 Artist: *${escapeMarkdown(track.artist)}*\n" +
-                    "⏱ Duration: `${track.durationFormatted}` | $sourceBadge\n" +
-                    "🔊 Output: `$outputLabel`"
+                "👤 Artist: *${escapeMarkdown(track.artist)}*\n" +
+                "⏱ Duration: `${track.durationFormatted}` | $sourceBadge\n" +
+                "🔊 Output: `$outputLabel`"
         } else {
             "📋 *Queued Track (#$position):* ${escapeMarkdown(track.title)}\n" +
-                    "👤 Artist: *${escapeMarkdown(track.artist)}*\n" +
-                    "⏱ Duration: `${track.durationFormatted}`"
+                "👤 Artist: *${escapeMarkdown(track.artist)}*\n" +
+                "⏱ Duration: `${track.durationFormatted}`"
         }
     }
 
     private suspend fun handleSkipCommand(ctx: RuntimeContext, token: String, chatId: Long): String {
-        if (queue.isEmpty() || currentTrackIndex >= queue.size - 1) {
+        if (queue.isEmpty()) {
             audioPlayer.stop()
             return "⏭️ End of queue reached. Use `/play <song>` to queue more."
         }
 
-        currentTrackIndex++
+        if (currentTrackIndex >= queue.size - 1) {
+            if (loopMode == LoopMode.ALL) {
+                currentTrackIndex = 0
+            } else {
+                audioPlayer.stop()
+                return "⏭️ End of queue reached. Use `/play <song>` to queue more."
+            }
+        } else {
+            currentTrackIndex++
+        }
+
         val nextTrack = queue[currentTrackIndex]
         audioPlayer.playTrack(nextTrack)
 
@@ -368,7 +525,7 @@ class MusicBotRuntime(
         return "⏭️ *Skipped! Now playing:* ${escapeMarkdown(nextTrack.title)} by *${escapeMarkdown(nextTrack.artist)}*"
     }
 
-    private fun handleRadioCommand(ctx: RuntimeContext, token: String, chatId: Long, genre: String): String {
+    private fun handleRadioCommand(genre: String): String {
         val stations = streamResolver.getCuratedRadioStations()
         if (genre.isBlank()) {
             val sb = StringBuilder("📻 *24/7 Curated Internet Radio Stations*\n━━━━━━━━━━━━━━━━━━━━━━\n")
@@ -388,8 +545,91 @@ class MusicBotRuntime(
         audioPlayer.playTrack(match)
 
         return "📻 *Tuned into:* ${escapeMarkdown(match.title)}\n" +
-                "📡 Stream: *${escapeMarkdown(match.artist)}* | Status: `LIVE 🔴`\n" +
-                "🔊 Output: Host Phone Speaker (Volume: ${audioPlayer.playbackState.value.volumePct}%)"
+            "📡 Stream: *${escapeMarkdown(match.artist)}* | Status: `LIVE 🔴`\n" +
+            "🔊 Output: Host Phone Speaker (Volume: ${audioPlayer.playbackState.value.volumePct}%)"
+    }
+
+    private fun handleShuffleCommand(): String {
+        if (queue.size <= 1) {
+            return "🔀 Queue needs at least 2 tracks to shuffle."
+        }
+        shuffleUpcoming()
+        return "🔀 *Shuffled playback queue!* (${queue.size} tracks ordered)"
+    }
+
+    private fun shuffleUpcoming() {
+        if (queue.size <= 1) return
+        val current = queue.getOrNull(currentTrackIndex)
+        if (current != null) {
+            val others = queue.filterIndexed { idx, _ -> idx != currentTrackIndex }.shuffled()
+            queue.clear()
+            queue.add(current)
+            queue.addAll(others)
+            currentTrackIndex = 0
+        } else {
+            queue.shuffle()
+        }
+    }
+
+    private fun handleLoopCommand(arg: String): String {
+        val normalized = arg.lowercase(Locale.ROOT)
+        loopMode = when (normalized) {
+            "off", "none", "disable" -> LoopMode.OFF
+            "one", "track", "single" -> LoopMode.ONE
+            "all", "queue" -> LoopMode.ALL
+            "" -> when (loopMode) {
+                LoopMode.OFF -> LoopMode.ONE
+                LoopMode.ONE -> LoopMode.ALL
+                LoopMode.ALL -> LoopMode.OFF
+            }
+            else -> return "Usage: `/loop [off|one|all]`\nCurrent Loop Mode: `${loopMode.name}`"
+        }
+        val desc = when (loopMode) {
+            LoopMode.OFF -> "Looping disabled."
+            LoopMode.ONE -> "Repeating current track."
+            LoopMode.ALL -> "Repeating entire queue."
+        }
+        return "🔁 *Loop Mode set to:* `${loopMode.name}`\n$desc"
+    }
+
+    private fun handleSeekCommand(arg: String): String {
+        val cur = audioPlayer.playbackState.value
+        val track = cur.currentTrack
+            ?: return "⚠️ No track is loaded to seek. Use `/play <song>` first."
+
+        val targetMs = parseSeekMilliseconds(arg)
+            ?: return "Usage: `/seek <mm:ss | seconds>` (e.g. `/seek 1:30` or `/seek 45`)"
+
+        audioPlayer.seekTo(targetMs)
+        val updated = audioPlayer.playbackState.value
+        val bar = updated.formatProgressBar()
+        return "⏩ *Seeked ${escapeMarkdown(track.title)}*\n`$bar`"
+    }
+
+    private fun handleRemoveCommand(arg: String): String {
+        if (queue.isEmpty()) {
+            return "🎶 Queue is currently empty."
+        }
+        val pos = arg.toIntOrNull()
+        if (pos == null || pos !in 1..queue.size) {
+            return "Usage: `/remove <1..${queue.size}>`\nSend `/queue` to view track numbers."
+        }
+        val idx = pos - 1
+        val removed = queue.removeAt(idx)
+        when {
+            queue.isEmpty() -> {
+                currentTrackIndex = -1
+                audioPlayer.stop()
+            }
+            idx < currentTrackIndex -> {
+                currentTrackIndex--
+            }
+            idx == currentTrackIndex -> {
+                currentTrackIndex = currentTrackIndex.coerceAtMost(queue.size - 1)
+                audioPlayer.playTrack(queue[currentTrackIndex])
+            }
+        }
+        return "🗑️ *Removed (#$pos):* ${escapeMarkdown(removed.title)}"
     }
 
     private fun formatNowPlayingMessage(): String {
@@ -418,9 +658,9 @@ class MusicBotRuntime(
             
             `$progressBar`
             
-            🔊 *Volume:* `${state.volumePct}%` | 🎚 *Mode:* `${routingMode.name}`
+            🔊 *Volume:* `${state.volumePct}%` | 🎚 *Mode:* `${routingMode.name}` | 🔁 *Loop:* `${loopMode.name}`
             ━━━━━━━━━━━━━━━━━━━━━━
-            Controls: /pause, /resume, /skip, /stop, /volume `<0-100>`
+            Controls: /pause, /resume, /skip, /seek, /loop, /shuffle, /stop
         """.trimIndent()
     }
 
@@ -429,14 +669,14 @@ class MusicBotRuntime(
             return "🎶 *Playback Queue is Empty.*\nQueue tracks using `/play <song>` or `/radio <genre>`."
         }
 
-        val sb = StringBuilder("🎶 *TapStream Playback Queue (${queue.size} tracks)*\n━━━━━━━━━━━━━━━━━━━━━━\n")
+        val sb = StringBuilder("🎶 *TapStream Playback Queue (${queue.size} tracks | Loop: ${loopMode.name})*\n━━━━━━━━━━━━━━━━━━━━━━\n")
         queue.forEachIndexed { i, track ->
             val isCurrent = (i == currentTrackIndex && audioPlayer.playbackState.value.isPlaying)
-            val prefix = if (isCurrent) "▶️" else "${i + 1}."
+            val prefix = if (isCurrent) "▶️ ${i + 1}." else "${i + 1}."
             sb.append("$prefix *${escapeMarkdown(track.title)}* — ${escapeMarkdown(track.artist)} (`${track.durationFormatted}`)\n")
         }
         sb.append("━━━━━━━━━━━━━━━━━━━━━━\n")
-        sb.append("Manage: /skip, /stop, /np")
+        sb.append("Manage: /skip, /shuffle, /loop, /remove `<#>`, /stop, /np")
         return sb.toString()
     }
 
@@ -449,23 +689,57 @@ class MusicBotRuntime(
             *Commands:*
             • `/play <query|url>` — Resolve & stream audio track or playlist
             • `/radio [genre]` — 24/7 internet radio (lofi, synthwave, jazz, rock)
-            • `/pause` — Pause current audio stream
-            • `/resume` — Resume playback
-            • `/skip` — Play next queued track
-            • `/stop` — Stop audio and clear queue
+            • `/pause` & `/resume` — Pause or resume current audio stream
+            • `/skip` & `/stop` — Skip track or stop audio & clear queue
             • `/queue` — View active playlist queue
-            • `/np` or `/nowplaying` — Live playback time scrubber
+            • `/shuffle` & `/loop [off|one|all]` — Shuffle queue & set repeat mode
+            • `/seek <mm:ss|sec>` & `/remove <#>` — Scrub position or remove track
+            • `/np` or `/nowplaying` — Live playback time scrubber & controls
             • `/volume <0-100>` — Adjust device physical speaker volume
             • `/send <query|url>` — Send audio track directly into Telegram chat
             • `/mode [speaker|chat|both]` — Route audio to speaker, chat, or both
         """.trimIndent()
     }
 
-    private fun handleTrackFinished() {
-        if (currentTrackIndex < queue.size - 1) {
-            currentTrackIndex++
-            val next = queue[currentTrackIndex]
-            audioPlayer.playTrack(next)
+    private fun buildPlayerKeyboard(): InlineKeyboardMarkup {
+        return InlineKeyboardMarkup(
+            inlineKeyboard = listOf(
+                listOf(
+                    InlineKeyboardButton("⏮ Prev", callbackData = "music:prev"),
+                    InlineKeyboardButton("⏯ Play/Pause", callbackData = "music:toggle"),
+                    InlineKeyboardButton("⏭ Skip", callbackData = "music:skip")
+                ),
+                listOf(
+                    InlineKeyboardButton("🔉 Vol-", callbackData = "music:voldown"),
+                    InlineKeyboardButton("🔊 Vol+", callbackData = "music:volup"),
+                    InlineKeyboardButton("⏹ Stop", callbackData = "music:stop")
+                ),
+                listOf(
+                    InlineKeyboardButton("🔁 Loop: ${loopMode.name}", callbackData = "music:loop"),
+                    InlineKeyboardButton("🔀 Shuffle", callbackData = "music:shuffle")
+                )
+            )
+        )
+    }
+
+    internal fun handleTrackFinished() {
+        when (loopMode) {
+            LoopMode.ONE -> {
+                val track = queue.getOrNull(currentTrackIndex) ?: return
+                audioPlayer.playTrack(track)
+            }
+            LoopMode.ALL -> {
+                if (queue.isEmpty()) return
+                currentTrackIndex = (currentTrackIndex + 1) % queue.size
+                audioPlayer.playTrack(queue[currentTrackIndex])
+            }
+            LoopMode.OFF -> {
+                if (currentTrackIndex < queue.size - 1) {
+                    currentTrackIndex++
+                    val next = queue[currentTrackIndex]
+                    audioPlayer.playTrack(next)
+                }
+            }
         }
     }
 
@@ -478,7 +752,7 @@ class MusicBotRuntime(
     }
 
     override suspend fun stop() {
-        audioPlayer.stop()
+        audioPlayer.release()
         queue.clear()
         currentTrackIndex = -1
         pollJob?.cancel()
@@ -488,5 +762,23 @@ class MusicBotRuntime(
 
     companion object {
         private const val TAG = "MusicBotRuntime"
+
+        fun parseSeekMilliseconds(raw: String): Long? {
+            val trimmed = raw.trim()
+            if (trimmed.isBlank()) return null
+            if (trimmed.contains(":")) {
+                val parts = trimmed.split(":")
+                if (parts.size == 2) {
+                    val mins = parts[0].toLongOrNull() ?: return null
+                    val secs = parts[1].toLongOrNull() ?: return null
+                    if (mins < 0L || secs < 0L || secs >= 60L) return null
+                    return (mins * 60L + secs) * 1000L
+                }
+                return null
+            }
+            val sec = trimmed.removeSuffix("s").removeSuffix("S").toLongOrNull() ?: return null
+            if (sec < 0L) return null
+            return sec * 1000L
+        }
     }
 }

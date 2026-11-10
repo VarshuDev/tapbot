@@ -2,7 +2,9 @@ package com.tapbot.core.runner
 
 import com.tapbot.core.model.BotInstance
 import com.tapbot.core.model.BotInstanceStatus
+import com.tapbot.core.model.InlineKeyboardMarkup
 import com.tapbot.core.model.LogLevel
+import com.tapbot.core.model.TelegramCallbackQuery
 import com.tapbot.core.model.TelegramChat
 import com.tapbot.core.model.TelegramMessage
 import com.tapbot.core.model.TelegramUpdate
@@ -31,6 +33,9 @@ class CommanderBotRuntimeTest {
 
     private class FakeTelegramApiClient : TelegramApiClient() {
         val sentMessages = mutableListOf<Triple<Long, String, String?>>()
+        val sentMarkups = mutableListOf<Pair<String, InlineKeyboardMarkup?>>()
+        val editedMessages = mutableListOf<Triple<Long, Long, String>>()
+        val answeredCallbacks = mutableListOf<Triple<String, String?, Boolean>>()
         val sentDocuments = mutableListOf<Pair<Long, String>>()
         val sentChatActions = mutableListOf<Pair<Long, String>>()
         val updateQueue = mutableListOf<List<TelegramUpdate>>()
@@ -79,6 +84,42 @@ class CommanderBotRuntimeTest {
             replyToMessageId: Long?
         ): Result<Boolean> {
             sentMessages.add(Triple(chatId, text, parseMode))
+            sentMarkups.add(text to null)
+            return Result.success(true)
+        }
+
+        override suspend fun sendMessage(
+            token: String,
+            chatId: Long,
+            text: String,
+            parseMode: String?,
+            replyToMessageId: Long?,
+            replyMarkup: InlineKeyboardMarkup?
+        ): Result<Boolean> {
+            sentMessages.add(Triple(chatId, text, parseMode))
+            sentMarkups.add(text to replyMarkup)
+            return Result.success(true)
+        }
+
+        override suspend fun answerCallbackQuery(
+            token: String,
+            callbackQueryId: String,
+            text: String?,
+            showAlert: Boolean
+        ): Result<Boolean> {
+            answeredCallbacks.add(Triple(callbackQueryId, text, showAlert))
+            return Result.success(true)
+        }
+
+        override suspend fun editMessageText(
+            token: String,
+            chatId: Long,
+            messageId: Long,
+            text: String,
+            parseMode: String?,
+            replyMarkup: InlineKeyboardMarkup?
+        ): Result<Boolean> {
+            editedMessages.add(Triple(chatId, messageId, text))
             return Result.success(true)
         }
 
@@ -446,5 +487,105 @@ class CommanderBotRuntimeTest {
         assertTrue(fakeApi.sentMessages.any { it.second.contains("TapBot APK") || it.second.contains("TapBot APK Information") })
         assertTrue(fakeApi.sentMessages.any { it.second.contains("Exon Robot") && it.second.contains("Search Results") })
         assertTrue(fakeApi.sentMessages.any { it.second.contains("Samsung One UI") && it.second.contains("Never sleeping apps") })
+    }
+
+    @Test
+    fun `handles tts, wifi, location, schedule, and inline HUD callback queries`() = runBlocking {
+        val fakeApi = FakeTelegramApiClient()
+        val fakeManager = FakeBotInstanceManager()
+        ServiceLocator.botInstanceManager = fakeManager
+        fakeManager.setTestInstances(
+            listOf(
+                BotInstance(
+                    installationId = "inst_exon_1",
+                    botId = "bot_exon",
+                    name = "Exon Robot",
+                    version = "2.0.0",
+                    status = BotInstanceStatus.Running(pollCount = 10, messageCount = 2)
+                )
+            )
+        )
+
+        val owner = TelegramUser(id = 12345, isBot = false, firstName = "Owner", username = "owner")
+        val stranger = TelegramUser(id = 666, isBot = false, firstName = "Guest", username = "guest")
+        val chat = TelegramChat(id = 5555, type = "private")
+
+        fakeApi.updateQueue.add(
+            listOf(
+                TelegramUpdate(1, TelegramMessage(100, owner, chat, 1700L, "/tts Reminder check")),
+                TelegramUpdate(2, TelegramMessage(101, owner, chat, 1701L, "/wifi")),
+                TelegramUpdate(3, TelegramMessage(102, owner, chat, 1702L, "/location")),
+                TelegramUpdate(4, TelegramMessage(103, owner, chat, 1703L, "/status")),
+                TelegramUpdate(5, TelegramMessage(104, owner, chat, 1704L, "/schedule 150ms Take medicine")),
+                TelegramUpdate(6, TelegramMessage(105, owner, chat, 1705L, "/schedule 10m Stay scheduled")),
+                TelegramUpdate(7, TelegramMessage(106, owner, chat, 1706L, "/schedules")),
+                TelegramUpdate(8, TelegramMessage(107, owner, chat, 1707L, "/cancelschedule sch_2")),
+                // Non-owner tries callback query
+                TelegramUpdate(
+                    9,
+                    callbackQuery = TelegramCallbackQuery(
+                        id = "cb_unauthorized",
+                        from = stranger,
+                        message = TelegramMessage(103, owner, chat, 1703L, "status"),
+                        data = "cmd:battery"
+                    )
+                ),
+                // Owner refreshes battery & stops fleet bot via callback
+                TelegramUpdate(
+                    10,
+                    callbackQuery = TelegramCallbackQuery(
+                        id = "cb_battery",
+                        from = owner,
+                        message = TelegramMessage(103, owner, chat, 1703L, "status"),
+                        data = "cmd:battery"
+                    )
+                ),
+                TelegramUpdate(
+                    11,
+                    callbackQuery = TelegramCallbackQuery(
+                        id = "cb_stop",
+                        from = owner,
+                        message = TelegramMessage(108, owner, chat, 1708L, "fleet"),
+                        data = "cmd:stop:inst_exon_1"
+                    )
+                )
+            )
+        )
+
+        val runtime = CommanderBotRuntime("bot_commander")
+        val ctx = RuntimeContext(
+            botId = "bot_commander",
+            token = "fake_token",
+            telegramApi = fakeApi,
+            log = { _, _, _ -> },
+            scope = this,
+            credentials = mapOf("owner_id" to "12345")
+        )
+
+        runtime.initialize(ctx)
+        runtime.start()
+        var waitedMs = 0
+        while (waitedMs < 2500) {
+            val ready = fakeApi.sentMessages.any { it.second.contains("Scheduled Reminder (`sch_1`)") } &&
+                fakeApi.editedMessages.any { it.third.contains("Android Battery Diagnostics") } &&
+                fakeManager.stoppedIds.contains("inst_exon_1")
+            if (ready) break
+            delay(40)
+            waitedMs += 40
+        }
+        runtime.stop()
+
+        assertTrue(fakeApi.sentMessages.any { it.second.contains("Speaking on phone speaker") && it.second.contains("Reminder check") })
+        assertTrue(fakeApi.sentMessages.any { it.second.contains("Wi-Fi & Network Details") })
+        assertTrue(fakeApi.sentMessages.any { it.second.contains("Last Known Device Location") && it.second.contains("maps.google.com") })
+        assertTrue(fakeApi.sentMessages.any { it.second.contains("Scheduled Reminder (`sch_1`)") && it.second.contains("Take medicine") })
+        assertTrue(fakeApi.sentMessages.any { it.second.contains("Cancelled scheduled reminder `sch_2`") })
+
+        val statusMarkup = fakeApi.sentMarkups.firstOrNull { it.first.contains("TapBot Host System Dashboard") }?.second
+        assertTrue("/status should attach inline HUD keyboard", statusMarkup != null && statusMarkup.inlineKeyboard.size >= 2)
+
+        assertTrue(fakeApi.answeredCallbacks.any { it.first == "cb_unauthorized" && it.third })
+        assertTrue(fakeApi.editedMessages.any { it.third.contains("Android Battery Diagnostics") })
+        assertTrue(fakeManager.stoppedIds.contains("inst_exon_1"))
     }
 }

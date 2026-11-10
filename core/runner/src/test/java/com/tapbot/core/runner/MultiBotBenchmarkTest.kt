@@ -1,5 +1,6 @@
 package com.tapbot.core.runner
 
+import com.tapbot.core.model.InlineKeyboardMarkup
 import com.tapbot.core.model.LogLevel
 import com.tapbot.core.model.TelegramChat
 import com.tapbot.core.model.TelegramMessage
@@ -68,7 +69,7 @@ class MultiBotBenchmarkTest {
             // Inject 1 test message on poll #2
             if (count == 2L) {
                 val command = when {
-                    token.contains("music") -> "/play Moonlight Sonata"
+                    token.contains("music") -> "/play test Moonlight Sonata"
                     token.contains("ai") -> "/ask Explain coroutine dispatchers"
                     token.contains("utility") -> "/ping"
                     else -> "/start"
@@ -98,6 +99,47 @@ class MultiBotBenchmarkTest {
             sentMessages.add(Triple(token, chatId, text))
             return Result.success(true)
         }
+
+        override suspend fun sendMessage(
+            token: String,
+            chatId: Long,
+            text: String,
+            parseMode: String?,
+            replyToMessageId: Long?
+        ): Result<Boolean> {
+            sentMessages.add(Triple(token, chatId, text))
+            return Result.success(true)
+        }
+
+        override suspend fun sendMessage(
+            token: String,
+            chatId: Long,
+            text: String,
+            parseMode: String?,
+            replyToMessageId: Long?,
+            replyMarkup: InlineKeyboardMarkup?
+        ): Result<Boolean> {
+            sentMessages.add(Triple(token, chatId, text))
+            return Result.success(true)
+        }
+
+        override suspend fun sendAudio(
+            token: String,
+            chatId: Long,
+            audioUrl: String,
+            title: String?,
+            performer: String?,
+            duration: Int?,
+            caption: String?,
+            parseMode: String?,
+            replyToMessageId: Long?
+        ): Result<Boolean> = Result.success(true)
+
+        override suspend fun sendChatAction(
+            token: String,
+            chatId: Long,
+            action: String
+        ): Result<Boolean> = Result.success(true)
     }
 
     private val fakeApi = BenchmarkTelegramApiClient()

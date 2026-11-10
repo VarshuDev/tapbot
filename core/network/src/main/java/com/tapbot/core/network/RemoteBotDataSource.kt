@@ -27,9 +27,19 @@ interface RemoteBotDataSource {
  * Production implementation of RemoteBotDataSource backed by Cloudflare Workers.
  */
 class CloudflareRemoteBotDataSource(
-    private val baseUrl: String = DEFAULT_BASE_URL,
+    private val baseUrlProvider: () -> String,
     private val client: OkHttpClient = OkHttpClient()
 ) : RemoteBotDataSource {
+
+    constructor(
+        baseUrl: String = DEFAULT_BASE_URL,
+        client: OkHttpClient = OkHttpClient()
+    ) : this(
+        baseUrlProvider = { baseUrl },
+        client = client
+    )
+
+    private fun currentBaseUrl(): String = baseUrlProvider().trim().trimEnd('/')
 
     private val json = Json {
         ignoreUnknownKeys = true
@@ -40,7 +50,7 @@ class CloudflareRemoteBotDataSource(
     override suspend fun getPublishedBots(category: String?, search: String?): Result<List<BotMetadata>> =
         withContext(Dispatchers.IO) {
             runCatching {
-                var url = "${baseUrl.trimEnd('/')}/api/v1/bots"
+                var url = "${currentBaseUrl()}/api/v1/bots"
                 val queryParams = mutableListOf<String>()
                 if (!category.isNullOrBlank() && !category.equals("All", ignoreCase = true)) {
                     queryParams.add("category=${category.lowercase()}")
@@ -75,7 +85,7 @@ class CloudflareRemoteBotDataSource(
     override suspend fun getBotDetails(botId: String): Result<BotMetadata> =
         withContext(Dispatchers.IO) {
             runCatching {
-                val url = "${baseUrl.trimEnd('/')}/api/v1/bots/$botId"
+                val url = "${currentBaseUrl()}/api/v1/bots/$botId"
                 val request = Request.Builder()
                     .url(url)
                     .header("Accept", "application/json")
@@ -102,7 +112,7 @@ class CloudflareRemoteBotDataSource(
     override suspend fun getCategories(): Result<List<String>> =
         withContext(Dispatchers.IO) {
             runCatching {
-                val url = "${baseUrl.trimEnd('/')}/api/v1/categories"
+                val url = "${currentBaseUrl()}/api/v1/categories"
                 val request = Request.Builder()
                     .url(url)
                     .header("Accept", "application/json")
@@ -128,7 +138,7 @@ class CloudflareRemoteBotDataSource(
     override suspend fun getBotVersions(botId: String): Result<List<BotVersion>> =
         withContext(Dispatchers.IO) {
             runCatching {
-                val url = "${baseUrl.trimEnd('/')}/api/v1/bots/$botId/versions"
+                val url = "${currentBaseUrl()}/api/v1/bots/$botId/versions"
                 val request = Request.Builder()
                     .url(url)
                     .header("Accept", "application/json")
@@ -152,7 +162,7 @@ class CloudflareRemoteBotDataSource(
     override suspend fun getLatestVersion(botId: String): Result<BotVersion?> =
         withContext(Dispatchers.IO) {
             runCatching {
-                val url = "${baseUrl.trimEnd('/')}/api/v1/bots/$botId/versions/latest"
+                val url = "${currentBaseUrl()}/api/v1/bots/$botId/versions/latest"
                 val request = Request.Builder()
                     .url(url)
                     .header("Accept", "application/json")

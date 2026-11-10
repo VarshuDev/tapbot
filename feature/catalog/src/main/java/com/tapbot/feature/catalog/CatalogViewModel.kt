@@ -7,11 +7,15 @@ import com.tapbot.core.model.BotInstance
 import com.tapbot.core.model.BotMetadata
 import com.tapbot.core.model.BotUpdateProgress
 import com.tapbot.core.model.BotVersion
+import com.tapbot.core.network.AppPreferences
+import com.tapbot.core.network.AppPreferencesRepository
 import com.tapbot.core.network.BotPackageDownloader
 import com.tapbot.core.network.CatalogApi
 import com.tapbot.core.network.CatalogRepository
+import com.tapbot.core.network.LocalBotInstallationManager
 import com.tapbot.core.network.ManifestValidator
 import com.tapbot.core.network.OfflineFirstCatalogRepository
+import com.tapbot.core.runner.custom.CustomBotRepository
 import com.tapbot.core.runner.manager.BotInstanceManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -23,7 +27,10 @@ class CatalogViewModel(
     private val catalogRepository: CatalogRepository,
     private val botInstanceManager: BotInstanceManager? = null,
     private val packageDownloader: BotPackageDownloader? = null,
-    private val manifestValidator: ManifestValidator? = null
+    private val manifestValidator: ManifestValidator? = null,
+    private val installationManager: LocalBotInstallationManager? = null,
+    private val appPreferencesRepository: AppPreferencesRepository? = null,
+    private val customBotRepository: CustomBotRepository? = null
 ) : ViewModel() {
 
     // Secondary constructor accepting CatalogApi for backward compatibility
@@ -45,6 +52,10 @@ class CatalogViewModel(
     private val _uiState = MutableStateFlow<CatalogUiState>(CatalogUiState.Loading)
     val uiState: StateFlow<CatalogUiState> = _uiState.asStateFlow()
 
+    val appPreferences: StateFlow<AppPreferences> =
+        appPreferencesRepository?.preferences ?: MutableStateFlow(AppPreferences())
+
+    private var remoteBotsCache: List<BotMetadata> = emptyList()
     private var allBots: List<BotMetadata> = emptyList()
     private var allCategories: List<String> = listOf("All")
     private var allFeaturedBots: List<BotMetadata> = emptyList()
@@ -53,6 +64,33 @@ class CatalogViewModel(
         loadCatalog(forceRefresh = false)
         observeInstalledBots()
         observeUpdateProgress()
+        observeCustomBots()
+    }
+
+    private fun observeCustomBots() {
+        val repo = customBotRepository ?: return
+        viewModelScope.launch {
+            repo.definitions.collect { defs ->
+                val customMeta = defs.map { it.toBotMetadata() }
+                val existingIds = customMeta.map { it.id }.toSet()
+                allBots = customMeta + remoteBotsCache.filterNot { it.id in existingIds }
+                val cats = allCategories.toMutableList()
+                if (customMeta.isNotEmpty() && !cats.contains("Custom")) {
+                    cats.add("Custom")
+                    allCategories = cats
+                }
+                _uiState.update { current ->
+                    if (current is CatalogUiState.Success) {
+                        val filtered = filterBots(current.selectedCategory, current.searchQuery)
+                        current.copy(
+                            bots = filtered,
+                            categories = allCategories,
+                            customBotCount = customMeta.size
+                        )
+                    } else current
+                }
+            }
+        }
     }
 
     private fun observeInstalledBots() {
@@ -99,9 +137,16 @@ class CatalogViewModel(
 
             catalogRepository.getBots(forceRefresh = forceRefresh)
                 .onSuccess { bots ->
-                    allBots = bots
+                    remoteBotsCache = bots
+                    val customMeta = customBotRepository?.getAll()?.map { it.toBotMetadata() }.orEmpty()
+                    val customIds = customMeta.map { it.id }.toSet()
+                    allBots = customMeta + bots.filterNot { it.id in customIds }
                     allFeaturedBots = catalogRepository.getFeaturedBots().getOrDefault(bots.take(2))
-                    allCategories = catalogRepository.getCategories().getOrDefault(listOf("All"))
+                    val rawCats = catalogRepository.getCategories().getOrDefault(listOf("All")).toMutableList()
+                    if (customMeta.isNotEmpty() && !rawCats.contains("Custom")) {
+                        rawCats.add("Custom")
+                    }
+                    allCategories = rawCats
 
                     val selectedCat = (current as? CatalogUiState.Success)?.selectedCategory ?: "All"
                     val query = (current as? CatalogUiState.Success)?.searchQuery ?: ""
@@ -123,7 +168,8 @@ class CatalogViewModel(
                         selectedTab = selectedTab,
                         installedInstances = installed,
                         availableUpdates = existingUpdates,
-                        updateProgress = activeProgress
+                        updateProgress = activeProgress,
+                        customBotCount = customMeta.size
                     )
                     checkForUpdates()
                 }
@@ -152,6 +198,12 @@ class CatalogViewModel(
 
             val updates = mutableMapOf<String, BotVersion>()
             for (instance in instances) {
+                if (instance.botId.startsWith("bot_custom_") ||
+                    instance.botId.startsWith("custom_") ||
+                    customBotRepository?.getDefinition(instance.botId) != null
+                ) {
+                    continue
+                }
                 catalogRepository.checkForUpdate(instance.botId, instance.version)
                     .onSuccess { updateVersion ->
                         if (updateVersion != null) {
@@ -184,6 +236,33 @@ class CatalogViewModel(
         }
     }
 
+    fun setAutoStartOnBoot(enabled: Boolean) {
+        appPreferencesRepository?.setAutoStartOnBoot(enabled)
+    }
+
+    fun setWifiOnlyDownloads(enabled: Boolean) {
+        appPreferencesRepository?.setWifiOnlyDownloads(enabled)
+    }
+
+    fun setDiagnosticsExportEnabled(enabled: Boolean) {
+        appPreferencesRepository?.setDiagnosticsExportEnabled(enabled)
+    }
+
+    fun saveCustomCatalogUrl(url: String) {
+        appPreferencesRepository?.setCustomCatalogUrl(url)
+        loadCatalog(forceRefresh = true)
+    }
+
+    fun stopAllRunningBots() {
+        val manager = botInstanceManager ?: return
+        viewModelScope.launch {
+            val running = manager.instances.value.filter { it.status.isRunning }
+            for (inst in running) {
+                manager.stop(inst.installationId)
+            }
+        }
+    }
+
     fun selectTab(tabIndex: Int) {
         _uiState.update { current ->
             if (current is CatalogUiState.Success) {
@@ -212,7 +291,11 @@ class CatalogViewModel(
 
     fun uninstallBot(installationId: String) {
         viewModelScope.launch {
+            val botId = botInstanceManager?.getInstance(installationId)?.botId
             botInstanceManager?.uninstall(installationId)
+            if (botId != null) {
+                installationManager?.uninstallBot(botId)
+            }
         }
     }
 
@@ -253,7 +336,10 @@ class CatalogViewModel(
             catalogRepository: CatalogRepository,
             botInstanceManager: BotInstanceManager? = null,
             packageDownloader: BotPackageDownloader? = null,
-            manifestValidator: ManifestValidator? = null
+            manifestValidator: ManifestValidator? = null,
+            installationManager: LocalBotInstallationManager? = null,
+            appPreferencesRepository: AppPreferencesRepository? = null,
+            customBotRepository: CustomBotRepository? = null
         ): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
@@ -262,7 +348,10 @@ class CatalogViewModel(
                         catalogRepository = catalogRepository,
                         botInstanceManager = botInstanceManager,
                         packageDownloader = packageDownloader,
-                        manifestValidator = manifestValidator
+                        manifestValidator = manifestValidator,
+                        installationManager = installationManager,
+                        appPreferencesRepository = appPreferencesRepository,
+                        customBotRepository = customBotRepository
                     ) as T
                 }
             }

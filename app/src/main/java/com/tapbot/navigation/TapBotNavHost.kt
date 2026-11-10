@@ -13,6 +13,8 @@ import com.tapbot.feature.botdetail.BotDetailScreen
 import com.tapbot.feature.botdetail.BotDetailViewModel
 import com.tapbot.feature.catalog.CatalogScreen
 import com.tapbot.feature.catalog.CatalogViewModel
+import com.tapbot.feature.catalog.CustomBotBuilderScreen
+import com.tapbot.feature.catalog.CustomBotBuilderViewModel
 
 @Composable
 fun TapBotNavHost(
@@ -30,13 +32,45 @@ fun TapBotNavHost(
                 factory = CatalogViewModel.provideFactory(
                     catalogRepository = app.catalogRepository,
                     botInstanceManager = app.botInstanceManager,
-                    packageDownloader = app.botPackageDownloader
+                    packageDownloader = app.botPackageDownloader,
+                    installationManager = app.localBotInstallationManager,
+                    appPreferencesRepository = app.appPreferencesRepository,
+                    customBotRepository = app.customBotRepository
                 )
             )
             CatalogScreen(
                 viewModel = catalogViewModel,
                 onBotClick = { botId ->
                     navController.navigate(Screen.BotDetail.createRoute(botId))
+                },
+                onBuildCustomBotClick = {
+                    navController.navigate(Screen.CustomBotBuilder.route)
+                },
+                onClearCache = { app.clearAppCache() },
+                onRefreshCacheSizeBytes = { app.getCacheSizeBytes() },
+                onBuildDiagnosticsReport = { app.buildDiagnosticsReport() },
+                appVersionName = app.getAppVersionName(),
+                appVersionCode = app.getAppVersionCode().toLong()
+            )
+        }
+
+        composable(route = Screen.CustomBotBuilder.route) {
+            val builderViewModel: CustomBotBuilderViewModel = viewModel(
+                factory = CustomBotBuilderViewModel.provideFactory(
+                    customBotRepository = app.customBotRepository,
+                    botInstanceManager = app.botInstanceManager,
+                    credentialStore = app.credentialStore,
+                    localCatalogCache = app.localCatalogCache,
+                    localInstallationManager = app.localBotInstallationManager
+                )
+            )
+            CustomBotBuilderScreen(
+                viewModel = builderViewModel,
+                onBackClick = { navController.popBackStack() },
+                onBotCreated = { botId ->
+                    navController.navigate(Screen.BotDetail.createRoute(botId)) {
+                        popUpTo(Screen.CustomBotBuilder.route) { inclusive = true }
+                    }
                 }
             )
         }
@@ -56,7 +90,9 @@ fun TapBotNavHost(
                     botServiceController = app.botServiceController,
                     logRepository = app.logRepository,
                     packageDownloader = app.botPackageDownloader,
-                    installationManager = app.localBotInstallationManager
+                    installationManager = app.localBotInstallationManager,
+                    appVersionCode = app.getAppVersionCode(),
+                    botInstanceManager = app.botInstanceManager
                 )
             )
             BotDetailScreen(

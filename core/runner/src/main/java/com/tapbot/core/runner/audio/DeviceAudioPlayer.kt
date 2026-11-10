@@ -2,14 +2,23 @@ package com.tapbot.core.runner.audio
 
 import android.content.Context
 import android.media.AudioAttributes
+import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.media.MediaPlayer
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import java.util.Locale
 
 enum class PlaybackStatus {
@@ -55,17 +64,55 @@ data class PlaybackState(
 
 /**
  * On-device hardware audio player wrapping Android MediaPlayer and AudioManager.
- * Enables Android device speakers/Bluetooth output to be controlled remotely via Telegram.
+ * Supports Android audio focus negotiation and a live elapsed progress ticker.
  */
 class DeviceAudioPlayer(
     private val context: Context? = null,
-    private val onTrackCompleted: (() -> Unit)? = null
+    private val onTrackCompleted: (() -> Unit)? = null,
+    private val tickIntervalMs: Long = 1000L
 ) {
     private val _playbackState = MutableStateFlow(PlaybackState())
     val playbackState: StateFlow<PlaybackState> = _playbackState.asStateFlow()
 
     private var mediaPlayer: MediaPlayer? = null
     private var handler: Handler? = null
+    private var audioFocusRequest: AudioFocusRequest? = null
+    private var pausedByFocusLoss: Boolean = false
+    private var preDuckVolumePct: Int? = null
+
+    private val tickerScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private var tickerJob: Job? = null
+
+    private val focusChangeListener = AudioManager.OnAudioFocusChangeListener { focusChange ->
+        when (focusChange) {
+            AudioManager.AUDIOFOCUS_LOSS -> {
+                pausedByFocusLoss = false
+                pause()
+            }
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> {
+                if (_playbackState.value.status == PlaybackStatus.PLAYING) {
+                    pausedByFocusLoss = true
+                    pause()
+                }
+            }
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> {
+                if (preDuckVolumePct == null) {
+                    preDuckVolumePct = _playbackState.value.volumePct
+                    applyPlayerVolumeOnly(25)
+                }
+            }
+            AudioManager.AUDIOFOCUS_GAIN -> {
+                preDuckVolumePct?.let { original ->
+                    preDuckVolumePct = null
+                    applyPlayerVolumeOnly(original)
+                }
+                if (pausedByFocusLoss && _playbackState.value.status == PlaybackStatus.PAUSED) {
+                    pausedByFocusLoss = false
+                    resume()
+                }
+            }
+        }
+    }
 
     init {
         try {
@@ -79,6 +126,8 @@ class DeviceAudioPlayer(
      * Starts streaming and playing the specified audio track.
      */
     fun playTrack(track: AudioTrack): Boolean {
+        stopTicker()
+        pausedByFocusLoss = false
         _playbackState.value = _playbackState.value.copy(
             status = PlaybackStatus.BUFFERING,
             currentTrack = track,
@@ -88,15 +137,16 @@ class DeviceAudioPlayer(
         )
 
         if (context == null) {
-            // Simulated playback for local test environments
             _playbackState.value = _playbackState.value.copy(
                 status = PlaybackStatus.PLAYING,
                 durationMs = if (track.durationSeconds > 0) track.durationSeconds * 1000L else 0L
             )
+            startTicker()
             return true
         }
 
         return try {
+            requestAudioFocus()
             releaseMediaPlayer()
             val mp = MediaPlayer()
             mediaPlayer = mp
@@ -121,9 +171,12 @@ class DeviceAudioPlayer(
                     status = PlaybackStatus.PLAYING,
                     durationMs = if (realDuration > 0) realDuration else (track.durationSeconds * 1000L)
                 )
+                startTicker()
             }
 
             mp.setOnCompletionListener {
+                stopTicker()
+                abandonAudioFocus()
                 _playbackState.value = _playbackState.value.copy(
                     status = PlaybackStatus.STOPPED,
                     elapsedMs = _playbackState.value.durationMs
@@ -132,6 +185,8 @@ class DeviceAudioPlayer(
             }
 
             mp.setOnErrorListener { _, what, extra ->
+                stopTicker()
+                abandonAudioFocus()
                 _playbackState.value = _playbackState.value.copy(
                     status = PlaybackStatus.ERROR,
                     errorMessage = "Playback error (code: $what, extra: $extra)"
@@ -142,6 +197,8 @@ class DeviceAudioPlayer(
             mp.prepareAsync()
             true
         } catch (e: Exception) {
+            stopTicker()
+            abandonAudioFocus()
             _playbackState.value = _playbackState.value.copy(
                 status = PlaybackStatus.ERROR,
                 errorMessage = e.message ?: "Failed to start audio playback"
@@ -157,6 +214,7 @@ class DeviceAudioPlayer(
         val cur = _playbackState.value
         if (cur.status != PlaybackStatus.PLAYING) return false
 
+        stopTicker()
         try {
             mediaPlayer?.pause()
         } catch (_: Exception) {}
@@ -172,11 +230,13 @@ class DeviceAudioPlayer(
         val cur = _playbackState.value
         if (cur.status != PlaybackStatus.PAUSED) return false
 
+        requestAudioFocus()
         try {
             mediaPlayer?.start()
         } catch (_: Exception) {}
 
         _playbackState.value = cur.copy(status = PlaybackStatus.PLAYING)
+        startTicker()
         return true
     }
 
@@ -184,6 +244,9 @@ class DeviceAudioPlayer(
      * Stops playback and resets player state.
      */
     fun stop(): Boolean {
+        stopTicker()
+        pausedByFocusLoss = false
+        abandonAudioFocus()
         try {
             mediaPlayer?.stop()
         } catch (_: Exception) {}
@@ -197,10 +260,19 @@ class DeviceAudioPlayer(
     }
 
     /**
+     * Stops playback and cancels internal ticker coroutines permanently.
+     */
+    fun release() {
+        stop()
+        tickerScope.cancel()
+    }
+
+    /**
      * Adjusts playback volume (0 to 100).
      */
     fun setVolume(percentage: Int): Int {
         val clamped = percentage.coerceIn(0, 100)
+        preDuckVolumePct = null
         _playbackState.value = _playbackState.value.copy(volumePct = clamped)
 
         val am = context?.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
@@ -212,11 +284,7 @@ class DeviceAudioPlayer(
             } catch (_: Exception) {}
         }
 
-        val floatVol = clamped / 100f
-        try {
-            mediaPlayer?.setVolume(floatVol, floatVol)
-        } catch (_: Exception) {}
-
+        applyPlayerVolumeOnly(clamped)
         return clamped
     }
 
@@ -224,14 +292,93 @@ class DeviceAudioPlayer(
      * Seeks playback position in milliseconds.
      */
     fun seekTo(positionMs: Long): Boolean {
-        val clamped = positionMs.coerceIn(0L, _playbackState.value.durationMs.coerceAtLeast(0L))
+        val duration = _playbackState.value.durationMs
+        val clamped = if (duration > 0L) positionMs.coerceIn(0L, duration) else positionMs.coerceAtLeast(0L)
         _playbackState.value = _playbackState.value.copy(elapsedMs = clamped)
-        try {
-            mediaPlayer?.seekTo(clamped.toInt())
+        if (context == null || mediaPlayer == null) {
             return true
-        } catch (_: Exception) {
-            return false
         }
+        return try {
+            mediaPlayer?.seekTo(clamped.toInt())
+            true
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    private fun startTicker() {
+        stopTicker()
+        val interval = tickIntervalMs.coerceAtLeast(10L)
+        tickerJob = tickerScope.launch {
+            while (isActive) {
+                delay(interval)
+                val cur = _playbackState.value
+                if (cur.status != PlaybackStatus.PLAYING) break
+
+                val nextElapsed = if (mediaPlayer != null && context != null) {
+                    try {
+                        mediaPlayer?.currentPosition?.toLong()?.coerceAtLeast(0L) ?: (cur.elapsedMs + interval)
+                    } catch (_: Throwable) {
+                        cur.elapsedMs + interval
+                    }
+                } else {
+                    val raw = cur.elapsedMs + interval
+                    if (cur.durationMs > 0L) raw.coerceAtMost(cur.durationMs) else raw
+                }
+                _playbackState.value = _playbackState.value.copy(elapsedMs = nextElapsed)
+            }
+        }
+    }
+
+    private fun stopTicker() {
+        tickerJob?.cancel()
+        tickerJob = null
+    }
+
+    private fun applyPlayerVolumeOnly(percentage: Int) {
+        val floatVol = percentage.coerceIn(0, 100) / 100f
+        try {
+            mediaPlayer?.setVolume(floatVol, floatVol)
+        } catch (_: Exception) {}
+    }
+
+    private fun requestAudioFocus() {
+        val am = context?.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val req = audioFocusRequest ?: AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
+                    .setAudioAttributes(
+                        AudioAttributes.Builder()
+                            .setUsage(AudioAttributes.USAGE_MEDIA)
+                            .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                            .build()
+                    )
+                    .setAcceptsDelayedFocusGain(true)
+                    .setOnAudioFocusChangeListener(focusChangeListener)
+                    .build()
+                    .also { audioFocusRequest = it }
+                am.requestAudioFocus(req)
+            } else {
+                @Suppress("DEPRECATION")
+                am.requestAudioFocus(
+                    focusChangeListener,
+                    AudioManager.STREAM_MUSIC,
+                    AudioManager.AUDIOFOCUS_GAIN
+                )
+            }
+        } catch (_: Throwable) {}
+    }
+
+    private fun abandonAudioFocus() {
+        val am = context?.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                audioFocusRequest?.let { am.abandonAudioFocusRequest(it) }
+            } else {
+                @Suppress("DEPRECATION")
+                am.abandonAudioFocus(focusChangeListener)
+            }
+        } catch (_: Throwable) {}
     }
 
     private fun releaseMediaPlayer() {

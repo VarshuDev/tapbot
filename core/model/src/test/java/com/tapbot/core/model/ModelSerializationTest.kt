@@ -78,4 +78,41 @@ class ModelSerializationTest {
         assertEquals("/start", update?.message?.text)
         assertEquals("alice_dev", update?.message?.from?.username)
     }
+
+    @Test
+    fun `deserialize callback_query and inline keyboard payloads cleanly`() {
+        val rawUpdateJson = """
+            {
+              "update_id": 10055,
+              "callback_query": {
+                "id": "cb_987",
+                "from": { "id": 42, "is_bot": false, "first_name": "Alex" },
+                "message": {
+                  "message_id": 77,
+                  "date": 1726740000,
+                  "chat": { "id": -100123, "type": "supergroup", "title": "Devs" },
+                  "text": "Menu"
+                },
+                "data": "cmd:status"
+              }
+            }
+        """.trimIndent()
+
+        val update = json.decodeFromString<TelegramUpdate>(rawUpdateJson)
+        assertEquals(10055L, update.updateId)
+        assertEquals("cb_987", update.callbackQuery?.id)
+        assertEquals("cmd:status", update.callbackQuery?.data)
+        assertEquals(-100123L, update.callbackQuery?.message?.chat?.id)
+
+        val markup = InlineKeyboardMarkup(
+            inlineKeyboard = listOf(
+                listOf(InlineKeyboardButton(text = "Refresh", callbackData = "cmd:status"))
+            )
+        )
+        val sendJson = json.encodeToString(
+            SendMessagePayload(chatId = 1L, text = "HUD", replyMarkup = markup)
+        )
+        assertTrue(sendJson.contains("inline_keyboard"))
+        assertTrue(sendJson.contains("callback_data"))
+    }
 }

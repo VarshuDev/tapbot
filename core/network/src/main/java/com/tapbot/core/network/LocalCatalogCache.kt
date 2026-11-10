@@ -26,13 +26,27 @@ class LocalCatalogCache(
 
     @Synchronized
     fun saveCatalog(bots: List<BotMetadata>, categories: List<String>) {
-        inMemoryBots = bots
-        inMemoryCategories = categories
+        val existingCustomBots = inMemoryBots.orEmpty()
+            .filter {
+                it.id.startsWith("bot_custom_") ||
+                    it.id.startsWith("custom_") ||
+                    it.packageInfo.entryClass?.contains("CustomWorkflowBotRuntime") == true
+            }
+            .filterNot { custom -> bots.any { it.id == custom.id } }
+        val mergedBots = existingCustomBots + bots
+        val mergedCategories = if (existingCustomBots.isNotEmpty() && !categories.contains("Custom")) {
+            categories + "Custom"
+        } else {
+            categories
+        }
+
+        inMemoryBots = mergedBots
+        inMemoryCategories = mergedCategories
 
         if (cacheFile != null) {
             try {
                 cacheFile.parentFile?.mkdirs()
-                val payload = CachedCatalogPayload(bots = bots, categories = categories)
+                val payload = CachedCatalogPayload(bots = mergedBots, categories = mergedCategories)
                 cacheFile.writeText(json.encodeToString(CachedCatalogPayload.serializer(), payload))
             } catch (e: Exception) {
                 // Ignore disk cache write errors

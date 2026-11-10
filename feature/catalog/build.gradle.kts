@@ -29,6 +29,7 @@ android {
 
 dependencies {
     implementation(project(":core:model"))
+    implementation(project(":core:security"))
     implementation(project(":core:network"))
     implementation(project(":core:runner"))
 

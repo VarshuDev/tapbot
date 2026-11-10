@@ -57,6 +57,9 @@ class ApkDeliveryService(
         val debugApk = File("app/build/outputs/apk/debug/app-debug.apk")
         if (debugApk.exists() && debugApk.canRead()) return debugApk
 
+        val releaseApk = File("app/build/outputs/apk/release/app-release.apk")
+        if (releaseApk.exists() && releaseApk.canRead()) return releaseApk
+
         val releaseBuildApk = File("app/build/outputs/apk/release/app-release-unsigned.apk")
         if (releaseBuildApk.exists() && releaseBuildApk.canRead()) return releaseBuildApk
 
@@ -74,12 +77,12 @@ class ApkDeliveryService(
             null
         }
 
-        val versionName = pInfo?.versionName ?: "2.1.0"
+        val versionName = pInfo?.versionName ?: "2.3.0"
         val versionCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            try { pInfo?.longVersionCode ?: 210L } catch (_: Throwable) { 210L }
+            try { pInfo?.longVersionCode ?: 230L } catch (_: Throwable) { 230L }
         } else {
             @Suppress("DEPRECATION")
-            try { pInfo?.versionCode?.toLong() ?: 210L } catch (_: Throwable) { 210L }
+            try { pInfo?.versionCode?.toLong() ?: 230L } catch (_: Throwable) { 230L }
         }
 
         return ApkFileInfo(

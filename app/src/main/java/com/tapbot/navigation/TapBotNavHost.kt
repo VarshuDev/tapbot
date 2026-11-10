@@ -30,7 +30,8 @@ fun TapBotNavHost(
                 factory = CatalogViewModel.provideFactory(
                     catalogRepository = app.catalogRepository,
                     botInstanceManager = app.botInstanceManager,
-                    packageDownloader = app.botPackageDownloader
+                    packageDownloader = app.botPackageDownloader,
+                    installationManager = app.localBotInstallationManager
                 )
             )
             CatalogScreen(
@@ -56,7 +57,8 @@ fun TapBotNavHost(
                     botServiceController = app.botServiceController,
                     logRepository = app.logRepository,
                     packageDownloader = app.botPackageDownloader,
-                    installationManager = app.localBotInstallationManager
+                    installationManager = app.localBotInstallationManager,
+                    botInstanceManager = app.botInstanceManager
                 )
             )
             BotDetailScreen(

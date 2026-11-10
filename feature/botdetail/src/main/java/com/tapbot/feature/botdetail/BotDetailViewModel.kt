@@ -12,6 +12,7 @@ import com.tapbot.core.network.DowngradeAttackChecker
 import com.tapbot.core.network.LocalBotInstallationManager
 import com.tapbot.core.network.OfflineFirstCatalogRepository
 import com.tapbot.core.runner.BotServiceController
+import com.tapbot.core.runner.manager.BotInstanceManager
 import com.tapbot.core.security.SecretRedactor
 import com.tapbot.core.security.SecureCredentialStore
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -29,7 +30,8 @@ class BotDetailViewModel(
     private val logRepository: BotLogRepository,
     private val packageDownloader: BotPackageDownloader? = null,
     private val installationManager: LocalBotInstallationManager? = null,
-    private val appVersionCode: Int = 1
+    private val appVersionCode: Int = 1,
+    private val botInstanceManager: BotInstanceManager? = null
 ) : ViewModel() {
 
     // Secondary constructor accepting CatalogApi for backward compatibility
@@ -72,8 +74,24 @@ class BotDetailViewModel(
             catalogRepository.getBotDetails(botId, forceRefresh = true)
                 .onSuccess { bot ->
                     val savedCredentials = credentialStore.getAllCredentials(botId)
-                    val installed = installationManager?.isInstalled(bot.id) ?: (packageDownloader == null)
-                    val installedVer = installationManager?.getInstalledVersion(bot.id)
+                    var instance = botInstanceManager?.getInstanceByBotId(bot.id)
+                    val installedInManager = installationManager?.isInstalled(bot.id) == true
+
+                    // Sync pre-existing installations into BotInstanceManager so My Fleet always reflects installed bots
+                    if (installedInManager && botInstanceManager != null && instance == null) {
+                        val existingRecord = installationManager?.getInstalledBots()?.find { it.botId == bot.id }
+                        val pkgFile = existingRecord?.packagePath?.let(::File)?.takeIf { it.exists() }
+                            ?: File.createTempFile("tapbot_sync_${bot.id}_", ".botpkg")
+                        botInstanceManager.install(bot, pkgFile)
+                        instance = botInstanceManager.getInstanceByBotId(bot.id)
+                    }
+
+                    val installed = when {
+                        installationManager != null -> installedInManager || (instance != null)
+                        botInstanceManager != null -> instance != null
+                        else -> packageDownloader == null
+                    }
+                    val installedVer = installationManager?.getInstalledVersion(bot.id) ?: instance?.version
 
                     _uiState.value = BotDetailUiState.Success(
                         bot = bot,
@@ -119,7 +137,8 @@ class BotDetailViewModel(
                 return@launch
             }
 
-            if (!bot.packageInfo.runtimeType.equals("native_art", ignoreCase = true)) {
+            val runtimeNormalized = bot.packageInfo.runtimeType.lowercase()
+            if (runtimeNormalized !in SUPPORTED_RUNTIMES) {
                 _uiState.value = current.copy(
                     isInstalling = false,
                     installError = "Unsupported runtime: ${bot.packageInfo.runtimeType}"
@@ -129,6 +148,7 @@ class BotDetailViewModel(
 
             // Step 3: Check installed version & Downgrade attack protection
             val currentInstalledVersion = installationManager?.getInstalledVersion(bot.id)
+                ?: botInstanceManager?.getInstanceByBotId(bot.id)?.version
             if (currentInstalledVersion != null && DowngradeAttackChecker.isDowngrade(currentInstalledVersion, bot.version)) {
                 _uiState.value = current.copy(
                     isInstalling = false,
@@ -137,7 +157,15 @@ class BotDetailViewModel(
                 return@launch
             }
 
-            if (currentInstalledVersion == bot.version && installationManager?.isInstalled(bot.id) == true) {
+            if (currentInstalledVersion == bot.version &&
+                (installationManager?.isInstalled(bot.id) == true || botInstanceManager?.getInstanceByBotId(bot.id) != null)
+            ) {
+                if (botInstanceManager != null && botInstanceManager.getInstanceByBotId(bot.id) == null) {
+                    val pkgFile = installationManager?.getInstalledBots()?.find { it.botId == bot.id }
+                        ?.packagePath?.let(::File)?.takeIf { it.exists() }
+                        ?: File.createTempFile("tapbot_${bot.id}_", ".botpkg")
+                    botInstanceManager.install(bot, pkgFile)
+                }
                 _uiState.value = current.copy(
                     isInstalling = false,
                     isInstalled = true,
@@ -171,8 +199,11 @@ class BotDetailViewModel(
 
             downloadResult
                 .onSuccess { packageArchive ->
-                    // Step 6 & 7: Install locally & store metadata
+                    // Step 6 & 7: Install locally & store metadata (synced with My Fleet)
                     installationManager?.installBot(bot, packageArchive)
+                    if (botInstanceManager != null && botInstanceManager.getInstanceByBotId(bot.id) == null) {
+                        botInstanceManager.install(bot, packageArchive)
+                    }
 
                     // Step 8: Show configuration screen
                     _uiState.value = current.copy(
@@ -343,11 +374,41 @@ class BotDetailViewModel(
                 credentialErrors = emptyMap(),
                 generalCredentialError = null
             )
+
+            if (botInstanceManager != null) {
+                var instance = botInstanceManager.getInstanceByBotId(botId)
+                if (instance == null) {
+                    val pkgFile = installationManager?.getInstalledBots()?.find { it.botId == botId }
+                        ?.packagePath?.let(::File)?.takeIf { it.exists() }
+                        ?: File.createTempFile("tapbot_${botId}_", ".botpkg")
+                    botInstanceManager.install(current.bot, pkgFile)
+                    instance = botInstanceManager.getInstanceByBotId(botId)
+                }
+                if (instance != null) {
+                    val startRes = botInstanceManager.start(instance.installationId)
+                    if (startRes.isFailure) {
+                        _uiState.update { st ->
+                            if (st is BotDetailUiState.Success) {
+                                st.copy(
+                                    generalCredentialError = startRes.exceptionOrNull()?.message
+                                        ?: "Failed to start bot instance"
+                                )
+                            } else st
+                        }
+                        return@launch
+                    }
+                }
+            }
             botServiceController.startBot(botId)
         }
     }
 
     fun stopBot() {
+        viewModelScope.launch {
+            botInstanceManager?.getInstanceByBotId(botId)?.let { inst ->
+                botInstanceManager.stop(inst.installationId)
+            }
+        }
         botServiceController.stopBot(botId)
     }
 
@@ -356,6 +417,8 @@ class BotDetailViewModel(
     }
 
     companion object {
+        private val SUPPORTED_RUNTIMES = setOf("native_art", "built-in", "builtin", "custom")
+
         fun provideFactory(
             botId: String,
             catalogRepository: CatalogRepository,
@@ -364,7 +427,8 @@ class BotDetailViewModel(
             logRepository: BotLogRepository,
             packageDownloader: BotPackageDownloader? = null,
             installationManager: LocalBotInstallationManager? = null,
-            appVersionCode: Int = 1
+            appVersionCode: Int = 1,
+            botInstanceManager: BotInstanceManager? = null
         ): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
@@ -376,7 +440,8 @@ class BotDetailViewModel(
                     logRepository,
                     packageDownloader,
                     installationManager,
-                    appVersionCode
+                    appVersionCode,
+                    botInstanceManager
                 ) as T
             }
         }

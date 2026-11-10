@@ -14,3 +14,10 @@
 - Branch: `ralph/tapbot-v230`
 - PRD: `tasks/prd-tapbot-v230-all-phases.md`
 - Previous Milestone 2 archived under `archive/2026-11-04-music-streamer-bot/`.
+
+
+### Phase 1 Completed — US-P1-01, US-P1-02, US-P1-03
+- **US-P1-01**: Synchronized `BotDetailViewModel` install/start/stop/load with `BotInstanceManager` and `CatalogViewModel` uninstall with `LocalBotInstallationManager`, injected both in `TapBotNavHost`, enabled `"built-in"`/`"custom"` runtime installation alongside `"native_art"`, and fixed `BotForegroundService` to resolve `effectiveInstallationId` when launched via `EXTRA_BOT_ID`.
+- **US-P1-02**: Added `GeminiApiClient` (`core:network`) supporting multi-turn `generateContent` + `systemInstruction`, added optional `gemini_model`/`system_prompt` catalog credential fields, and upgraded `AIBotRuntime` with real Gemini inference, sliding-window per-chat history, `/ask`, `/summarize`, `/code`, `/model`, `/system`, `/clear`, `/status`, PM natural chat, and 4000-char chunking.
+- **US-P1-03**: Added JVM-safe `RssFeedParser` (RSS 2.0, RDF, Atom 1.0) and `RssNotifierBotRuntime` with JSON persisted seen-GUID deduplication, multi-feed subscriptions, and interactive commands; mapped `"rss"`, `"feed"`, `"notifier"` in `BotRuntimeFactory`.
+- **Verified**: Full `./gradlew.bat test` passed across all 8 Gradle modules (exit code 0).

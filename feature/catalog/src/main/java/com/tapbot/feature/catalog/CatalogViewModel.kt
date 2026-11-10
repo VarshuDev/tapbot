@@ -10,6 +10,7 @@ import com.tapbot.core.model.BotVersion
 import com.tapbot.core.network.BotPackageDownloader
 import com.tapbot.core.network.CatalogApi
 import com.tapbot.core.network.CatalogRepository
+import com.tapbot.core.network.LocalBotInstallationManager
 import com.tapbot.core.network.ManifestValidator
 import com.tapbot.core.network.OfflineFirstCatalogRepository
 import com.tapbot.core.runner.manager.BotInstanceManager
@@ -23,7 +24,8 @@ class CatalogViewModel(
     private val catalogRepository: CatalogRepository,
     private val botInstanceManager: BotInstanceManager? = null,
     private val packageDownloader: BotPackageDownloader? = null,
-    private val manifestValidator: ManifestValidator? = null
+    private val manifestValidator: ManifestValidator? = null,
+    private val installationManager: LocalBotInstallationManager? = null
 ) : ViewModel() {
 
     // Secondary constructor accepting CatalogApi for backward compatibility
@@ -212,7 +214,11 @@ class CatalogViewModel(
 
     fun uninstallBot(installationId: String) {
         viewModelScope.launch {
+            val botId = botInstanceManager?.getInstance(installationId)?.botId
             botInstanceManager?.uninstall(installationId)
+            if (botId != null) {
+                installationManager?.uninstallBot(botId)
+            }
         }
     }
 
@@ -253,7 +259,8 @@ class CatalogViewModel(
             catalogRepository: CatalogRepository,
             botInstanceManager: BotInstanceManager? = null,
             packageDownloader: BotPackageDownloader? = null,
-            manifestValidator: ManifestValidator? = null
+            manifestValidator: ManifestValidator? = null,
+            installationManager: LocalBotInstallationManager? = null
         ): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
@@ -262,7 +269,8 @@ class CatalogViewModel(
                         catalogRepository = catalogRepository,
                         botInstanceManager = botInstanceManager,
                         packageDownloader = packageDownloader,
-                        manifestValidator = manifestValidator
+                        manifestValidator = manifestValidator,
+                        installationManager = installationManager
                     ) as T
                 }
             }

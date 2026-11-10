@@ -107,6 +107,14 @@ class MockCatalogApi : CatalogApi {
                     isSecret = false,
                     isRequired = true,
                     placeholder = "https://news.ycombinator.com/rss"
+                ),
+                BotCredentialSpec(
+                    key = "poll_interval_minutes",
+                    label = "Poll Interval (minutes)",
+                    description = "How often to scan subscribed feeds for new posts (default: 15)",
+                    isSecret = false,
+                    isRequired = false,
+                    placeholder = "15"
                 )
             ),
             packageInfo = BotPackageInfo(
@@ -137,6 +145,22 @@ class MockCatalogApi : CatalogApi {
                     isRequired = true,
                     placeholder = "AIzaSy...",
                     helpUrl = "https://aistudio.google.com"
+                ),
+                BotCredentialSpec(
+                    key = "gemini_model",
+                    label = "Gemini Model",
+                    description = "Optional model ID (default: gemini-2.5-flash)",
+                    isSecret = false,
+                    isRequired = false,
+                    placeholder = "gemini-2.5-flash"
+                ),
+                BotCredentialSpec(
+                    key = "system_prompt",
+                    label = "System Instruction",
+                    description = "Optional custom persona or instructions sent with every prompt",
+                    isSecret = false,
+                    isRequired = false,
+                    placeholder = "You are a concise, helpful assistant."
                 )
             ),
             packageInfo = BotPackageInfo(
@@ -231,7 +255,24 @@ class MockCatalogApi : CatalogApi {
             category = "Productivity",
             tags = listOf("ai", "assistant", "productivity"),
             requiredCredentials = listOf(
-                BotCredentialSpec.TELEGRAM_BOT_TOKEN
+                BotCredentialSpec.TELEGRAM_BOT_TOKEN,
+                BotCredentialSpec(
+                    key = "gemini_api_key",
+                    label = "Gemini API Key",
+                    description = "Optional Google AI Studio API key (https://aistudio.google.com) for live Gemini responses",
+                    isSecret = true,
+                    isRequired = false,
+                    placeholder = "AIzaSy...",
+                    helpUrl = "https://aistudio.google.com"
+                ),
+                BotCredentialSpec(
+                    key = "gemini_model",
+                    label = "Gemini Model",
+                    description = "Optional Gemini model name (default: gemini-2.5-flash)",
+                    isSecret = false,
+                    isRequired = false,
+                    placeholder = "gemini-2.5-flash"
+                )
             ),
             packageInfo = BotPackageInfo(
                 packageUrl = "https://assets.tapbot.internal/packages/bot_ai_1.0.0.botpkg",

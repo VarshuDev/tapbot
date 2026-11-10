@@ -300,4 +300,113 @@ class BotInstallFlowTest {
         assertNotNull(state.installError)
         assertTrue(state.installError!!.contains("App update required"))
     }
+
+    @Test
+    fun installFlow_builtInRuntime_installsSuccessfullyAndSyncsWithBotInstanceManager() = runTest(testDispatcher) {
+        val builtInBot = sampleBot.copy(
+            id = "bot_ai_assistant",
+            name = "Gemini Smart Assistant",
+            packageInfo = sampleBot.packageInfo.copy(
+                packageUrl = "https://assets.tapbot.internal/packages/bot_ai_assistant_2.1.0.botpkg",
+                runtimeType = "built-in"
+            )
+        )
+        val repoWithBuiltIn = object : CatalogRepository by fakeCatalogRepo {
+            override suspend fun getBotDetails(botId: String, forceRefresh: Boolean) = Result.success(builtInBot)
+        }
+        val downloader = FakeDownloader()
+        val installer = FakeInstallationManager()
+
+        val installedInstances = kotlinx.coroutines.flow.MutableStateFlow<List<com.tapbot.core.model.BotInstance>>(emptyList())
+        var managerStartedId: String? = null
+        var managerStoppedId: String? = null
+        val fakeInstanceManager = object : com.tapbot.core.runner.manager.BotInstanceManager {
+            override val instances = installedInstances
+            override val updateProgress = kotlinx.coroutines.flow.MutableStateFlow<Map<String, com.tapbot.core.model.BotUpdateProgress>>(emptyMap())
+            override val activeState = kotlinx.coroutines.flow.MutableStateFlow<com.tapbot.core.runner.runtime.BotRuntimeState>(
+                com.tapbot.core.runner.runtime.BotRuntimeState.Stopped
+            )
+            override suspend fun validateToken(token: String) =
+                Result.success(com.tapbot.core.model.TelegramUser(1L, true, "Bot", username = "bot"))
+            override suspend fun start() = Result.success(Unit)
+            override suspend fun stop() = Result.success(Unit)
+            override suspend fun restart() = Result.success(Unit)
+            override suspend fun install(bot: BotMetadata, packageFile: File): Result<com.tapbot.core.model.BotInstance> {
+                val inst = com.tapbot.core.model.BotInstance(
+                    installationId = "inst_${bot.id}",
+                    botId = bot.id,
+                    name = bot.name,
+                    version = bot.version,
+                    runtimeType = bot.packageInfo.runtimeType,
+                    status = com.tapbot.core.model.BotInstanceStatus.Stopped
+                )
+                installedInstances.value = installedInstances.value + inst
+                return Result.success(inst)
+            }
+            override suspend fun uninstall(installationId: String): Result<Unit> {
+                installedInstances.value = installedInstances.value.filterNot { it.installationId == installationId }
+                return Result.success(Unit)
+            }
+            override suspend fun start(installationId: String): Result<Unit> {
+                managerStartedId = installationId
+                return Result.success(Unit)
+            }
+            override suspend fun stop(installationId: String): Result<Unit> {
+                managerStoppedId = installationId
+                return Result.success(Unit)
+            }
+            override suspend fun restart(installationId: String) = Result.success(Unit)
+            override suspend fun update(installationId: String, newVersion: String, packageFile: File) =
+                Result.failure<com.tapbot.core.model.BotInstance>(UnsupportedOperationException())
+            override suspend fun updateWithRollback(
+                installationId: String,
+                targetVersion: com.tapbot.core.model.BotVersion,
+                packageDownloader: BotPackageDownloader?,
+                manifestValidator: com.tapbot.core.network.ManifestValidator?,
+                onProgress: ((com.tapbot.core.model.BotUpdateProgress) -> Unit)?
+            ) = Result.failure<com.tapbot.core.model.BotInstance>(UnsupportedOperationException())
+            override fun getInstance(installationId: String) =
+                installedInstances.value.find { it.installationId == installationId }
+            override fun getInstanceByBotId(botId: String) =
+                installedInstances.value.find { it.botId == botId }
+            override fun observeInstance(installationId: String) =
+                kotlinx.coroutines.flow.flowOf(getInstance(installationId))
+            override fun updateInstanceStatus(installationId: String, status: com.tapbot.core.model.BotInstanceStatus) {}
+            override fun recordCrash(installationId: String, reason: String) {}
+        }
+
+        val viewModel = BotDetailViewModel(
+            botId = builtInBot.id,
+            catalogRepository = repoWithBuiltIn,
+            credentialStore = fakeCredentialStore,
+            botServiceController = fakeController,
+            logRepository = fakeLogRepo,
+            packageDownloader = downloader,
+            installationManager = installer,
+            appVersionCode = 1,
+            botInstanceManager = fakeInstanceManager
+        )
+
+        testDispatcher.scheduler.advanceUntilIdle()
+        viewModel.installBot()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val state = viewModel.uiState.value as BotDetailUiState.Success
+        assertTrue("built-in runtime must install cleanly", state.isInstalled)
+        assertTrue(installer.isInstalled(builtInBot.id))
+        assertNotNull("BotInstanceManager must reflect newly installed bot", fakeInstanceManager.getInstanceByBotId(builtInBot.id))
+
+        viewModel.updateCredential("bot_token", "123456:ABC-TOKEN")
+        viewModel.updateCredential("api_key", "AIzaSy-test")
+        viewModel.startBot()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals("inst_bot_ai_assistant", managerStartedId)
+        assertEquals(1, fakeController.startCount)
+
+        viewModel.stopBot()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals("inst_bot_ai_assistant", managerStoppedId)
+    }
 }

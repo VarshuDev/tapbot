@@ -286,4 +286,42 @@ class CatalogViewModelTest {
         val afterState = viewModel.uiState.value as CatalogUiState.Success
         assertEquals("1.4.0", afterState.installedInstances.first().version)
     }
+
+    @Test
+    fun uninstallBot_syncsWithLocalBotInstallationManager() = runTest(testDispatcher) {
+        val repo = FakeCatalogRepository(Result.success(listOf(sampleBot1)))
+        val fakeManager = FakeBotInstanceManager()
+        val installedBot = com.tapbot.core.model.BotInstance(
+            installationId = "inst_bot_1",
+            botId = "bot_1",
+            name = "Audio Player",
+            version = "1.0.0",
+            status = com.tapbot.core.model.BotInstanceStatus.Stopped
+        )
+        fakeManager.setInstalledInstances(listOf(installedBot))
+
+        var uninstalledBotId: String? = null
+        val fakeInstallManager = object : com.tapbot.core.network.LocalBotInstallationManager {
+            override fun isInstalled(botId: String) = botId == "bot_1" && uninstalledBotId != "bot_1"
+            override fun getInstalledVersion(botId: String) = if (isInstalled(botId)) "1.0.0" else null
+            override fun installBot(bot: BotMetadata, packageFile: java.io.File) = Result.success(Unit)
+            override fun uninstallBot(botId: String): Result<Unit> {
+                uninstalledBotId = botId
+                return Result.success(Unit)
+            }
+            override fun getInstalledBots() = emptyList<com.tapbot.core.network.InstalledBotRecord>()
+        }
+
+        val viewModel = CatalogViewModel(
+            catalogRepository = repo,
+            botInstanceManager = fakeManager,
+            installationManager = fakeInstallManager
+        )
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.uninstallBot("inst_bot_1")
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals("bot_1", uninstalledBotId)
+    }
 }

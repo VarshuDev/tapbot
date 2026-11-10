@@ -15,8 +15,8 @@
         "Tests pass"
       ],
       "priority": 1,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Verified with BotInstallFlowTest, CatalogViewModelTest, and full ./gradlew.bat test"
     },
     {
       "id": "US-P1-02",
@@ -30,8 +30,8 @@
         "Tests pass"
       ],
       "priority": 2,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Verified GeminiApiClientTest, AIBotRuntimeTest, and MultiBotBenchmarkTest"
     },
     {
       "id": "US-P1-03",
@@ -45,8 +45,8 @@
         "Tests pass"
       ],
       "priority": 3,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Verified RssNotifierBotRuntimeTest across RSS 2.0, Atom 1.0, and restart deduplication"
     },
     {
       "id": "US-P2-01",

@@ -15,6 +15,8 @@ object BotRuntimeFactory {
             normalized.contains("music") || normalized.contains("stream") ||
                 normalized.contains("tapstream") || botId == "bot_music_streamer" ||
                 botId == "tapstream_music" -> MusicBotRuntime(botId)
+            normalized.contains("rss") || normalized.contains("feed") ||
+                normalized.contains("notifier") -> RssNotifierBotRuntime(botId)
             normalized.contains("ai") || normalized.contains("gemini") -> AIBotRuntime(botId)
             normalized.contains("exon") || botId.startsWith("bot_1790084493920") -> ExonBotRuntime(botId)
             normalized.contains("util") || normalized.contains("diagnostic") -> UtilityBotRuntime(botId)

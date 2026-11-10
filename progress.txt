@@ -21,3 +21,11 @@
 - **US-P1-02**: Added `GeminiApiClient` (`core:network`) supporting multi-turn `generateContent` + `systemInstruction`, added optional `gemini_model`/`system_prompt` catalog credential fields, and upgraded `AIBotRuntime` with real Gemini inference, sliding-window per-chat history, `/ask`, `/summarize`, `/code`, `/model`, `/system`, `/clear`, `/status`, PM natural chat, and 4000-char chunking.
 - **US-P1-03**: Added JVM-safe `RssFeedParser` (RSS 2.0, RDF, Atom 1.0) and `RssNotifierBotRuntime` with JSON persisted seen-GUID deduplication, multi-feed subscriptions, and interactive commands; mapped `"rss"`, `"feed"`, `"notifier"` in `BotRuntimeFactory`.
 - **Verified**: Full `./gradlew.bat test` passed across all 8 Gradle modules (exit code 0).
+
+
+### Phase 2 Completed — US-P2-01, US-P2-02, US-P2-03, US-P2-04
+- **US-P2-01**: Extended `core:model` (`InlineKeyboardMarkup`, `InlineKeyboardButton`, `TelegramCallbackQuery`, `AnswerCallbackQueryPayload`, `EditMessageTextPayload`, `PromoteChatMemberPayload`, `TelegramMessage` media/join/entity fields) and `TelegramApiClient` (`replyMarkup`, `answerCallbackQuery`, `editMessageText`, timed `banChatMember`/`restrictChatMember`, `promoteChatMember`).
+- **US-P2-02**: Added atomic JSON `ExonModerationStore` and upgraded `ExonBotRuntime` with `/tmute`, `/tban`, `/promote`, `/demote`, `/setwelcome`, `/welcome`, `/clearwelcome`, `new_chat_members` auto-greetings & anti-bot ban, `/antiflood` 10s sliding window, active `/lock` enforcement (`deleteMessage`), and inline keyboard `/help`/`/rules` callbacks.
+- **US-P2-03**: Added `ACCESS_WIFI_STATE` and location permissions; extended `DeviceActionController` (`speakText`, `getWifiDetails`, `getLastKnownLocation`); upgraded `CommanderBotRuntime` with `/tts`, `/wifi`, `/location`, `/schedule`, `/schedules`, `/cancelschedule`, inline HUD keyboards (`cmd:*`), and persistent owner-checked callbacks.
+- **US-P2-04**: Added `FOREGROUND_SERVICE_MEDIA_PLAYBACK` and `dataSync|mediaPlayback` foregroundServiceType; upgraded `DeviceAudioPlayer` with `AudioManager` focus negotiation + 1s `elapsedMs` ticker; upgraded `MusicBotRuntime` with `LoopMode`, `/shuffle`, `/loop`, `/seek`, `/remove`, and `music:*` inline player controls.
+- **Verified**: Full `./gradlew.bat test` passed across all 8 modules with 0 failures.

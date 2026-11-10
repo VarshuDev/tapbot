@@ -1,5 +1,9 @@
 package com.tapbot.core.network
 
+import com.tapbot.core.model.AnswerCallbackQueryPayload
+import com.tapbot.core.model.EditMessageTextPayload
+import com.tapbot.core.model.InlineKeyboardMarkup
+import com.tapbot.core.model.PromoteChatMemberPayload
 import com.tapbot.core.model.SendAudioPayload
 import com.tapbot.core.model.SendMessagePayload
 import com.tapbot.core.model.TelegramApiResponse
@@ -149,6 +153,112 @@ open class TelegramApiClient(
     }
 
     /**
+     * Sends a text message to a chat or channel, optionally with reply-to and inline keyboard markup.
+     */
+    open suspend fun sendMessage(
+        token: String,
+        chatId: Long,
+        text: String,
+        parseMode: String?,
+        replyToMessageId: Long?,
+        replyMarkup: InlineKeyboardMarkup?
+    ): Result<Boolean> {
+        if (replyMarkup == null) {
+            return sendMessage(token, chatId, text, parseMode, replyToMessageId)
+        }
+        return runCatching {
+            withContext(Dispatchers.IO) {
+                val url = "$BASE_URL/bot$token/sendMessage"
+                val payload = SendMessagePayload(
+                    chatId = chatId,
+                    text = text,
+                    parseMode = parseMode,
+                    replyToMessageId = replyToMessageId,
+                    replyMarkup = replyMarkup
+                )
+                val requestBody = json.encodeToString(payload).toRequestBody(jsonMediaType)
+                val request = Request.Builder().url(url).post(requestBody).build()
+
+                val body = client.newCall(request).execute().use { response ->
+                    response.body?.string().orEmpty()
+                }
+                val apiResponse = json.decodeFromString<TelegramApiResponse<kotlinx.serialization.json.JsonElement>>(body)
+                if (apiResponse.ok) {
+                    true
+                } else {
+                    throw IOException(apiResponse.description ?: "sendMessage error")
+                }
+            }
+        }
+    }
+
+    /**
+     * Answers an inline button callback query to dismiss the loading spinner or show a toast/alert.
+     */
+    open suspend fun answerCallbackQuery(
+        token: String,
+        callbackQueryId: String,
+        text: String? = null,
+        showAlert: Boolean = false
+    ): Result<Boolean> = runCatching {
+        withContext(Dispatchers.IO) {
+            val url = "$BASE_URL/bot$token/answerCallbackQuery"
+            val payload = AnswerCallbackQueryPayload(
+                callbackQueryId = callbackQueryId,
+                text = text,
+                showAlert = showAlert
+            )
+            val requestBody = json.encodeToString(payload).toRequestBody(jsonMediaType)
+            val request = Request.Builder().url(url).post(requestBody).build()
+
+            val body = client.newCall(request).execute().use { response ->
+                response.body?.string().orEmpty()
+            }
+            val apiResponse = json.decodeFromString<TelegramApiResponse<Boolean>>(body)
+            if (apiResponse.ok) {
+                apiResponse.result ?: true
+            } else {
+                throw IOException(apiResponse.description ?: "answerCallbackQuery error")
+            }
+        }
+    }
+
+    /**
+     * Edits the text and optional inline keyboard of an existing message.
+     */
+    open suspend fun editMessageText(
+        token: String,
+        chatId: Long,
+        messageId: Long,
+        text: String,
+        parseMode: String? = null,
+        replyMarkup: InlineKeyboardMarkup? = null
+    ): Result<Boolean> = runCatching {
+        withContext(Dispatchers.IO) {
+            val url = "$BASE_URL/bot$token/editMessageText"
+            val payload = EditMessageTextPayload(
+                chatId = chatId,
+                messageId = messageId,
+                text = text,
+                parseMode = parseMode,
+                replyMarkup = replyMarkup
+            )
+            val requestBody = json.encodeToString(payload).toRequestBody(jsonMediaType)
+            val request = Request.Builder().url(url).post(requestBody).build()
+
+            val body = client.newCall(request).execute().use { response ->
+                response.body?.string().orEmpty()
+            }
+            val apiResponse = json.decodeFromString<TelegramApiResponse<kotlinx.serialization.json.JsonElement>>(body)
+            if (apiResponse.ok) {
+                true
+            } else {
+                throw IOException(apiResponse.description ?: "editMessageText error")
+            }
+        }
+    }
+
+    /**
      * Bans a user from a chat group.
      */
     open suspend fun banChatMember(
@@ -170,6 +280,38 @@ open class TelegramApiClient(
                 apiResponse.result ?: true
             } else {
                 throw IOException(apiResponse.description ?: "banChatMember error")
+            }
+        }
+    }
+
+    /**
+     * Bans a user from a chat group until a specific Unix timestamp (timed ban).
+     */
+    open suspend fun banChatMember(
+        token: String,
+        chatId: Long,
+        userId: Long,
+        untilDate: Long?
+    ): Result<Boolean> {
+        if (untilDate == null) {
+            return banChatMember(token, chatId, userId)
+        }
+        return runCatching {
+            withContext(Dispatchers.IO) {
+                val url = "$BASE_URL/bot$token/banChatMember"
+                val payload = com.tapbot.core.model.BanChatMemberPayload(chatId, userId, untilDate)
+                val requestBody = json.encodeToString(payload).toRequestBody(jsonMediaType)
+                val request = Request.Builder().url(url).post(requestBody).build()
+
+                val body = client.newCall(request).execute().use { response ->
+                    response.body?.string().orEmpty()
+                }
+                val apiResponse = json.decodeFromString<TelegramApiResponse<Boolean>>(body)
+                if (apiResponse.ok) {
+                    apiResponse.result ?: true
+                } else {
+                    throw IOException(apiResponse.description ?: "banChatMember error")
+                }
             }
         }
     }
@@ -223,6 +365,63 @@ open class TelegramApiClient(
                 apiResponse.result ?: true
             } else {
                 throw IOException(apiResponse.description ?: "restrictChatMember error")
+            }
+        }
+    }
+
+    /**
+     * Restricts a chat member until a specific Unix timestamp (timed mute).
+     */
+    open suspend fun restrictChatMember(
+        token: String,
+        chatId: Long,
+        userId: Long,
+        permissions: com.tapbot.core.model.RestrictChatPermissions,
+        untilDate: Long?
+    ): Result<Boolean> {
+        if (untilDate == null) {
+            return restrictChatMember(token, chatId, userId, permissions)
+        }
+        return runCatching {
+            withContext(Dispatchers.IO) {
+                val url = "$BASE_URL/bot$token/restrictChatMember"
+                val payload = com.tapbot.core.model.RestrictChatMemberPayload(chatId, userId, permissions, untilDate)
+                val requestBody = json.encodeToString(payload).toRequestBody(jsonMediaType)
+                val request = Request.Builder().url(url).post(requestBody).build()
+
+                val body = client.newCall(request).execute().use { response ->
+                    response.body?.string().orEmpty()
+                }
+                val apiResponse = json.decodeFromString<TelegramApiResponse<Boolean>>(body)
+                if (apiResponse.ok) {
+                    apiResponse.result ?: true
+                } else {
+                    throw IOException(apiResponse.description ?: "restrictChatMember error")
+                }
+            }
+        }
+    }
+
+    /**
+     * Promotes or demotes a chat member in a group/supergroup.
+     */
+    open suspend fun promoteChatMember(
+        token: String,
+        payload: PromoteChatMemberPayload
+    ): Result<Boolean> = runCatching {
+        withContext(Dispatchers.IO) {
+            val url = "$BASE_URL/bot$token/promoteChatMember"
+            val requestBody = json.encodeToString(payload).toRequestBody(jsonMediaType)
+            val request = Request.Builder().url(url).post(requestBody).build()
+
+            val body = client.newCall(request).execute().use { response ->
+                response.body?.string().orEmpty()
+            }
+            val apiResponse = json.decodeFromString<TelegramApiResponse<Boolean>>(body)
+            if (apiResponse.ok) {
+                apiResponse.result ?: true
+            } else {
+                throw IOException(apiResponse.description ?: "promoteChatMember error")
             }
         }
     }

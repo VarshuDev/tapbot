@@ -183,7 +183,9 @@ class AIBotRuntime(
                 }
                 "summarize", "sum" -> {
                     val targetText = arg.ifBlank {
-                        message.replyToMessage?.text?.trim().orEmpty()
+                        message.replyToMessage?.text?.trim()
+                            ?: message.replyToMessage?.caption?.trim()
+                            ?: ""
                     }
                     if (targetText.isBlank()) {
                         "Please provide text (`/summarize <text>`) or reply `/summarize` to a message."

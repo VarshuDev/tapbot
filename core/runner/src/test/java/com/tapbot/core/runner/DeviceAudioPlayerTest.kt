@@ -5,6 +5,9 @@ import com.tapbot.core.runner.audio.AudioTrack
 import com.tapbot.core.runner.audio.DeviceAudioPlayer
 import com.tapbot.core.runner.audio.PlaybackState
 import com.tapbot.core.runner.audio.PlaybackStatus
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.runBlocking
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -37,7 +40,12 @@ class DeviceAudioPlayerTest {
 
     @Before
     fun setUp() {
-        player = DeviceAudioPlayer(context = null)
+        player = DeviceAudioPlayer(context = null, tickIntervalMs = 25L)
+    }
+
+    @After
+    fun tearDown() {
+        player.release()
     }
 
     @Test
@@ -136,5 +144,21 @@ class DeviceAudioPlayerTest {
         val liveBar = liveState.formatProgressBar(12)
         assertTrue(liveBar.contains("LIVE STREAM 🔴"))
         assertTrue(liveBar.contains("[lofi]"))
+    }
+
+    @Test
+    fun `ticker advances elapsedMs while playing and pauses when paused or stopped`() = runBlocking {
+        player.playTrack(sampleTrack)
+        delay(90)
+        val elapsedWhilePlaying = player.playbackState.value.elapsedMs
+        assertTrue("Expected elapsedMs ticker to advance while playing, was $elapsedWhilePlaying", elapsedWhilePlaying >= 25L)
+
+        player.pause()
+        val pausedElapsed = player.playbackState.value.elapsedMs
+        delay(70)
+        assertEquals("Ticker should stop advancing once paused", pausedElapsed, player.playbackState.value.elapsedMs)
+
+        player.stop()
+        assertEquals(0L, player.playbackState.value.elapsedMs)
     }
 }

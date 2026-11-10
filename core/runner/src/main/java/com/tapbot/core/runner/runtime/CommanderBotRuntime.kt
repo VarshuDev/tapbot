@@ -29,7 +29,10 @@ import android.os.VibratorManager
 import androidx.core.app.NotificationCompat
 import com.tapbot.core.model.BotInstance
 import com.tapbot.core.model.BotInstanceStatus
+import com.tapbot.core.model.InlineKeyboardButton
+import com.tapbot.core.model.InlineKeyboardMarkup
 import com.tapbot.core.model.LogLevel
+import com.tapbot.core.model.TelegramCallbackQuery
 import com.tapbot.core.model.TelegramMessage
 import com.tapbot.core.model.TelegramUpdate
 import com.tapbot.core.model.TelegramUser
@@ -58,7 +61,9 @@ import java.security.MessageDigest
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * Flagship On-Device Telegram Bot Runtime: TapBot Commander & Fleet Sentinel.
@@ -88,9 +93,24 @@ class CommanderBotRuntime(
     // Autonomous watchdog
     private val watchdog = DeviceWatchdog()
 
+    private var actionController: DeviceActionController? = null
+
+    private data class ScheduledTask(
+        val id: String,
+        val chatId: Long,
+        val message: String,
+        val triggerAtMs: Long,
+        val job: Job
+    )
+
+    private val scheduledTasks = ConcurrentHashMap<String, ScheduledTask>()
+    private val scheduleSeq = AtomicInteger(1)
+
     private fun getActionController(ctx: RuntimeContext?): DeviceActionController {
+        val existing = actionController
+        if (existing != null) return existing
         val aCtx = ctx?.androidContext ?: ServiceLocator.appContext
-        return DeviceActionController(aCtx)
+        return DeviceActionController(aCtx).also { actionController = it }
     }
 
     override suspend fun initialize(context: RuntimeContext) {
@@ -162,6 +182,14 @@ class CommanderBotRuntime(
                         val updates = updatesResult.getOrThrow()
                         for (update in updates) {
                             lastUpdateId = update.updateId
+
+                            val callback = update.callbackQuery
+                            if (callback != null) {
+                                messageCounter++
+                                handleCallbackQuery(ctx, token, callback)
+                                continue
+                            }
+
                             val message = update.message ?: continue
                             val text = message.text?.trim().orEmpty()
                             val chatId = message.chat.id
@@ -215,6 +243,9 @@ class CommanderBotRuntime(
     override suspend fun stop() {
         context?.log(LogLevel.INFO, TAG, "Stopping TapBot Commander runtime...")
         stopRing(context)
+        scheduledTasks.values.forEach { it.job.cancel() }
+        scheduledTasks.clear()
+        actionController?.shutdownTts()
         pollJob?.cancel()
         watchdogJob?.cancel()
         pollJob = null
@@ -351,6 +382,30 @@ class CommanderBotRuntime(
                 if (!checkAuth(ctx, token, chatId, isAuthorized, senderId)) return
                 handleVibrate(ctx, token, chatId)
             }
+            "/tts", "/speak" -> {
+                if (!checkAuth(ctx, token, chatId, isAuthorized, senderId)) return
+                handleTts(ctx, token, chatId, args.joinToString(" "))
+            }
+            "/wifi", "/ip" -> {
+                if (!checkAuth(ctx, token, chatId, isAuthorized, senderId)) return
+                handleWifiInfo(ctx, token, chatId)
+            }
+            "/location", "/gps" -> {
+                if (!checkAuth(ctx, token, chatId, isAuthorized, senderId)) return
+                handleLocation(ctx, token, chatId)
+            }
+            "/schedule" -> {
+                if (!checkAuth(ctx, token, chatId, isAuthorized, senderId)) return
+                handleSchedule(ctx, token, chatId, args)
+            }
+            "/schedules" -> {
+                if (!checkAuth(ctx, token, chatId, isAuthorized, senderId)) return
+                handleListSchedules(ctx, token, chatId)
+            }
+            "/cancelschedule" -> {
+                if (!checkAuth(ctx, token, chatId, isAuthorized, senderId)) return
+                handleCancelSchedule(ctx, token, chatId, args.firstOrNull())
+            }
 
             // 📦 APK Delivery & Release Info
             "/apk", "/download" -> sendApkDocument(ctx, token, chatId)
@@ -469,6 +524,11 @@ class CommanderBotRuntime(
             • /ring `[seconds]` — Play audible alarm to find phone (default 15s)
             • /stopring — Immediately silence the ringing alarm
             • /torch `[on|off]` — Toggle phone camera flashlight
+            • /tts `<text>` — Speak text out loud via Android TTS
+            • /wifi (or `/ip`) — View active Wi-Fi SSID, IP & link speed
+            • /location (or `/gps`) — Last known GPS coordinates & map link
+            • /schedule `<delay> <msg>` — Schedule alert (`10s`, `5m`, `1h`, or minutes)
+            • /schedules & /cancelschedule `<id>` — Manage scheduled alerts
             • /notify `<message>` — Post a notification on the phone screen
             • /clipboard — View current Android clipboard text
             • /setclip `<text>` — Copy text to phone clipboard remotely
@@ -511,55 +571,82 @@ class CommanderBotRuntime(
     // Device Telemetry
     // =========================================================================
 
+    private fun buildSystemStatusText(ctx: RuntimeContext): String {
+        val aCtx = ctx.androidContext ?: ServiceLocator.appContext
+        val battery = getBatteryInfo(aCtx)
+        val ram = getRamInfo(aCtx)
+        val storage = getStorageInfo()
+        val net = getNetworkInfo(aCtx)
+        val uptime = getUptimeInfo()
+        val fleet = getFleetSummary()
+        val device = getDeviceInfo(aCtx)
+
+        return """
+            📊 *TapBot Host System Dashboard*
+            ━━━━━━━━━━━━━━━━━━━━━━
+            📱 *Device:* ${escapeMarkdown(device)}
+            ⏱ *Uptime:* ${escapeMarkdown(uptime)}
+            
+            🔋 *Power:*
+            • Level: *${battery.level}%* ${if (battery.isCharging) "⚡ (Charging)" else "🔋 (Discharging)"}
+            • Source: ${battery.pluggedType}
+            • Temp: *${battery.temperature}°C* | Health: ${battery.health}
+            
+            🧠 *Memory:*
+            • System RAM: *${ram.usedMemMB} MB / ${ram.totalMemMB} MB* (${ram.usedPct}%)
+            • Free RAM: *${ram.availMemMB} MB*
+            • JVM Heap: *${ram.jvmUsedMB} MB / ${ram.jvmMaxMB} MB*
+            
+            💾 *Storage:*
+            • Available: *${storage.freeGB} GB* free of *${storage.totalGB} GB*
+            • Used: *${storage.usedGB} GB* (${storage.usedPct}%)
+            
+            📶 *Network:*
+            • Transport: *${net}*
+            
+            🤖 *Bot Fleet:*
+            • Total Installed: *${fleet.total}*
+            • Running: *${fleet.running}* 🟢 | Stopped: *${fleet.stopped}* ⚪ | Crashed: *${fleet.crashed}* 🔴
+            ━━━━━━━━━━━━━━━━━━━━━━
+            _Updated in real-time from native Android ART_
+        """.trimIndent()
+    }
+
+    private fun buildStatusKeyboard(): InlineKeyboardMarkup {
+        return InlineKeyboardMarkup(
+            inlineKeyboard = listOf(
+                listOf(
+                    InlineKeyboardButton("🔄 Refresh", callbackData = "cmd:refresh_status"),
+                    InlineKeyboardButton("🔋 Battery", callbackData = "cmd:battery"),
+                    InlineKeyboardButton("🤖 Fleet", callbackData = "cmd:fleet")
+                ),
+                listOf(
+                    InlineKeyboardButton("📶 Wi-Fi", callbackData = "cmd:wifi"),
+                    InlineKeyboardButton("🔦 Torch", callbackData = "cmd:torch"),
+                    InlineKeyboardButton("📳 Vibrate", callbackData = "cmd:vibrate")
+                )
+            )
+        )
+    }
+
     private suspend fun sendSystemStatus(ctx: RuntimeContext, token: String, chatId: Long) {
         try {
-            val aCtx = ctx.androidContext ?: ServiceLocator.appContext
-            val battery = getBatteryInfo(aCtx)
-            val ram = getRamInfo(aCtx)
-            val storage = getStorageInfo()
-            val net = getNetworkInfo(aCtx)
-            val uptime = getUptimeInfo()
-            val fleet = getFleetSummary()
-            val device = getDeviceInfo(aCtx)
-
-            val text = """
-                📊 *TapBot Host System Dashboard*
-                ━━━━━━━━━━━━━━━━━━━━━━
-                📱 *Device:* ${escapeMarkdown(device)}
-                ⏱ *Uptime:* ${escapeMarkdown(uptime)}
-                
-                🔋 *Power:*
-                • Level: *${battery.level}%* ${if (battery.isCharging) "⚡ (Charging)" else "🔋 (Discharging)"}
-                • Source: ${battery.pluggedType}
-                • Temp: *${battery.temperature}°C* | Health: ${battery.health}
-                
-                🧠 *Memory:*
-                • System RAM: *${ram.usedMemMB} MB / ${ram.totalMemMB} MB* (${ram.usedPct}%)
-                • Free RAM: *${ram.availMemMB} MB*
-                • JVM Heap: *${ram.jvmUsedMB} MB / ${ram.jvmMaxMB} MB*
-                
-                💾 *Storage:*
-                • Available: *${storage.freeGB} GB* free of *${storage.totalGB} GB*
-                • Used: *${storage.usedGB} GB* (${storage.usedPct}%)
-                
-                📶 *Network:*
-                • Transport: *${net}*
-                
-                🤖 *Bot Fleet:*
-                • Total Installed: *${fleet.total}*
-                • Running: *${fleet.running}* 🟢 | Stopped: *${fleet.stopped}* ⚪ | Crashed: *${fleet.crashed}* 🔴
-                ━━━━━━━━━━━━━━━━━━━━━━
-                _Updated in real-time from native Android ART_
-            """.trimIndent()
-
-            ctx.telegramApi.sendMessage(token, chatId, text, "Markdown")
+            val text = buildSystemStatusText(ctx)
+            ctx.telegramApi.sendMessage(
+                token = token,
+                chatId = chatId,
+                text = text,
+                parseMode = "Markdown",
+                replyToMessageId = null,
+                replyMarkup = buildStatusKeyboard()
+            )
         } catch (e: Exception) {
             ctx.log(LogLevel.ERROR, TAG, "Status error: ${e.message}")
             ctx.telegramApi.sendMessage(token, chatId, "📊 *TapBot Host System Dashboard*\nStatus query: ${e.message}", "Markdown")
         }
     }
 
-    private suspend fun sendBatteryStatus(ctx: RuntimeContext, token: String, chatId: Long) {
+    private fun buildBatteryStatusText(ctx: RuntimeContext): String {
         val aCtx = ctx.androidContext ?: ServiceLocator.appContext
         val b = getBatteryInfo(aCtx)
         val pm = aCtx?.getSystemService(Context.POWER_SERVICE) as? PowerManager
@@ -570,7 +657,7 @@ class CommanderBotRuntime(
             true
         }
 
-        val text = """
+        return """
             🔋 *Android Battery Diagnostics*
             ━━━━━━━━━━━━━━━━━━━━━━
             • Charge Level: *${b.level}%*
@@ -583,8 +670,10 @@ class CommanderBotRuntime(
             • Battery Optimization Exemption: *${if (isIgnoringDoze) "EXEMPTED ✅" else "RESTRICTED ⚠️ (Run /batteryguide)"}*
             ━━━━━━━━━━━━━━━━━━━━━━
         """.trimIndent()
+    }
 
-        ctx.telegramApi.sendMessage(token, chatId, text, "Markdown")
+    private suspend fun sendBatteryStatus(ctx: RuntimeContext, token: String, chatId: Long) {
+        ctx.telegramApi.sendMessage(token, chatId, buildBatteryStatusText(ctx), "Markdown")
     }
 
     private suspend fun sendRamStatus(ctx: RuntimeContext, token: String, chatId: Long) {
@@ -658,6 +747,32 @@ class CommanderBotRuntime(
     // Bot Fleet & Live Logs Management
     // =========================================================================
 
+    private fun buildFleetKeyboard(instances: List<BotInstance>): InlineKeyboardMarkup {
+        val rows = instances.take(6).map { inst ->
+            if (inst.status.isRunning) {
+                listOf(
+                    InlineKeyboardButton(
+                        text = "⏹ Stop ${inst.name.take(22)}",
+                        callbackData = "cmd:stop:${inst.installationId}"
+                    )
+                )
+            } else {
+                listOf(
+                    InlineKeyboardButton(
+                        text = "▶ Start ${inst.name.take(22)}",
+                        callbackData = "cmd:start:${inst.installationId}"
+                    )
+                )
+            }
+        } + listOf(
+            listOf(
+                InlineKeyboardButton("🔄 Refresh Fleet", callbackData = "cmd:fleet"),
+                InlineKeyboardButton("📊 Dashboard", callbackData = "cmd:refresh_status")
+            )
+        )
+        return InlineKeyboardMarkup(inlineKeyboard = rows)
+    }
+
     private suspend fun sendFleetStatus(ctx: RuntimeContext, token: String, chatId: Long) {
         val manager = ServiceLocator.botInstanceManager
         if (manager == null) {
@@ -665,9 +780,17 @@ class CommanderBotRuntime(
             return
         }
 
+        val instances = manager.instances.value
         val router = FleetCommandRouter(manager)
-        val text = router.formatFleetStatus(manager.instances.value)
-        ctx.telegramApi.sendMessage(token, chatId, text, "Markdown")
+        val text = router.formatFleetStatus(instances)
+        ctx.telegramApi.sendMessage(
+            token = token,
+            chatId = chatId,
+            text = text,
+            parseMode = "Markdown",
+            replyToMessageId = null,
+            replyMarkup = buildFleetKeyboard(instances)
+        )
     }
 
     private suspend fun handleStartBot(ctx: RuntimeContext, token: String, chatId: Long, botId: String?) {
@@ -834,6 +957,241 @@ class CommanderBotRuntime(
             is DeviceActionResult.Success -> ctx.telegramApi.sendMessage(token, chatId, res.message, "Markdown")
             is DeviceActionResult.Failure -> ctx.telegramApi.sendMessage(token, chatId, "❌ Vibrate failed: ${res.errorMessage}", "Markdown")
         }
+    }
+
+    private suspend fun handleTts(ctx: RuntimeContext, token: String, chatId: Long, text: String) {
+        if (text.isBlank()) {
+            ctx.telegramApi.sendMessage(token, chatId, "Usage: `/tts <text to speak out loud>`", "Markdown")
+            return
+        }
+        val controller = getActionController(ctx)
+        when (val res = controller.speakText(text)) {
+            is DeviceActionResult.Success -> ctx.telegramApi.sendMessage(token, chatId, res.message, "Markdown")
+            is DeviceActionResult.Failure -> ctx.telegramApi.sendMessage(token, chatId, "❌ TTS failed: ${res.errorMessage}", "Markdown")
+        }
+    }
+
+    private suspend fun handleWifiInfo(ctx: RuntimeContext, token: String, chatId: Long) {
+        val controller = getActionController(ctx)
+        when (val res = controller.getWifiDetails()) {
+            is DeviceActionResult.Success -> ctx.telegramApi.sendMessage(token, chatId, res.message, "Markdown")
+            is DeviceActionResult.Failure -> ctx.telegramApi.sendMessage(token, chatId, "❌ Wi-Fi query failed: ${res.errorMessage}", "Markdown")
+        }
+    }
+
+    private suspend fun handleLocation(ctx: RuntimeContext, token: String, chatId: Long) {
+        val controller = getActionController(ctx)
+        when (val res = controller.getLastKnownLocation()) {
+            is DeviceActionResult.Success -> ctx.telegramApi.sendMessage(token, chatId, res.message, "Markdown")
+            is DeviceActionResult.Failure -> ctx.telegramApi.sendMessage(token, chatId, "❌ Location failed: ${res.errorMessage}", "Markdown")
+        }
+    }
+
+    private suspend fun handleSchedule(ctx: RuntimeContext, token: String, chatId: Long, args: List<String>) {
+        if (args.size < 2) {
+            ctx.telegramApi.sendMessage(
+                token,
+                chatId,
+                "Usage: `/schedule <minutes|10s|5m|1h> <reminder message>`",
+                "Markdown"
+            )
+            return
+        }
+        val delayMs = parseScheduleDelayMs(args[0])
+        if (delayMs == null) {
+            ctx.telegramApi.sendMessage(
+                token,
+                chatId,
+                "❌ Invalid schedule delay `${escapeMarkdown(args[0])}`. Examples: `10`, `30s`, `5m`, `1h`.",
+                "Markdown"
+            )
+            return
+        }
+        val reminderMsg = args.drop(1).joinToString(" ").trim()
+        val id = "sch_${scheduleSeq.getAndIncrement()}"
+        val triggerAt = System.currentTimeMillis() + delayMs
+
+        val job = ctx.scope.launch {
+            delay(delayMs)
+            scheduledTasks.remove(id)
+            ctx.telegramApi.sendMessage(
+                token,
+                chatId,
+                "⏰ *Scheduled Reminder (`$id`):*\n${escapeMarkdown(reminderMsg)}",
+                "Markdown"
+            )
+        }
+        scheduledTasks[id] = ScheduledTask(id, chatId, reminderMsg, triggerAt, job)
+        ctx.telegramApi.sendMessage(
+            token,
+            chatId,
+            "⏰ *Scheduled Reminder Created!*\n• ID: `$id`\n• Fires in: `${args[0]}`\n• Message: ${escapeMarkdown(reminderMsg)}",
+            "Markdown"
+        )
+    }
+
+    private suspend fun handleListSchedules(ctx: RuntimeContext, token: String, chatId: Long) {
+        val active = scheduledTasks.values.filter { it.chatId == chatId }.sortedBy { it.triggerAtMs }
+        if (active.isEmpty()) {
+            ctx.telegramApi.sendMessage(token, chatId, "⏰ No active scheduled reminders for this chat.", "Markdown")
+            return
+        }
+        val now = System.currentTimeMillis()
+        val sb = StringBuilder("⏰ *Active Scheduled Reminders (${active.size})*\n━━━━━━━━━━━━━━━━━━━━━━\n")
+        for (task in active) {
+            val remSec = ((task.triggerAtMs - now).coerceAtLeast(0L) / 1000L)
+            sb.append("• `${task.id}` — in `${remSec}s`: ${escapeMarkdown(task.message)}\n")
+        }
+        sb.append("━━━━━━━━━━━━━━━━━━━━━━\nCancel with `/cancelschedule <id>`")
+        ctx.telegramApi.sendMessage(token, chatId, sb.toString(), "Markdown")
+    }
+
+    private suspend fun handleCancelSchedule(ctx: RuntimeContext, token: String, chatId: Long, rawId: String?) {
+        val targetId = rawId?.trim()
+        if (targetId.isNullOrBlank()) {
+            ctx.telegramApi.sendMessage(token, chatId, "Usage: `/cancelschedule <schedule_id>`", "Markdown")
+            return
+        }
+        val removed = scheduledTasks.remove(targetId)
+        if (removed == null || removed.chatId != chatId) {
+            if (removed != null) scheduledTasks[targetId] = removed
+            ctx.telegramApi.sendMessage(token, chatId, "⚠️ No scheduled reminder found with ID `${escapeMarkdown(targetId)}`.", "Markdown")
+            return
+        }
+        removed.job.cancel()
+        ctx.telegramApi.sendMessage(token, chatId, "🗑️ Cancelled scheduled reminder `$targetId`.", "Markdown")
+    }
+
+    private suspend fun handleCallbackQuery(
+        ctx: RuntimeContext,
+        token: String,
+        callback: TelegramCallbackQuery
+    ) {
+        if (!isOwner(ctx, callback.from)) {
+            ctx.telegramApi.answerCallbackQuery(token, callback.id, "⛔ Access Denied: Owner only.", showAlert = true)
+            return
+        }
+
+        val data = callback.data.orEmpty()
+        val msg = callback.message
+        val chatId = msg?.chat?.id
+        val messageId = msg?.messageId
+
+        when {
+            data == "cmd:refresh_status" -> {
+                ctx.telegramApi.answerCallbackQuery(token, callback.id, "Dashboard refreshed")
+                if (chatId != null && messageId != null) {
+                    ctx.telegramApi.editMessageText(
+                        token = token,
+                        chatId = chatId,
+                        messageId = messageId,
+                        text = buildSystemStatusText(ctx),
+                        parseMode = "Markdown",
+                        replyMarkup = buildStatusKeyboard()
+                    )
+                }
+            }
+            data == "cmd:battery" -> {
+                ctx.telegramApi.answerCallbackQuery(token, callback.id, "Battery Diagnostics")
+                if (chatId != null && messageId != null) {
+                    ctx.telegramApi.editMessageText(
+                        token = token,
+                        chatId = chatId,
+                        messageId = messageId,
+                        text = buildBatteryStatusText(ctx),
+                        parseMode = "Markdown",
+                        replyMarkup = buildStatusKeyboard()
+                    )
+                }
+            }
+            data == "cmd:wifi" -> {
+                ctx.telegramApi.answerCallbackQuery(token, callback.id, "Wi-Fi Diagnostics")
+                val text = when (val res = getActionController(ctx).getWifiDetails()) {
+                    is DeviceActionResult.Success -> res.message
+                    is DeviceActionResult.Failure -> "❌ ${res.errorMessage}"
+                }
+                if (chatId != null && messageId != null) {
+                    ctx.telegramApi.editMessageText(token, chatId, messageId, text, "Markdown", buildStatusKeyboard())
+                }
+            }
+            data == "cmd:torch" -> {
+                val res = getActionController(ctx).toggleTorch(null)
+                val toast = when (res) {
+                    is DeviceActionResult.Success -> res.message.replace("*", "")
+                    is DeviceActionResult.Failure -> res.errorMessage
+                }
+                ctx.telegramApi.answerCallbackQuery(token, callback.id, toast)
+            }
+            data == "cmd:vibrate" -> {
+                getActionController(ctx).vibrate()
+                ctx.telegramApi.answerCallbackQuery(token, callback.id, "📳 Device vibrated!")
+            }
+            data == "cmd:fleet" -> {
+                ctx.telegramApi.answerCallbackQuery(token, callback.id, "Fleet refreshed")
+                if (chatId != null && messageId != null) {
+                    val manager = ServiceLocator.botInstanceManager
+                    if (manager != null) {
+                        val instances = manager.instances.value
+                        val text = FleetCommandRouter(manager).formatFleetStatus(instances)
+                        ctx.telegramApi.editMessageText(token, chatId, messageId, text, "Markdown", buildFleetKeyboard(instances))
+                    }
+                }
+            }
+            data.startsWith("cmd:start:") -> {
+                val targetId = data.removePrefix("cmd:start:")
+                val manager = ServiceLocator.botInstanceManager
+                val router = FleetCommandRouter(manager)
+                val res = router.startBot(targetId)
+                val toast = if (res.isSuccess) "▶ Starting bot..." else "❌ ${res.exceptionOrNull()?.message}"
+                ctx.telegramApi.answerCallbackQuery(token, callback.id, toast)
+                if (chatId != null && messageId != null && manager != null) {
+                    val instances = manager.instances.value
+                    ctx.telegramApi.editMessageText(token, chatId, messageId, router.formatFleetStatus(instances), "Markdown", buildFleetKeyboard(instances))
+                }
+            }
+            data.startsWith("cmd:stop:") -> {
+                val targetId = data.removePrefix("cmd:stop:")
+                val manager = ServiceLocator.botInstanceManager
+                val router = FleetCommandRouter(manager)
+                val res = router.stopBot(targetId)
+                val toast = if (res.isSuccess) "⏹ Stopped bot" else "❌ ${res.exceptionOrNull()?.message}"
+                ctx.telegramApi.answerCallbackQuery(token, callback.id, toast)
+                if (chatId != null && messageId != null && manager != null) {
+                    val instances = manager.instances.value
+                    ctx.telegramApi.editMessageText(token, chatId, messageId, router.formatFleetStatus(instances), "Markdown", buildFleetKeyboard(instances))
+                }
+            }
+            else -> {
+                ctx.telegramApi.answerCallbackQuery(token, callback.id)
+            }
+        }
+    }
+
+    private fun parseScheduleDelayMs(raw: String): Long? {
+        val trimmed = raw.trim().lowercase(Locale.ROOT)
+        if (trimmed.isBlank()) return null
+        val msMatch = Regex("^(\\d+)ms$").matchEntire(trimmed)
+        if (msMatch != null) {
+            val v = msMatch.groupValues[1].toLongOrNull() ?: return null
+            return if (v in 50L..86_400_000L) v else null
+        }
+        val unitMatch = Regex("^(\\d+)([smhd])$").matchEntire(trimmed)
+        if (unitMatch != null) {
+            val v = unitMatch.groupValues[1].toLongOrNull() ?: return null
+            if (v <= 0L) return null
+            val mult = when (unitMatch.groupValues[2]) {
+                "s" -> 1_000L
+                "m" -> 60_000L
+                "h" -> 3_600_000L
+                "d" -> 86_400_000L
+                else -> return null
+            }
+            return (v * mult).coerceAtMost(86_400_000L)
+        }
+        // Bare integer = minutes
+        val mins = trimmed.toLongOrNull() ?: return null
+        if (mins !in 1L..1440L) return null
+        return mins * 60_000L
     }
 
     // =========================================================================

@@ -60,8 +60,8 @@
         "Tests pass"
       ],
       "priority": 4,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Verified TelegramUpdate/Message/CallbackQuery/InlineKeyboard models & TelegramApiClient tests in core:model and core:network"
     },
     {
       "id": "US-P2-02",
@@ -76,8 +76,8 @@
         "Tests pass"
       ],
       "priority": 5,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Verified ExonModerationStoreTest and 9 ExonBotRuntimeTest cases (timed mod, locks, welcome, antiflood, callbacks, disk persistence)"
     },
     {
       "id": "US-P2-03",
@@ -91,8 +91,8 @@
         "Tests pass"
       ],
       "priority": 6,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Verified DeviceActionControllerTest and CommanderBotRuntimeTest (/tts, /wifi, /location, /schedule, inline HUD callbacks)"
     },
     {
       "id": "US-P2-04",
@@ -106,8 +106,8 @@
         "Tests pass"
       ],
       "priority": 7,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Verified DeviceAudioPlayerTest, MusicBotRuntimeTest, and full 8-module ./gradlew.bat test"
     },
     {
       "id": "US-P3-01",

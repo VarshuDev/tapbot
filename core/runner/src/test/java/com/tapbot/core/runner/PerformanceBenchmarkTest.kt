@@ -1,6 +1,7 @@
 package com.tapbot.core.runner
 
 import com.tapbot.core.model.BotInstanceStatus
+import com.tapbot.core.model.InlineKeyboardMarkup
 import com.tapbot.core.model.LogLevel
 import com.tapbot.core.model.TelegramChat
 import com.tapbot.core.model.TelegramMessage
@@ -121,6 +122,29 @@ class PerformanceBenchmarkTest {
             chatId: Long,
             text: String,
             parseMode: String?
+        ): Result<Boolean> {
+            sentMessages.add(Triple(token, chatId, text))
+            return Result.success(true)
+        }
+
+        override suspend fun sendMessage(
+            token: String,
+            chatId: Long,
+            text: String,
+            parseMode: String?,
+            replyToMessageId: Long?
+        ): Result<Boolean> {
+            sentMessages.add(Triple(token, chatId, text))
+            return Result.success(true)
+        }
+
+        override suspend fun sendMessage(
+            token: String,
+            chatId: Long,
+            text: String,
+            parseMode: String?,
+            replyToMessageId: Long?,
+            replyMarkup: InlineKeyboardMarkup?
         ): Result<Boolean> {
             sentMessages.add(Triple(token, chatId, text))
             return Result.success(true)

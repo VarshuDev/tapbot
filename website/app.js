@@ -268,6 +268,8 @@ class PhoneBotSimulator {
     this.cardEqTitle = document.getElementById('card-eq-title');
 
     this.isPlaying = true;
+    this.isShuffle = false;
+    this.loopMode = 'OFF';
     this.progressPct = 42;
     this.currentVolume = 80;
     this.currentMode = 'BOTH (SPEAKER + CHAT)';
@@ -361,56 +363,69 @@ class PhoneBotSimulator {
 
     // Configure phone header according to bot
     if (botId === 'commander') {
-      if (this.chipGroupLabel) this.chipGroupLabel.textContent = 'Commander Hardware Commands:';
+      if (this.chipGroupLabel) this.chipGroupLabel.textContent = 'Commander 2.0 Hardware Commands:';
       if (this.simAvatar) {
         this.simAvatar.textContent = 'CMD';
         this.simAvatar.style.background = 'linear-gradient(135deg, #0ea5e9, #6366f1)';
       }
-      if (this.simBotName) this.simBotName.textContent = 'TapBot Commander';
+      if (this.simBotName) this.simBotName.textContent = 'TapBot Commander 2.0';
       if (this.simBotStatusText) this.simBotStatusText.textContent = 'Hardware Node · Watchdog Active';
       this.resetChatFeed(
-        '<b>TapBot Commander v2.2.0 Online</b><br/>' +
-        'Native hardware controller bound to Android ART.<br/>' +
-        'Click a command chip or type to trigger remote phone hardware.'
+        '<b>TapBot Commander v2.3.0 Online</b><br/>' +
+        'Native hardware controller + interactive inline HUD bound to Android ART.<br/>' +
+        'Click a command chip or type <code>/status</code>, <code>/tts</code>, <code>/wifi</code>, <code>/schedule</code>, or <code>/apk</code>.'
       );
     } else if (botId === 'music') {
-      if (this.chipGroupLabel) this.chipGroupLabel.textContent = 'TapStream Music Commands:';
+      if (this.chipGroupLabel) this.chipGroupLabel.textContent = 'TapStream 2.0 Music Commands:';
       if (this.simAvatar) {
         this.simAvatar.textContent = 'TS';
         this.simAvatar.style.background = 'linear-gradient(135deg, #f43f5e, #8b5cf6)';
       }
-      if (this.simBotName) this.simBotName.textContent = 'TapStream Audio';
-      if (this.simBotStatusText) this.simBotStatusText.textContent = 'Android ART · 320kbps Streamer';
+      if (this.simBotName) this.simBotName.textContent = 'TapStream Audio 2.0';
+      if (this.simBotStatusText) this.simBotStatusText.textContent = 'AudioFocus · 320kbps MediaPlayback';
       this.resetChatFeed(
-        '<b>TapStream Music Engine Active</b><br/>' +
-        'High-bitrate audio pipeline ready.<br/>' +
-        'Routes to phone loudspeaker and in-chat audio tracks.'
+        '<b>TapStream Audio 2.0 Engine Active</b><br/>' +
+        'Android 14/15 mediaPlayback + AudioFocus pipeline ready.<br/>' +
+        'Routes tracks to phone speaker, Bluetooth DAC, and Telegram chat.'
       );
     } else if (botId === 'ai') {
-      if (this.chipGroupLabel) this.chipGroupLabel.textContent = 'Gemini AI Assistant Commands:';
+      if (this.chipGroupLabel) this.chipGroupLabel.textContent = 'Live Gemini 2.5 AI Commands:';
       if (this.simAvatar) {
         this.simAvatar.textContent = 'AI';
         this.simAvatar.style.background = 'linear-gradient(135deg, #8b5cf6, #fb7185)';
       }
       if (this.simBotName) this.simBotName.textContent = 'Gemini Assistant';
-      if (this.simBotStatusText) this.simBotStatusText.textContent = 'Gemini 2.0 · Keystore Enclave';
+      if (this.simBotStatusText) this.simBotStatusText.textContent = 'Gemini 2.5 Flash · Keystore Enclave';
       this.resetChatFeed(
         '<b>Gemini Smart Assistant Initialized</b><br/>' +
-        'Generative AI runtime operating via on-device Keystore enclave.<br/>' +
-        'Ask questions, request code, or summarize documents.'
+        'Live Google Gemini 2.5 inference via on-device Keystore enclave.<br/>' +
+        'Ask questions, generate Kotlin code, or summarize threads.'
       );
     } else if (botId === 'exon') {
-      if (this.chipGroupLabel) this.chipGroupLabel.textContent = 'Exon Group Guardian Commands:';
+      if (this.chipGroupLabel) this.chipGroupLabel.textContent = 'Exon 2.0 Group Guardian Commands:';
       if (this.simAvatar) {
         this.simAvatar.textContent = 'EX';
         this.simAvatar.style.background = 'linear-gradient(135deg, #f59e0b, #f43f5e)';
       }
-      if (this.simBotName) this.simBotName.textContent = 'Exon Guardian';
-      if (this.simBotStatusText) this.simBotStatusText.textContent = 'Supergroup Shield · Anti-Flood';
+      if (this.simBotName) this.simBotName.textContent = 'Exon Guardian 2.0';
+      if (this.simBotStatusText) this.simBotStatusText.textContent = 'Persisted Store · Anti-Flood + Inline UI';
       this.resetChatFeed(
-        '<b>Exon Guardian v1.0.0 Active</b><br/>' +
-        'Supergroup protection enabled on Android ART.<br/>' +
-        'Anti-flood, spam filters, and admin tools standing by.'
+        '<b>Exon Guardian v2.3.0 Active</b><br/>' +
+        'Supergroup protection with disk-persisted rules, warns, and locks.<br/>' +
+        'Try <code>/tmute 10m @spambot</code>, <code>/lock links</code>, <code>/setwelcome</code>, or <code>/rules</code>.'
+      );
+    } else if (botId === 'custom') {
+      if (this.chipGroupLabel) this.chipGroupLabel.textContent = 'Custom Bot Builder Workflow Rules:';
+      if (this.simAvatar) {
+        this.simAvatar.textContent = 'BLD';
+        this.simAvatar.style.background = 'linear-gradient(135deg, #10b981, #0ea5e9)';
+      }
+      if (this.simBotName) this.simBotName.textContent = 'Custom Bot Builder';
+      if (this.simBotStatusText) this.simBotStatusText.textContent = 'No-Code Rules · Outbound Webhooks';
+      this.resetChatFeed(
+        '<b>Custom Bot Builder Active (No-Code Engine)</b><br/>' +
+        'Zero Kotlin required. Bind <code>/commands</code> to dynamic templates and outbound HTTP GET/POST webhooks.<br/>' +
+        'Try <code>/hello</code>, <code>/webhook</code>, <code>/deploy prod-api</code>, or <code>/vars</code>.'
       );
     }
   }
@@ -504,21 +519,69 @@ class PhoneBotSimulator {
     }, 420);
   }
 
+  escapeHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
   resolveCommand(text) {
     const parts = text.split(/\s+/);
-    const cmd = parts[0].toLowerCase();
+    const cmd = parts[0].toLowerCase().split('@')[0];
     const arg = parts.slice(1).join(' ').trim();
+    const safeArg = this.escapeHtml(arg);
+    const safeText = this.escapeHtml(text);
 
-    // ─── COMMANDER BOT COMMANDS ───
+    // ─── COMMANDER 2.0 BOT COMMANDS ───
     if (cmd === '/status') {
       this.appendBotMessage(
-        `<b>TELEMETRY // ART PROCESS PID 8412</b><br/>` +
-        `BATTERY: <b>88% [CHARGING_AC]</b><br/>` +
-        `THERMAL: <b>31.4°C [NOMINAL]</b><br/>` +
+        `<b>TELEMETRY // TAPBOT v2.3.0 (BUILD 230)</b><br/>` +
+        `BATTERY: <b>88% [CHARGING_AC]</b> &middot; THERMAL: <b>31.4°C</b><br/>` +
         `HEAP RAM: <b>14.2 MB / 8 GB (0.17%)</b><br/>` +
         `STORAGE: <b>0 Bytes/hr [RAM_RING_BUFFER]</b><br/>` +
-        `UPTIME: <b>42d 18h 34m</b><br/>` +
+        `FOREGROUND: <code>dataSync|mediaPlayback</code><br/>` +
         `WATCHDOG: <b>ACTIVE [AUTO_RECOVERY_ARMED]</b>`
+      );
+    } else if (cmd === '/tts') {
+      const phrase = safeArg || 'TapBot 2.3 server online and operational.';
+      this.appendBotMessage(
+        `<b>SPEECH // Android TextToSpeech</b><br/>` +
+        `UTTERANCE: <i>"${phrase}"</i><br/>` +
+        `OUTPUT: Dispatched to physical loudspeaker via hardware AudioManager.`
+      );
+    } else if (cmd === '/wifi' || cmd === '/ip') {
+      this.appendBotMessage(
+        `<b>NETWORK // ConnectivityManager</b><br/>` +
+        `SSID: <b>TapBot-Lab-5GHz</b> (-44 dBm &middot; 866 Mbps)<br/>` +
+        `LOCAL IP: <code>192.168.1.48</code><br/>` +
+        `TELEGRAM API: TLS 1.3 Long-Poll Connected (48ms RTT)`
+      );
+    } else if (cmd === '/location' || cmd === '/gps') {
+      this.appendBotMessage(
+        `<b>GPS // FusedLocationProvider</b><br/>` +
+        `COORDS: <code>12.9716 N, 77.5946 E</code> (&plusmn;4.2m accuracy)<br/>` +
+        `HUD ACTION: <code>[Refresh GPS]</code> inline callback armed.`
+      );
+    } else if (cmd === '/schedule') {
+      const schedParts = arg.split(/\s+/);
+      const mins = parseInt(schedParts[0], 10);
+      const interval = !isNaN(mins) && mins > 0 ? mins : 15;
+      const taskText = !isNaN(mins) ? this.escapeHtml(schedParts.slice(1).join(' ').trim()) : safeArg;
+      const job = taskText || 'Check server thermals';
+      this.appendBotMessage(
+        `<b>SCHEDULER // Periodic Automation Armed</b><br/>` +
+        `INTERVAL: Every <b>${interval} minutes</b><br/>` +
+        `PROMPT: <i>"${job}"</i><br/>` +
+        `MANAGE: Use <code>/schedules</code> or tap inline <code>[Cancel]</code>.`
+      );
+    } else if (cmd === '/schedules') {
+      this.appendBotMessage(
+        `<b>SCHEDULER // Active Jobs (1)</b><br/>` +
+        `#1 &middot; Every <b>15m</b> &rarr; <i>Check server thermals</i><br/>` +
+        `STATUS: Running inside foreground Watchdog scope.`
       );
     } else if (cmd === '/torch') {
       const state = arg.toLowerCase() === 'off' ? 'DISABLED' : 'ENABLED (MAX)';
@@ -535,7 +598,7 @@ class PhoneBotSimulator {
         `STATUS: Physical haptic motor pulse dispatched successfully.`
       );
     } else if (cmd === '/notify') {
-      const msg = arg || 'Server health optimal';
+      const msg = safeArg || 'Server health optimal';
       this.appendBotMessage(
         `<b>NOTIFICATION // NotificationHelper</b><br/>` +
         `CHANNEL: <code>tapbot_high_priority</code><br/>` +
@@ -545,25 +608,28 @@ class PhoneBotSimulator {
     } else if (cmd === '/apk' || cmd === '/download') {
       this.appendBotMessage(
         `<b>DELIVERY // ApkDeliveryService</b><br/>` +
-        `PACKAGE: <code>tapbot-v2.2.0-tapstream-music.apk</code><br/>` +
-        `SIZE: <b>19.3 MB</b> &middot; Android 8.0 &ndash; 15+<br/>` +
+        `PACKAGE: <code>tapbot-v2.3.0.apk</code><br/>` +
+        `SIZE: <b>12.2 MB</b> &middot; Android 8.0 &ndash; 15+<br/>` +
+        `SHA-256: <code>55b36718...9f29e91</code><br/>` +
         `STATUS: Streaming signed binary directly to Telegram document pipe.`
       );
     } else if (cmd === '/fleet') {
       this.appendBotMessage(
-        `<b>FLEET // Active On-Device Bots</b><br/>` +
-        `1. <b>CommanderBot</b> &middot; PID 8412 &middot; <span style="color:#10b981">ONLINE</span> (3.2 MB)<br/>` +
-        `2. <b>TapStream</b> &middot; PID 8413 &middot; <span style="color:#10b981">ONLINE</span> (5.8 MB)<br/>` +
-        `3. <b>GeminiAI</b> &middot; PID 8414 &middot; <span style="color:#10b981">ONLINE</span> (4.1 MB)<br/>` +
-        `TOTAL HEAP: <b>13.1 MB</b> (0.16% of device RAM)`
+        `<b>FLEET // Active On-Device Bots (v2.3.0)</b><br/>` +
+        `1. <b>Commander 2.0</b> &middot; <span style="color:#10b981">ONLINE</span> (2.6 MB)<br/>` +
+        `2. <b>TapStream 2.0</b> &middot; <span style="color:#10b981">ONLINE</span> (4.4 MB)<br/>` +
+        `3. <b>Gemini 2.5 AI</b> &middot; <span style="color:#10b981">ONLINE</span> (2.8 MB)<br/>` +
+        `4. <b>Exon Guardian 2.0</b> &middot; <span style="color:#10b981">ONLINE</span> (2.1 MB)<br/>` +
+        `5. <b>Custom Webhook Bot</b> &middot; <span style="color:#10b981">ONLINE</span> (1.9 MB)<br/>` +
+        `TOTAL HEAP: <b>13.8 MB</b> (Boot Recovery: ARMED)`
       );
     }
-    // ─── TAPSTREAM MUSIC COMMANDS ───
+    // ─── TAPSTREAM AUDIO 2.0 COMMANDS ───
     else if (cmd === '/play') {
-      const songName = arg ? arg.charAt(0).toUpperCase() + arg.slice(1) : 'Lofi Study Beats';
+      const songName = safeArg ? safeArg.charAt(0).toUpperCase() + safeArg.slice(1) : 'Lofi Girl Study Beats';
       this.currentTrack = {
         title: songName,
-        artist: 'TapStream Audio &middot; 320kbps',
+        artist: 'TapStream 2.0 &middot; 320kbps',
         preset: 'lofi'
       };
       this.updatePlayerUI();
@@ -571,9 +637,9 @@ class PhoneBotSimulator {
 
       this.appendBotMessage(
         `NOW PLAYING: <b>${songName}</b><br/>` +
-        `CODEC: 320 kbps (yt-dlp stream)<br/>` +
+        `CODEC: 320 kbps (yt-dlp + AudioFocus GAIN)<br/>` +
         `ROUTE: <b>${this.currentMode}</b><br/>` +
-        `STATUS: Playback initiated through Android audio track.`
+        `CONTROLS: Inline <code>[Pause]</code> <code>[Next]</code> <code>[Shuffle]</code> <code>[Stop]</code> active.`
       );
     } else if (cmd === '/radio') {
       const genre = arg.toLowerCase() || 'synthwave';
@@ -594,12 +660,47 @@ class PhoneBotSimulator {
         `TUNER: 24/7 Radio Stream Active<br/>` +
         `STATION: <b>${match.title}</b><br/>` +
         `CHANNEL: <i>${match.artist}</i> &middot; 320 kbps<br/>` +
-        `BUFFER: 0ms (In-Memory RAM Ring Buffer)`
+        `AUDIOFOCUS: Managed &middot; Zero-Buffer RAM Ring`
+      );
+    } else if (cmd === '/shuffle') {
+      this.isShuffle = !this.isShuffle;
+      this.appendBotMessage(
+        `<b>QUEUE // Shuffle Mode</b><br/>` +
+        `SHUFFLE: <b>${this.isShuffle ? 'ENABLED' : 'DISABLED'}</b><br/>` +
+        `ENGINE: Fisher-Yates playback permutation updated live.`
+      );
+    } else if (cmd === '/loop') {
+      const requested = arg.toUpperCase();
+      if (requested === 'ALL' || requested === 'ONE' || requested === 'OFF') {
+        this.loopMode = requested;
+      } else {
+        const order = ['OFF', 'ALL', 'ONE'];
+        this.loopMode = order[(order.indexOf(this.loopMode) + 1) % order.length];
+      }
+      this.appendBotMessage(
+        `<b>QUEUE // Repeat Controller</b><br/>` +
+        `LOOP MODE: <b>${this.loopMode}</b> (Supports <code>off</code> / <code>one</code> / <code>all</code>)`
+      );
+    } else if (cmd === '/seek') {
+      const target = safeArg || '02:15';
+      this.progressPct = 62;
+      if (this.scrubberFill) this.scrubberFill.style.width = `${this.progressPct}%`;
+      if (this.timeDisplay) this.timeDisplay.textContent = `${target} / 03:45`;
+      this.appendBotMessage(
+        `<b>PLAYER // Stream Seek</b><br/>` +
+        `POSITION: Jumped to <b>${target}</b> &middot; AudioFocus maintained cleanly.`
+      );
+    } else if (cmd === '/remove') {
+      const idx = parseInt(arg, 10) || 2;
+      this.appendBotMessage(
+        `<b>QUEUE // Track Removed</b><br/>` +
+        `REMOVED INDEX: <b>#${idx}</b> from active playback queue.`
       );
     } else if (cmd === '/nowplaying' || cmd === '/np') {
       this.appendBotMessage(
         `STATUS: <b>${this.currentTrack.title}</b><br/>` +
         `<code>PLAY [01:42 / 03:45] ====o--------</code><br/>` +
+        `SHUFFLE: <b>${this.isShuffle ? 'ON' : 'OFF'}</b> &middot; LOOP: <b>${this.loopMode}</b><br/>` +
         `STREAM: <i>${this.currentTrack.artist}</i> &middot; ${this.currentMode}`
       );
     } else if (cmd === '/volume') {
@@ -614,10 +715,10 @@ class PhoneBotSimulator {
     } else if (cmd === '/mode') {
       this.setMode(arg.toUpperCase());
     }
-    // ─── GEMINI AI ASSISTANT COMMANDS ───
+    // ─── GEMINI 2.5 AI ASSISTANT COMMANDS ───
     else if (cmd === '/ask') {
       this.appendBotMessage(
-        `<b>GEMINI 2.0 // ON-DEVICE INFERENCE</b><br/>` +
+        `<b>GEMINI 2.5 FLASH // LIVE REST INFERENCE</b><br/>` +
         `Android phones make extraordinary autonomous servers: low-power multi-core ARM chips, internal battery failover, Wi-Fi connectivity, and native ART execution without heavy Docker or Node.js runtime layers.`
       );
     } else if (cmd === '/code') {
@@ -633,54 +734,128 @@ class PhoneBotSimulator {
     } else if (cmd === '/summarize') {
       this.appendBotMessage(
         `<b>AI SPECIFICATION SUMMARY //</b><br/>` +
-        `&bull; 100% on-device Android ART execution<br/>` +
-        `&bull; Cryptographic Keystore token encryption<br/>` +
-        `&bull; RAM ring buffers eliminate flash wear<br/>` +
-        `&bull; Runs multiple production bots for $0.00/mo`
+        `&bull; Live Google Gemini 2.5 API with per-chat conversation history<br/>` +
+        `&bull; Automatic 4,096-character Telegram response chunking<br/>` +
+        `&bull; Cryptographic Keystore API key encryption (AES-256-GCM)<br/>` +
+        `&bull; Runs 6+ production bots in parallel for $0.00/mo`
       );
     } else if (cmd === '/model') {
       this.appendBotMessage(
         `<b>AI MODEL CONFIGURATION //</b><br/>` +
-        `ENGINE: Google Gemini 2.0 Flash<br/>` +
+        `ENGINE: Google <b>Gemini 2.5 Flash</b> (Configurable override)<br/>` +
+        `CONTEXT: Per-Chat Multi-Turn Ring Buffer<br/>` +
         `KEYSTORE: StrongBox / TEE Hardware Sealed (AES-256-GCM)<br/>` +
-        `PRIVACY: Direct outbound TLS 1.3 to official endpoints.`
+        `PRIVACY: Direct outbound TLS 1.3 to generativelanguage.googleapis.com.`
+      );
+    } else if (cmd === '/system') {
+      const prompt = safeArg || 'Concise mobile systems engineer assistant.';
+      this.appendBotMessage(
+        `<b>AI PERSONA // System Instruction Updated</b><br/>` +
+        `PROMPT: <i>"${prompt}"</i><br/>` +
+        `SCOPE: Applied to active chat conversation state.`
       );
     }
-    // ─── EXON GUARDIAN COMMANDS ───
+    // ─── EXON 2.0 GUARDIAN COMMANDS ───
     else if (cmd === '/admin') {
       this.appendBotMessage(
-        `<b>EXON // Supergroup Administrator Shield</b><br/>` +
-        `COMMUNITY: TapBot Global Hub<br/>` +
+        `<b>EXON 2.0 // Persisted Supergroup Shield</b><br/>` +
+        `COMMUNITY: TapBot Builders Hub<br/>` +
         `ANTI-FLOOD: <span style="color:#10b981">ARMED [5 msgs / 10s]</span><br/>` +
-        `SPAM FILTER: <span style="color:#10b981">ACTIVE</span><br/>` +
-        `STATUS: All group members protected.`
+        `LOCKS: <span style="color:#f59e0b">LINKS + FORWARDS</span> &middot; STORE: <b>Disk Persisted</b><br/>` +
+        `UI: Inline moderation menu ready.`
       );
     } else if (cmd === '/antiflood') {
       this.appendBotMessage(
-        `<b>EXON // Anti-Flood Settings</b><br/>` +
-        `STATUS: <b>ENABLED</b><br/>` +
+        `<b>EXON 2.0 // Anti-Flood Settings</b><br/>` +
+        `STATUS: <b>ENABLED (Persisted)</b><br/>` +
         `RATE LIMIT: Maximum 5 messages in 10 seconds.<br/>` +
-        `ACTION ON FLOOD: Automatic 2-hour mute applied.`
+        `ACTION ON FLOOD: Automatic timed mute applied via Bot API.`
+      );
+    } else if (cmd === '/tmute' || cmd === '/tban') {
+      const tmParts = arg.split(/\s+/);
+      const dur = this.escapeHtml(tmParts[0] || '10m');
+      const target = this.escapeHtml(tmParts.slice(1).join(' ') || '@spambot');
+      const label = cmd === '/tban' ? 'TEMPORARY BAN' : 'TEMPORARY MUTE';
+      this.appendBotMessage(
+        `<b>MODERATION // ${label}</b><br/>` +
+        `TARGET: <code>${target}</code> &middot; DURATION: <b>${dur}</b><br/>` +
+        `DISPATCHED: Telegram <code>restrictChatMember</code> + Disk Audit Log.`
+      );
+    } else if (cmd === '/promote' || cmd === '/demote') {
+      const target = safeArg || '@trusted_mod';
+      const action = cmd === '/promote' ? 'PROMOTED TO ADMIN' : 'RIGHTS REVOKED';
+      this.appendBotMessage(
+        `<b>ADMIN // ${action}</b><br/>` +
+        `USER: <code>${target}</code> &middot; Updated via Telegram Admin API.`
+      );
+    } else if (cmd === '/lock') {
+      const lockType = safeArg || 'links';
+      this.appendBotMessage(
+        `<b>CHAT LOCK // Active Rule Persisted</b><br/>` +
+        `LOCKED ENTITY: <b>${lockType.toUpperCase()}</b><br/>` +
+        `ENFORCEMENT: Unauthorized messages deleted immediately via <code>deleteMessage</code>.`
+      );
+    } else if (cmd === '/setwelcome' || cmd === '/welcome') {
+      const tpl = safeArg || 'Welcome {user} to the group!';
+      this.appendBotMessage(
+        `<b>WELCOME RULE // Persisted to Disk</b><br/>` +
+        `TEMPLATE: <code>${tpl}</code><br/>` +
+        `ATTACHMENTS: Inline <code>[Read Rules]</code> keyboard enabled on new joins.`
       );
     } else if (cmd === '/rules') {
       this.appendBotMessage(
         `<b>COMMUNITY RULES //</b><br/>` +
-        `1. Be respectful to all builders & users.<br/>` +
-        `2. No unauthorized spam, ads, or referral links.<br/>` +
-        `3. Enjoy autonomous, decentralized bot hosting!`
+        `1. Be respectful to all builders &amp; users.<br/>` +
+        `2. No unauthorized spam, links, or referral drops.<br/>` +
+        `3. Enjoy autonomous on-device bot hosting!<br/>` +
+        `<span style="color:#a5b4fc">[Inline: Accept Rules] [Dismiss]</span>`
       );
     } else if (cmd === '/warn' || cmd === '/mute') {
       this.appendBotMessage(
-        `<b>MODERATION // Action Dispatched</b><br/>` +
-        `ACTION: Issued formal infraction warning.<br/>` +
-        `AUDIT LOG: Timestamped and recorded in local ART memory.`
+        `<b>MODERATION // Infraction Logged</b><br/>` +
+        `ACTION: Formal strike recorded (<b>2 / 3</b> before auto-ban).<br/>` +
+        `STORE: Disk-persisted across TapBot service restarts.`
+      );
+    }
+    // ─── CUSTOM BOT BUILDER COMMANDS ───
+    else if (cmd === '/hello') {
+      this.appendBotMessage(
+        `<b>CUSTOM BUILDER // Rule Matched (<code>/hello</code>)</b><br/>` +
+        `Hello <b>@VarshuDev</b>! Node uptime verified on <code>2026-11-10</code>.<br/>` +
+        `BUTTONS: <span style="color:#6ee7b7">[Ping Webhook] [Docs]</span>`
+      );
+    } else if (cmd === '/webhook') {
+      const url = safeArg || 'https://api.status.internal';
+      this.appendBotMessage(
+        `<b>WEBHOOK // Outbound HTTP GET Dispatched</b><br/>` +
+        `ENDPOINT: <code>${url}</code><br/>` +
+        `RESPONSE: <b>200 OK</b> (41ms)<br/>` +
+        `<code>{webhook_response}</code>: <code>{"status":"healthy","fleet":5}</code>`
+      );
+    } else if (cmd === '/deploy') {
+      const env = safeArg || 'prod-api';
+      this.appendBotMessage(
+        `<b>WORKFLOW // Custom Trigger + Webhook</b><br/>` +
+        `ARGS (<code>{args}</code>): <code>${env}</code><br/>` +
+        `HTTP POST &rarr; <code>{"ok":true,"env":"${env}"}</code><br/>` +
+        `STATUS: Replied in Telegram with inline confirmation button.`
+      );
+    } else if (cmd === '/vars') {
+      this.appendBotMessage(
+        `<b>CUSTOM BUILDER // Template Variables</b><br/>` +
+        `&bull; <code>{user}</code> &mdash; Sender @username or mention<br/>` +
+        `&bull; <code>{first_name}</code> &mdash; Telegram first name<br/>` +
+        `&bull; <code>{args}</code> &mdash; Text passed after <code>/command</code><br/>` +
+        `&bull; <code>{date}</code> / <code>{time}</code> &mdash; Device clock<br/>` +
+        `&bull; <code>{chat_id}</code> &mdash; Active Telegram chat ID<br/>` +
+        `&bull; <code>{webhook_response}</code> &mdash; Parsed HTTP GET/POST body`
       );
     }
     // ─── DEFAULT FALLBACK ───
     else {
       this.appendBotMessage(
-        `INPUT: <code>${text}</code><br/>` +
-        `Active bot commands available: <code>/status</code>, <code>/torch</code>, <code>/play</code>, <code>/ask</code>, <code>/admin</code>, <code>/apk</code>`
+        `INPUT: <code>${safeText}</code><br/>` +
+        `Try: <code>/status</code>, <code>/tts</code>, <code>/wifi</code>, <code>/schedule</code>, <code>/play</code>, <code>/shuffle</code>, <code>/ask</code>, <code>/tmute</code>, <code>/lock</code>, <code>/hello</code>, <code>/webhook</code>, or <code>/apk</code>`
       );
     }
   }

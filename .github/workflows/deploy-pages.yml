@@ -27,8 +27,8 @@ jobs:
       - name: Ensure Releases in Website
         run: |
           mkdir -p website/releases
-          if [ -f "releases/tapbot-v2.2.0-tapstream-music.apk" ]; then
-            cp -f releases/tapbot-v2.2.0-tapstream-music.apk website/releases/
+          if [ -f "releases/tapbot-v2.3.0.apk" ]; then
+            cp -f releases/tapbot-v2.3.0.apk website/releases/
           fi
 
       - name: Setup GitHub Pages

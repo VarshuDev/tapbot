@@ -88,7 +88,7 @@ class ManifestValidator(
         val runtime = root["runtime"]?.jsonPrimitive?.content ?: "native_art"
         val minAppVer = root["minimumAppVersion"]?.jsonPrimitive?.content?.toIntOrNull() ?: 1
 
-        if (id != expectedBotId) {
+        if (!isMatchingBotId(id, expectedBotId)) {
             throw SecurityException("Manifest bot id mismatch: expected '$expectedBotId', found '$id'")
         }
 
@@ -112,5 +112,17 @@ class ManifestValidator(
             minimumAppVersion = minAppVer,
             details = "Manifest successfully validated for $id v$version"
         )
+    }
+
+    private fun isMatchingBotId(manifestId: String, expectedBotId: String): Boolean {
+        if (manifestId == expectedBotId) return true
+        val canonicalAliases = mapOf(
+            "bot_commander" to setOf("tapbot-commander", "bot_commander_flagship"),
+            "bot_commander_flagship" to setOf("tapbot-commander", "bot_commander"),
+            "tapbot-commander" to setOf("bot_commander", "bot_commander_flagship"),
+            "bot_music_streamer" to setOf("tapstream-music"),
+            "tapstream-music" to setOf("bot_music_streamer")
+        )
+        return canonicalAliases[expectedBotId]?.contains(manifestId) == true
     }
 }

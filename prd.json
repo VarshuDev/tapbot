@@ -166,8 +166,8 @@
         "Verify Catalog & Cloudflare tests pass"
       ],
       "priority": 11,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Verified tools/package_all_bots.mjs generating 11 valid .botpkg archives alongside preserved flagship commander/tapstream packages, synced MockCatalogApi & ManifestValidator aliases, created backend/migrations/0008_v230_catalog_sync.sql, and verified BundledPackagesCatalogTest"
     },
     {
       "id": "US-P4-02",
@@ -180,8 +180,8 @@
         "Mark all prd.json stories passes=true, finalize progress.txt, and merge ralph/tapbot-v230 into main cleanly"
       ],
       "priority": 12,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Verified full ./gradlew.bat test (8 modules), backend npm run typecheck & npm test (20 tests), assembleDebug, apksigner-verified signed assembleRelease -> releases/tapbot-v2.3.0.apk (SHA-256: 55B367181A706F483E14F1148E4C4867D427AFFB2628CD0F030DF2E592F29E91, 12,817,107 bytes), updated releases/README.md, and merged ralph/tapbot-v230 into main."
     }
   ]
 }

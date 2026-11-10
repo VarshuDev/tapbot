@@ -274,12 +274,12 @@ class TapBotApplication : Application() {
             for (filename in packageFiles) {
                 if (filename.endsWith(".botpkg")) {
                     val dest = File(targetDir, filename)
-                    if (!dest.exists() || dest.length() == 0L) {
-                        assets.open("packages/$filename").use { input ->
-                            dest.outputStream().use { output ->
-                                input.copyTo(output)
-                            }
-                        }
+                    val assetBytes = assets.open("packages/$filename").use { it.readBytes() }
+                    val needsRefresh = !dest.exists() ||
+                        dest.length() != assetBytes.size.toLong() ||
+                        !dest.readBytes().contentEquals(assetBytes)
+                    if (needsRefresh) {
+                        dest.writeBytes(assetBytes)
                     }
                 }
             }

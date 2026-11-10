@@ -1,103 +1,187 @@
 {
   "project": "TapBot",
-  "branchName": "ralph/music-streamer-bot",
-  "description": "TapStream - On-Device Music Streaming & Audio Telegram Bot for Android with yt-dlp/stream resolver integration and native phone speaker playback",
+  "branchName": "ralph/tapbot-v230",
+  "description": "TapBot v2.3.0 Multi-Phase Upgrade — Core Install/Fleet Sync, Real Gemini AI & RSS Runtimes, Inline Keyboards, Exon 2.0, Commander 2.0, TapStream Audio 2.0, Interactive Settings & Custom Bot Builder",
   "userStories": [
     {
-      "id": "US-M01",
-      "title": "TelegramApiClient Audio Delivery Extensions (sendAudio)",
-      "description": "As a user, I want the bot to send playable audio tracks directly to Telegram chat via sendAudio using direct stream URLs or audio files.",
+      "id": "US-P1-01",
+      "title": "Unify Install-to-Fleet Synchronization & Built-In Runtime Installation",
+      "description": "Synchronize BotDetailViewModel installations with BotInstanceManager, allow built-in runtimes in addition to native_art, and sync uninstalls from CatalogViewModel.",
       "acceptanceCriteria": [
-        "Implement sendAudio with audio stream URL, title, performer, duration, caption, and parseMode in TelegramApiClient",
-        "Implement sendAudio with multipart File upload for cached/downloaded audio files",
-        "Unit test sendAudio request building and parameter serialization in core:network",
-        "Typecheck passes",
+        "BotDetailViewModel accepts optional botInstanceManager and syncs install/start/stop state",
+        "TapBotNavHost injects app.botInstanceManager into BotDetailViewModel and app.localBotInstallationManager into CatalogViewModel",
+        "BotDetailViewModel.installBot allows both native_art and built-in runtimes",
+        "Unit tests in feature:botdetail verify built-in install and BotInstanceManager sync",
         "Tests pass"
       ],
       "priority": 1,
-      "passes": true,
-      "notes": "sendAudio implemented in TelegramApiClient with URL streaming and multipart file upload, SendAudioPayload added to model, and all core:network unit tests pass."
+      "passes": false,
+      "notes": ""
     },
     {
-      "id": "US-M02",
-      "title": "Audio Stream Resolver Service (AudioStreamResolver)",
-      "description": "As a user, I want the bot to search and resolve audio streams from YouTube/yt-dlp APIs, audio URLs, and curated 24/7 radio stations.",
+      "id": "US-P1-02",
+      "title": "Real Gemini AI Client & Upgraded AIBotRuntime",
+      "description": "Implement GeminiApiClient using OkHttp against Gemini generateContent API and upgrade AIBotRuntime with per-chat history, /ask, /summarize, /code, /model, /system, /clear, and chunked responses.",
       "acceptanceCriteria": [
-        "Create AudioStreamResolver supporting search queries, direct audio links, and custom yt-dlp API endpoints",
-        "Include curated 24/7 internet radio stations (Lofi Girl, Synthwave, Chillhop, Classic Rock, Jazz FM) with zero-buffering stream URLs",
-        "Parse track metadata (title, artist, durationSeconds, streamUrl, thumbnailUrl)",
-        "Unit test stream resolution, search fallbacks, and radio station indexing in core:runner",
-        "Typecheck passes",
+        "Implement GeminiApiClient in core:network with configurable base URL for tests",
+        "AIBotRuntime reads gemini_api_key, gemini_model, and system_prompt from RuntimeContext.credentials",
+        "Supports multi-turn per-chat history, /ask, natural PM chat, /summarize (including reply_to_message), /code, /model, /system, /clear, /status, and >4096 char splitting",
+        "Unit tests in core:network and core:runner verify GeminiApiClient and AIBotRuntime",
         "Tests pass"
       ],
       "priority": 2,
-      "passes": true,
-      "notes": "AudioStreamResolver implemented with direct audio links, custom yt-dlp API integration, 6 curated zero-buffer 24/7 radio stations, and comprehensive unit tests passing."
+      "passes": false,
+      "notes": ""
     },
     {
-      "id": "US-M03",
-      "title": "On-Device Android Audio Player Engine (DeviceAudioPlayer)",
-      "description": "As a user, I want the bot to physically stream and play music out loud on the Android phone speakers or connected Bluetooth sound system.",
+      "id": "US-P1-03",
+      "title": "Real RSS/Atom Feed Parser & RssNotifierBotRuntime",
+      "description": "Implement JVM-safe RssFeedParser and RssNotifierBotRuntime with persisted seen-GUID deduplication, channel broadcasting, and interactive management commands.",
       "acceptanceCriteria": [
-        "Implement DeviceAudioPlayer wrapping Android MediaPlayer with async stream preparation and error recovery",
-        "Implement playback control: play, pause, resume, stop, seekTo, and AudioManager volume scaling (0-100)",
-        "Expose real-time PlaybackState flow (status, currentTrack, elapsedMs, durationMs, volumePct)",
-        "Include JVM test fallback so unit tests run cleanly without native Android audio hardware",
-        "Unit test playback states, queue progression, and volume control in core:runner",
-        "Typecheck passes",
+        "Implement RssFeedParser in core:runner supporting RSS 2.0 <item> and Atom <entry>",
+        "Implement RssNotifierBotRuntime polling feed_url to target_chat_id with persisted seen item deduplication",
+        "Register rss/feed/notifier keywords in BotRuntimeFactory",
+        "Unit tests cover RSS/Atom parsing, deduplication across restarts, and command routing",
         "Tests pass"
       ],
       "priority": 3,
-      "passes": true,
-      "notes": "DeviceAudioPlayer implemented wrapping Android MediaPlayer and AudioManager with volume scaling, seekTo, PlaybackState flow, ASCII progress bar, and comprehensive unit tests passing."
+      "passes": false,
+      "notes": ""
     },
     {
-      "id": "US-M04",
-      "title": "TapStream Music Bot Runtime & Interactive Command Router",
-      "description": "As a user, I want Telegram playback commands (/play, /pause, /resume, /stop, /skip, /queue, /nowplaying, /volume, /send, /radio, /mode).",
+      "id": "US-P2-01",
+      "title": "Telegram Inline Keyboards & Callback Query Pipeline",
+      "description": "Extend TelegramUpdate, TelegramMessage, payloads, and TelegramApiClient with inline_keyboard markup, callback_query, answerCallbackQuery, editMessageText, timed ban/restrict untilDate, and promoteChatMember.",
       "acceptanceCriteria": [
-        "Upgrade MusicBotRuntime to integrate AudioStreamResolver, DeviceAudioPlayer, and TelegramApiClient sendAudio",
-        "Support dual playback modes: SPEAKER (phone hardware audio) and CHAT (sendAudio in Telegram)",
-        "Implement /nowplaying with visual ASCII time progress bar (▶ 01:23 ━━━━●──────── 03:45)",
-        "Implement /radio command for instant 24/7 streaming station selection",
-        "Unit test all music commands, queue transitions, and mode switching in core:runner",
-        "Typecheck passes",
+        "Add InlineKeyboardMarkup, InlineKeyboardButton, TelegramCallbackQuery, AnswerCallbackQueryPayload, EditMessageTextPayload, PromoteChatMemberPayload to core:model",
+        "Extend TelegramMessage with newChatMembers, sticker, photo, document, caption, and entities",
+        "Extend TelegramApiClient with answerCallbackQuery, editMessageText, replyMarkup overload/default, timed ban/restrict overloads, and promoteChatMember while preserving binary/source compatibility",
+        "Unit tests in core:model and core:network pass",
         "Tests pass"
       ],
       "priority": 4,
-      "passes": true,
-      "notes": "Upgraded MusicBotRuntime with dual routing (SPEAKER, CHAT, BOTH), full interactive music command router, ASCII progress bar, and comprehensive test suite passing with all 81 core:runner tests."
+      "passes": false,
+      "notes": ""
     },
     {
-      "id": "US-M05",
-      "title": "Store Catalog Registration & Package Bundling",
-      "description": "As a user, I want TapStream Music Bot visible in the in-app catalog store with configurable credential fields.",
+      "id": "US-P2-02",
+      "title": "Exon Robot 2.0 Persistence, Timed Moderation & Auto-Moderation",
+      "description": "Add ExonModerationStore JSON persistence, duration parsing for /tmute & /tban, /promote & /demote, welcome greetings, antiflood, active /lock enforcement via deleteMessage, and inline button menus.",
       "acceptanceCriteria": [
-        "Create backend migration 0007_music_streamer_bot.sql with bot_music_streamer metadata and credentials",
-        "Update MockCatalogApi to register TapStream with stream_resolver_url, default_volume, and playback_mode settings",
-        "Create sample-bots/music-streamer-bot manifest and package tapstream-music-1.0.0.botpkg into app assets",
-        "Update BotRuntimeFactory to map music-streamer to MusicBotRuntime",
-        "Typecheck passes",
+        "Implement ExonModerationStore persisting warns, rules, locks, welcome config, and antiflood limits",
+        "Support /tmute, /tban with duration parsing (30s, 10m, 2h, 1d), /promote, and /demote",
+        "Implement /setwelcome, /welcome, /clearwelcome, auto-greeting newChatMembers, /antiflood, and active /lock deletion",
+        "Attach inline keyboard buttons to /help and /rules and handle callback_query",
+        "All existing and new ExonBotRuntimeTest tests pass",
         "Tests pass"
       ],
       "priority": 5,
-      "passes": true,
-      "notes": "Created 0007_music_streamer_bot.sql, updated MockCatalogApi with full credentials and versions, created sample-bots/music-streamer-bot manifest, packaged tapstream-music-1.0.0.botpkg into app assets, mapped BotRuntimeFactory, and all unit tests pass."
+      "passes": false,
+      "notes": ""
     },
     {
-      "id": "US-M06",
-      "title": "End-to-End Build & Multi-Module Verification",
-      "description": "As a developer, I want the full project build and unit test suite across all modules to pass cleanly.",
+      "id": "US-P2-03",
+      "title": "Commander Hardware 2.0 (/tts, /wifi, /location, Inline HUD, Scheduled Alerts)",
+      "description": "Extend DeviceActionController with TTS, Wi-Fi info, and last-known location; add interactive inline HUD buttons and scheduled alert tasks to CommanderBotRuntime.",
       "acceptanceCriteria": [
-        "Run ./gradlew.bat test across all modules (:core:runner, :core:network, :feature:catalog, :feature:botdetail, :app)",
-        "Run ./gradlew.bat assembleDebug and verify APK packaging without regressions",
-        "Verify all user stories pass in prd.json",
-        "Typecheck passes",
+        "Add speakText, getWifiDetails, and getLastKnownLocation with JVM test fallbacks in DeviceActionController",
+        "Add ACCESS_WIFI_STATE, ACCESS_COARSE_LOCATION, ACCESS_FINE_LOCATION permissions cleanly to manifests",
+        "Add /tts, /wifi, /location, /schedule, /schedules, /cancelschedule, inline HUD keyboards, and callback_query handling in CommanderBotRuntime",
+        "All DeviceActionControllerTest and CommanderBotRuntimeTest cases pass",
         "Tests pass"
       ],
       "priority": 6,
-      "passes": true,
-      "notes": "Full test suite across all 271 tasks and assembleDebug executed successfully. Generated app-debug.apk (19.3MB) without regressions. All 6 user stories pass."
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-P2-04",
+      "title": "TapStream Audio 2.0 & Android 14/15 mediaPlayback Compliance",
+      "description": "Upgrade DeviceAudioPlayer with AudioFocus and elapsed progress ticker, declare mediaPlayback foreground service type, and add /shuffle, /loop, /seek, /remove plus inline player buttons in MusicBotRuntime.",
+      "acceptanceCriteria": [
+        "Add FOREGROUND_SERVICE_MEDIA_PLAYBACK and foregroundServiceType=dataSync|mediaPlayback in manifests",
+        "Upgrade DeviceAudioPlayer with AudioManager focus handling and elapsedMs ticker",
+        "Add /shuffle, /loop [off|one|all], /seek, /remove, and interactive inline player controls via callback_query in MusicBotRuntime",
+        "Unit tests in DeviceAudioPlayerTest and MusicBotRuntimeTest pass",
+        "Tests pass"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-P3-01",
+      "title": "AppPreferencesRepository, Interactive Settings Screen, Boot Toggle & v2.3.0 Version Sync",
+      "description": "Implement persistent preferences store, replace dead Settings cards with interactive dialogs/sheets, honor auto-start on boot and recover all running bots, and bump version to 2.3.0 (230).",
+      "acceptanceCriteria": [
+        "Bump app versionCode to 230 and versionName to 2.3.0; sync ApkDeliveryService and CommanderBotRuntime",
+        "Implement AppPreferencesRepository for autoStartOnBoot, customCatalogUrl, wifiOnlyDownloads, diagnosticsExportEnabled",
+        "BootCompletedReceiver honors autoStartOnBoot and restarts all previously running bots",
+        "SettingsScreen opens working dialogs for Account, App Preferences, Security & Encryption, Storage & Cache, Background Execution, and About TapBot v2.3.0",
+        "Unit tests cover AppPreferencesRepository and BootCompletedReceiver multi-bot recovery",
+        "Tests pass"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-P3-02",
+      "title": "No-Code Custom Command & Webhook Bot Engine (CustomWorkflowBotRuntime)",
+      "description": "Implement CustomBotDefinition models, JSON CustomBotRepository, and CustomWorkflowBotRuntime supporting template variables, HTTP webhooks, and inline buttons.",
+      "acceptanceCriteria": [
+        "Add CustomBotDefinition and CommandRule models to core:model",
+        "Implement CustomBotRepository JSON storage and CustomWorkflowBotRuntime in core:runner",
+        "Support template variables ({user}, {user_id}, {chat_id}, {args}, {date}, {webhook_response}) and HTTP GET/POST webhook actions",
+        "Resolve custom bots dynamically in BotRuntimeFactory via ServiceLocator",
+        "Unit tests pass"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-P3-03",
+      "title": "Compose Custom Bot Builder Screen & Store/Fleet Integration",
+      "description": "Add dark OLED CustomBotBuilderScreen and ViewModel integrated into Navigation, Store, and My Fleet.",
+      "acceptanceCriteria": [
+        "Create CustomBotBuilderScreen and CustomBotBuilderViewModel in feature:catalog matching BotHubTheme",
+        "Allow configuring bot name, summary, encrypted Keystore token, and custom command/webhook rules",
+        "Register created bot immediately into CustomBotRepository, CatalogRepository/LocalCache, and BotInstanceManager",
+        "Add navigation route in Screen and TapBotNavHost plus entry action in CatalogScreen/MyBotsScreen",
+        "Unit tests pass"
+      ],
+      "priority": 10,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-P4-01",
+      "title": "Bundle .botpkg Archives & Backend Migration 0008",
+      "description": "Package valid .botpkg archives into app/src/main/assets/packages/ for all built-in bots with matching SHA-256 checksums in MockCatalogApi and add backend D1 migration 0008.",
+      "acceptanceCriteria": [
+        "Create packager script generating valid zip .botpkg archives for all catalog bots in app/src/main/assets/packages/",
+        "Synchronize MockCatalogApi packageUrl, packageSizeBytes, and sha256Checksum values with bundled archives",
+        "Add backend/migrations/0008_v230_catalog_sync.sql",
+        "Verify Catalog & Cloudflare tests pass"
+      ],
+      "priority": 11,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-P4-02",
+      "title": "End-to-End Multi-Module Test Suite, Release APK Build & Merge to Main",
+      "description": "Verify full ./gradlew.bat test, assembleDebug, assembleRelease, update releases/tapbot-v2.3.0.apk and releases/README.md, finalize Ralph files, and merge into main.",
+      "acceptanceCriteria": [
+        "Full ./gradlew.bat test passes with 0 failures across all 8 modules",
+        "./gradlew.bat assembleDebug and ./gradlew.bat assembleRelease succeed",
+        "Copy verified APK to releases/tapbot-v2.3.0.apk and update releases/README.md with real SHA-256 and size",
+        "Mark all prd.json stories passes=true, finalize progress.txt, and merge ralph/tapbot-v230 into main cleanly"
+      ],
+      "priority": 12,
+      "passes": false,
+      "notes": ""
     }
   ]
 }

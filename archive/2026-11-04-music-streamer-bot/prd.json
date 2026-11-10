@@ -1,0 +1,103 @@
+{
+  "project": "TapBot",
+  "branchName": "ralph/music-streamer-bot",
+  "description": "TapStream - On-Device Music Streaming & Audio Telegram Bot for Android with yt-dlp/stream resolver integration and native phone speaker playback",
+  "userStories": [
+    {
+      "id": "US-M01",
+      "title": "TelegramApiClient Audio Delivery Extensions (sendAudio)",
+      "description": "As a user, I want the bot to send playable audio tracks directly to Telegram chat via sendAudio using direct stream URLs or audio files.",
+      "acceptanceCriteria": [
+        "Implement sendAudio with audio stream URL, title, performer, duration, caption, and parseMode in TelegramApiClient",
+        "Implement sendAudio with multipart File upload for cached/downloaded audio files",
+        "Unit test sendAudio request building and parameter serialization in core:network",
+        "Typecheck passes",
+        "Tests pass"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "sendAudio implemented in TelegramApiClient with URL streaming and multipart file upload, SendAudioPayload added to model, and all core:network unit tests pass."
+    },
+    {
+      "id": "US-M02",
+      "title": "Audio Stream Resolver Service (AudioStreamResolver)",
+      "description": "As a user, I want the bot to search and resolve audio streams from YouTube/yt-dlp APIs, audio URLs, and curated 24/7 radio stations.",
+      "acceptanceCriteria": [
+        "Create AudioStreamResolver supporting search queries, direct audio links, and custom yt-dlp API endpoints",
+        "Include curated 24/7 internet radio stations (Lofi Girl, Synthwave, Chillhop, Classic Rock, Jazz FM) with zero-buffering stream URLs",
+        "Parse track metadata (title, artist, durationSeconds, streamUrl, thumbnailUrl)",
+        "Unit test stream resolution, search fallbacks, and radio station indexing in core:runner",
+        "Typecheck passes",
+        "Tests pass"
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": "AudioStreamResolver implemented with direct audio links, custom yt-dlp API integration, 6 curated zero-buffer 24/7 radio stations, and comprehensive unit tests passing."
+    },
+    {
+      "id": "US-M03",
+      "title": "On-Device Android Audio Player Engine (DeviceAudioPlayer)",
+      "description": "As a user, I want the bot to physically stream and play music out loud on the Android phone speakers or connected Bluetooth sound system.",
+      "acceptanceCriteria": [
+        "Implement DeviceAudioPlayer wrapping Android MediaPlayer with async stream preparation and error recovery",
+        "Implement playback control: play, pause, resume, stop, seekTo, and AudioManager volume scaling (0-100)",
+        "Expose real-time PlaybackState flow (status, currentTrack, elapsedMs, durationMs, volumePct)",
+        "Include JVM test fallback so unit tests run cleanly without native Android audio hardware",
+        "Unit test playback states, queue progression, and volume control in core:runner",
+        "Typecheck passes",
+        "Tests pass"
+      ],
+      "priority": 3,
+      "passes": true,
+      "notes": "DeviceAudioPlayer implemented wrapping Android MediaPlayer and AudioManager with volume scaling, seekTo, PlaybackState flow, ASCII progress bar, and comprehensive unit tests passing."
+    },
+    {
+      "id": "US-M04",
+      "title": "TapStream Music Bot Runtime & Interactive Command Router",
+      "description": "As a user, I want Telegram playback commands (/play, /pause, /resume, /stop, /skip, /queue, /nowplaying, /volume, /send, /radio, /mode).",
+      "acceptanceCriteria": [
+        "Upgrade MusicBotRuntime to integrate AudioStreamResolver, DeviceAudioPlayer, and TelegramApiClient sendAudio",
+        "Support dual playback modes: SPEAKER (phone hardware audio) and CHAT (sendAudio in Telegram)",
+        "Implement /nowplaying with visual ASCII time progress bar (▶ 01:23 ━━━━●──────── 03:45)",
+        "Implement /radio command for instant 24/7 streaming station selection",
+        "Unit test all music commands, queue transitions, and mode switching in core:runner",
+        "Typecheck passes",
+        "Tests pass"
+      ],
+      "priority": 4,
+      "passes": true,
+      "notes": "Upgraded MusicBotRuntime with dual routing (SPEAKER, CHAT, BOTH), full interactive music command router, ASCII progress bar, and comprehensive test suite passing with all 81 core:runner tests."
+    },
+    {
+      "id": "US-M05",
+      "title": "Store Catalog Registration & Package Bundling",
+      "description": "As a user, I want TapStream Music Bot visible in the in-app catalog store with configurable credential fields.",
+      "acceptanceCriteria": [
+        "Create backend migration 0007_music_streamer_bot.sql with bot_music_streamer metadata and credentials",
+        "Update MockCatalogApi to register TapStream with stream_resolver_url, default_volume, and playback_mode settings",
+        "Create sample-bots/music-streamer-bot manifest and package tapstream-music-1.0.0.botpkg into app assets",
+        "Update BotRuntimeFactory to map music-streamer to MusicBotRuntime",
+        "Typecheck passes",
+        "Tests pass"
+      ],
+      "priority": 5,
+      "passes": true,
+      "notes": "Created 0007_music_streamer_bot.sql, updated MockCatalogApi with full credentials and versions, created sample-bots/music-streamer-bot manifest, packaged tapstream-music-1.0.0.botpkg into app assets, mapped BotRuntimeFactory, and all unit tests pass."
+    },
+    {
+      "id": "US-M06",
+      "title": "End-to-End Build & Multi-Module Verification",
+      "description": "As a developer, I want the full project build and unit test suite across all modules to pass cleanly.",
+      "acceptanceCriteria": [
+        "Run ./gradlew.bat test across all modules (:core:runner, :core:network, :feature:catalog, :feature:botdetail, :app)",
+        "Run ./gradlew.bat assembleDebug and verify APK packaging without regressions",
+        "Verify all user stories pass in prd.json",
+        "Typecheck passes",
+        "Tests pass"
+      ],
+      "priority": 6,
+      "passes": true,
+      "notes": "Full test suite across all 271 tasks and assembleDebug executed successfully. Generated app-debug.apk (19.3MB) without regressions. All 6 user stories pass."
+    }
+  ]
+}

@@ -319,6 +319,18 @@ class CatalogViewModel(
         }
     }
 
+    fun resetFilters() {
+        val current = _uiState.value as? CatalogUiState.Success ?: return
+        val filtered = filterBots(category = "All", query = "")
+        _uiState.update {
+            current.copy(
+                selectedCategory = "All",
+                searchQuery = "",
+                bots = filtered
+            )
+        }
+    }
+
     private fun filterBots(category: String, query: String): List<BotMetadata> {
         return allBots.filter { bot ->
             val matchesCategory = (category == "All" || bot.category.equals(category, ignoreCase = true))

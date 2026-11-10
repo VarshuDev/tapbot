@@ -69,6 +69,7 @@ class MusicBotRuntime(
 
     override suspend fun initialize(context: RuntimeContext) {
         this.context = context
+        ServiceLocator.setActiveAudioPlayer(audioPlayer)
         val initialVol = context.credentials["default_volume"]?.toIntOrNull() ?: 80
         audioPlayer.setVolume(initialVol)
 
@@ -753,6 +754,9 @@ class MusicBotRuntime(
 
     override suspend fun stop() {
         audioPlayer.release()
+        if (ServiceLocator.activeAudioPlayer.value === audioPlayer) {
+            ServiceLocator.setActiveAudioPlayer(null)
+        }
         queue.clear()
         currentTrackIndex = -1
         pollJob?.cancel()

@@ -11,7 +11,10 @@ import com.tapbot.core.network.CatalogRepository
 import com.tapbot.core.network.DowngradeAttackChecker
 import com.tapbot.core.network.LocalBotInstallationManager
 import com.tapbot.core.network.OfflineFirstCatalogRepository
+import com.tapbot.core.network.TelegramApiClient
+import com.tapbot.core.runner.BotForegroundService
 import com.tapbot.core.runner.BotServiceController
+import com.tapbot.core.runner.custom.CustomBotRepository
 import com.tapbot.core.runner.manager.BotInstanceManager
 import com.tapbot.core.security.SecretRedactor
 import com.tapbot.core.security.SecureCredentialStore
@@ -31,7 +34,9 @@ class BotDetailViewModel(
     private val packageDownloader: BotPackageDownloader? = null,
     private val installationManager: LocalBotInstallationManager? = null,
     private val appVersionCode: Int = 1,
-    private val botInstanceManager: BotInstanceManager? = null
+    private val botInstanceManager: BotInstanceManager? = null,
+    private val telegramApiClient: TelegramApiClient? = null,
+    private val customBotRepository: CustomBotRepository? = null
 ) : ViewModel() {
 
     // Secondary constructor accepting CatalogApi for backward compatibility
@@ -66,12 +71,22 @@ class BotDetailViewModel(
         loadBotData()
         observeRunState()
         observeLogs()
+        observeBotUsername()
+        observeCustomDefinition()
     }
 
     private fun loadBotData() {
         viewModelScope.launch {
             _uiState.value = BotDetailUiState.Loading
-            catalogRepository.getBotDetails(botId, forceRefresh = true)
+            val customDef = customBotRepository?.getDefinition(botId)
+            val detailsResult = catalogRepository.getBotDetails(botId, forceRefresh = true)
+            val resolvedResult = if (detailsResult.isSuccess) {
+                detailsResult
+            } else {
+                customDef?.let { Result.success(it.toBotMetadata()) } ?: detailsResult
+            }
+
+            resolvedResult
                 .onSuccess { bot ->
                     val savedCredentials = credentialStore.getAllCredentials(botId)
                     var instance = botInstanceManager?.getInstanceByBotId(bot.id)
@@ -92,15 +107,21 @@ class BotDetailViewModel(
                         else -> packageDownloader == null
                     }
                     val installedVer = installationManager?.getInstalledVersion(bot.id) ?: instance?.version
+                    val liveUsername = BotForegroundService.botUsernames.value[botId]
+                        ?.trim()
+                        ?.removePrefix("@")
+                        ?.takeIf { it.isNotBlank() }
 
                     _uiState.value = BotDetailUiState.Success(
-                        bot = bot,
+                        bot = customDef?.toBotMetadata() ?: bot,
                         isInstalled = installed,
                         installedVersion = installedVer,
                         credentials = savedCredentials,
                         isConfiguring = savedCredentials.isEmpty(),
                         runState = botServiceController.getBotRunState(botId).value,
-                        logs = logRepository.getLogStream(botId).value
+                        logs = logRepository.getLogStream(botId).value,
+                        verifiedBotUsername = liveUsername,
+                        customDefinition = customDef
                     )
                 }
                 .onFailure { err ->
@@ -121,28 +142,40 @@ class BotDetailViewModel(
      * 8. Show configuration screen (does NOT start automatically)
      */
     fun installBot() {
-        val current = _uiState.value as? BotDetailUiState.Success ?: return
+        val initial = _uiState.value as? BotDetailUiState.Success ?: return
 
         viewModelScope.launch {
-            _uiState.value = current.copy(isInstalling = true, installProgress = 0.05f, installError = null)
+            _uiState.update { st ->
+                if (st is BotDetailUiState.Success) {
+                    st.copy(isInstalling = true, installProgress = 0.05f, installError = null)
+                } else st
+            }
 
-            val bot = current.bot
+            val bot = initial.bot
 
             // Step 2: Check compatibility
             if (bot.minimumAppVersion > appVersionCode) {
-                _uiState.value = current.copy(
-                    isInstalling = false,
-                    installError = "App update required (Bot requires App v${bot.minimumAppVersion}, current is v$appVersionCode)"
-                )
+                _uiState.update { st ->
+                    if (st is BotDetailUiState.Success) {
+                        st.copy(
+                            isInstalling = false,
+                            installError = "App update required (Bot requires App v${bot.minimumAppVersion}, current is v$appVersionCode)"
+                        )
+                    } else st
+                }
                 return@launch
             }
 
             val runtimeNormalized = bot.packageInfo.runtimeType.lowercase()
             if (runtimeNormalized !in SUPPORTED_RUNTIMES) {
-                _uiState.value = current.copy(
-                    isInstalling = false,
-                    installError = "Unsupported runtime: ${bot.packageInfo.runtimeType}"
-                )
+                _uiState.update { st ->
+                    if (st is BotDetailUiState.Success) {
+                        st.copy(
+                            isInstalling = false,
+                            installError = "Unsupported runtime: ${bot.packageInfo.runtimeType}"
+                        )
+                    } else st
+                }
                 return@launch
             }
 
@@ -150,10 +183,14 @@ class BotDetailViewModel(
             val currentInstalledVersion = installationManager?.getInstalledVersion(bot.id)
                 ?: botInstanceManager?.getInstanceByBotId(bot.id)?.version
             if (currentInstalledVersion != null && DowngradeAttackChecker.isDowngrade(currentInstalledVersion, bot.version)) {
-                _uiState.value = current.copy(
-                    isInstalling = false,
-                    installError = "Package downgrade rejected: Candidate v${bot.version} is older than installed v$currentInstalledVersion"
-                )
+                _uiState.update { st ->
+                    if (st is BotDetailUiState.Success) {
+                        st.copy(
+                            isInstalling = false,
+                            installError = "Package downgrade rejected: Candidate v${bot.version} is older than installed v$currentInstalledVersion"
+                        )
+                    } else st
+                }
                 return@launch
             }
 
@@ -166,12 +203,16 @@ class BotDetailViewModel(
                         ?: File.createTempFile("tapbot_${bot.id}_", ".botpkg")
                     botInstanceManager.install(bot, pkgFile)
                 }
-                _uiState.value = current.copy(
-                    isInstalling = false,
-                    isInstalled = true,
-                    installedVersion = currentInstalledVersion,
-                    installProgress = 1.0f
-                )
+                _uiState.update { st ->
+                    if (st is BotDetailUiState.Success) {
+                        st.copy(
+                            isInstalling = false,
+                            isInstalled = true,
+                            installedVersion = currentInstalledVersion,
+                            installProgress = 1.0f
+                        )
+                    } else st
+                }
                 return@launch
             }
 
@@ -206,19 +247,27 @@ class BotDetailViewModel(
                     }
 
                     // Step 8: Show configuration screen
-                    _uiState.value = current.copy(
-                        isInstalled = true,
-                        isInstalling = false,
-                        installedVersion = bot.version,
-                        installProgress = 1.0f,
-                        isConfiguring = true
-                    )
+                    _uiState.update { st ->
+                        if (st is BotDetailUiState.Success) {
+                            st.copy(
+                                isInstalled = true,
+                                isInstalling = false,
+                                installedVersion = bot.version,
+                                installProgress = 1.0f,
+                                isConfiguring = true
+                            )
+                        } else st
+                    }
                 }
                 .onFailure { err ->
-                    _uiState.value = current.copy(
-                        isInstalling = false,
-                        installError = err.message ?: "Package verification or download failed"
-                    )
+                    _uiState.update { st ->
+                        if (st is BotDetailUiState.Success) {
+                            st.copy(
+                                isInstalling = false,
+                                installError = err.message ?: "Package verification or download failed"
+                            )
+                        } else st
+                    }
                 }
         }
     }
@@ -242,6 +291,43 @@ class BotDetailViewModel(
                     if (current is BotDetailUiState.Success) {
                         current.copy(logs = logs)
                     } else current
+                }
+            }
+        }
+    }
+
+    private fun observeBotUsername() {
+        viewModelScope.launch {
+            BotForegroundService.botUsernames.collect { usernames ->
+                val liveUsername = usernames[botId]?.trim()?.removePrefix("@")?.takeIf { it.isNotBlank() }
+                if (liveUsername != null) {
+                    _uiState.update { current ->
+                        if (current is BotDetailUiState.Success) {
+                            current.copy(
+                                verifiedBotUsername = liveUsername,
+                                tokenVerifyError = null
+                            )
+                        } else current
+                    }
+                }
+            }
+        }
+    }
+
+    private fun observeCustomDefinition() {
+        val repo = customBotRepository ?: return
+        viewModelScope.launch {
+            repo.definitions.collect { defs ->
+                val def = defs.firstOrNull { it.id == botId }
+                if (def != null) {
+                    _uiState.update { current ->
+                        if (current is BotDetailUiState.Success) {
+                            current.copy(
+                                customDefinition = def,
+                                bot = def.toBotMetadata()
+                            )
+                        } else current
+                    }
                 }
             }
         }
@@ -295,15 +381,89 @@ class BotDetailViewModel(
     }
 
     fun updateCredential(key: String, value: String) {
+        val isTokenKey = key.equals("bot_token", ignoreCase = true) ||
+            key.equals("telegram_bot_token", ignoreCase = true)
+        _uiState.update { current ->
+            if (current !is BotDetailUiState.Success) return@update current
+            val updated = current.credentials.toMutableMap().apply { put(key, value) }
+            val updatedErrors = current.credentialErrors.toMutableMap().apply { remove(key) }
+            current.copy(
+                credentials = updated,
+                credentialErrors = updatedErrors,
+                generalCredentialError = null,
+                credentialSaveSuccess = false,
+                verifiedBotUsername = if (isTokenKey) null else current.verifiedBotUsername,
+                tokenVerifyError = if (isTokenKey) null else current.tokenVerifyError
+            )
+        }
+    }
+
+    fun verifyToken() {
         val current = _uiState.value as? BotDetailUiState.Success ?: return
-        val updated = current.credentials.toMutableMap().apply { put(key, value) }
-        val updatedErrors = current.credentialErrors.toMutableMap().apply { remove(key) }
-        _uiState.value = current.copy(
-            credentials = updated,
-            credentialErrors = updatedErrors,
-            generalCredentialError = null,
-            credentialSaveSuccess = false
-        )
+        val token = current.credentials["bot_token"]?.trim()?.takeIf { it.isNotBlank() }
+            ?: current.credentials["telegram_bot_token"]?.trim().orEmpty()
+
+        val tgRegex = Regex("""^\d{5,16}:[a-zA-Z0-9_-]{6,64}$""")
+        if (token.isBlank() || !tgRegex.matches(token)) {
+            _uiState.update { st ->
+                if (st is BotDetailUiState.Success) {
+                    st.copy(
+                        isVerifyingToken = false,
+                        verifiedBotUsername = null,
+                        tokenVerifyError = "Invalid Telegram Bot Token format (e.g. 123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ)"
+                    )
+                } else st
+            }
+            return
+        }
+
+        val apiClient = telegramApiClient
+        if (apiClient == null) {
+            _uiState.update { st ->
+                if (st is BotDetailUiState.Success) {
+                    st.copy(
+                        isVerifyingToken = false,
+                        tokenVerifyError = "Telegram API client is unavailable."
+                    )
+                } else st
+            }
+            return
+        }
+
+        viewModelScope.launch {
+            SecretRedactor.registerSecret(token)
+            _uiState.update { st ->
+                if (st is BotDetailUiState.Success) {
+                    st.copy(isVerifyingToken = true, tokenVerifyError = null)
+                } else st
+            }
+            apiClient.getMe(token)
+                .onSuccess { user ->
+                    val username = user.username?.trim()?.removePrefix("@")?.takeIf { it.isNotBlank() }
+                        ?: user.firstName.trim()
+                    _uiState.update { st ->
+                        if (st is BotDetailUiState.Success) {
+                            st.copy(
+                                isVerifyingToken = false,
+                                verifiedBotUsername = username,
+                                tokenVerifyError = null
+                            )
+                        } else st
+                    }
+                }
+                .onFailure { err ->
+                    val redactedErr = SecretRedactor.redact(err.message ?: "Telegram verification failed")
+                    _uiState.update { st ->
+                        if (st is BotDetailUiState.Success) {
+                            st.copy(
+                                isVerifyingToken = false,
+                                verifiedBotUsername = null,
+                                tokenVerifyError = redactedErr
+                            )
+                        } else st
+                    }
+                }
+        }
     }
 
     fun saveCredentials(): Boolean {
@@ -311,36 +471,50 @@ class BotDetailViewModel(
         if (!validateCredentials()) {
             return false
         }
+        val credsToSave = current.credentials.toMap()
         viewModelScope.launch {
-            _uiState.value = current.copy(isSavingCredentials = true)
-            for ((key, value) in current.credentials) {
+            _uiState.update { st ->
+                if (st is BotDetailUiState.Success) st.copy(isSavingCredentials = true) else st
+            }
+            for ((key, value) in credsToSave) {
                 if (value.isNotBlank()) {
                     credentialStore.saveCredential(botId, key, value)
                     SecretRedactor.registerSecret(value)
                 }
             }
-            _uiState.value = current.copy(
-                isSavingCredentials = false,
-                credentialSaveSuccess = true,
-                isConfiguring = false,
-                credentialErrors = emptyMap(),
-                generalCredentialError = null
-            )
+            _uiState.update { st ->
+                if (st is BotDetailUiState.Success) {
+                    st.copy(
+                        isSavingCredentials = false,
+                        credentialSaveSuccess = true,
+                        isConfiguring = false,
+                        credentialErrors = emptyMap(),
+                        generalCredentialError = null
+                    )
+                } else st
+            }
         }
         return true
     }
 
     fun deleteCredentials() {
-        val current = _uiState.value as? BotDetailUiState.Success ?: return
+        _uiState.value as? BotDetailUiState.Success ?: return
         viewModelScope.launch {
             credentialStore.deleteCredentials(botId)
-            _uiState.value = current.copy(
-                credentials = emptyMap(),
-                credentialErrors = emptyMap(),
-                generalCredentialError = null,
-                credentialSaveSuccess = false,
-                isConfiguring = true
-            )
+            _uiState.update { st ->
+                if (st is BotDetailUiState.Success) {
+                    st.copy(
+                        credentials = emptyMap(),
+                        credentialErrors = emptyMap(),
+                        generalCredentialError = null,
+                        credentialSaveSuccess = false,
+                        isConfiguring = true,
+                        verifiedBotUsername = null,
+                        isVerifyingToken = false,
+                        tokenVerifyError = null
+                    )
+                } else st
+            }
         }
     }
 
@@ -359,21 +533,29 @@ class BotDetailViewModel(
         if (!validateCredentials()) {
             return
         }
+        val credsToSave = current.credentials.toMap()
+        val botMeta = current.bot
         viewModelScope.launch {
-            _uiState.value = current.copy(isSavingCredentials = true)
-            for ((key, value) in current.credentials) {
+            _uiState.update { st ->
+                if (st is BotDetailUiState.Success) st.copy(isSavingCredentials = true) else st
+            }
+            for ((key, value) in credsToSave) {
                 if (value.isNotBlank()) {
                     credentialStore.saveCredential(botId, key, value)
                     SecretRedactor.registerSecret(value)
                 }
             }
-            _uiState.value = current.copy(
-                isSavingCredentials = false,
-                credentialSaveSuccess = true,
-                isConfiguring = false,
-                credentialErrors = emptyMap(),
-                generalCredentialError = null
-            )
+            _uiState.update { st ->
+                if (st is BotDetailUiState.Success) {
+                    st.copy(
+                        isSavingCredentials = false,
+                        credentialSaveSuccess = true,
+                        isConfiguring = false,
+                        credentialErrors = emptyMap(),
+                        generalCredentialError = null
+                    )
+                } else st
+            }
 
             if (botInstanceManager != null) {
                 var instance = botInstanceManager.getInstanceByBotId(botId)
@@ -381,7 +563,7 @@ class BotDetailViewModel(
                     val pkgFile = installationManager?.getInstalledBots()?.find { it.botId == botId }
                         ?.packagePath?.let(::File)?.takeIf { it.exists() }
                         ?: File.createTempFile("tapbot_${botId}_", ".botpkg")
-                    botInstanceManager.install(current.bot, pkgFile)
+                    botInstanceManager.install(botMeta, pkgFile)
                     instance = botInstanceManager.getInstanceByBotId(botId)
                 }
                 if (instance != null) {
@@ -428,20 +610,24 @@ class BotDetailViewModel(
             packageDownloader: BotPackageDownloader? = null,
             installationManager: LocalBotInstallationManager? = null,
             appVersionCode: Int = 1,
-            botInstanceManager: BotInstanceManager? = null
+            botInstanceManager: BotInstanceManager? = null,
+            telegramApiClient: TelegramApiClient? = null,
+            customBotRepository: CustomBotRepository? = null
         ): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
                 return BotDetailViewModel(
-                    botId,
-                    catalogRepository,
-                    credentialStore,
-                    botServiceController,
-                    logRepository,
-                    packageDownloader,
-                    installationManager,
-                    appVersionCode,
-                    botInstanceManager
+                    botId = botId,
+                    catalogRepository = catalogRepository,
+                    credentialStore = credentialStore,
+                    botServiceController = botServiceController,
+                    logRepository = logRepository,
+                    packageDownloader = packageDownloader,
+                    installationManager = installationManager,
+                    appVersionCode = appVersionCode,
+                    botInstanceManager = botInstanceManager,
+                    telegramApiClient = telegramApiClient,
+                    customBotRepository = customBotRepository
                 ) as T
             }
         }

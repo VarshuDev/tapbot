@@ -33,6 +33,7 @@ dependencies {
     implementation(project(":core:network"))
     implementation(project(":core:logging"))
     implementation(project(":core:runner"))
+    implementation(project(":core:ui"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.compose)

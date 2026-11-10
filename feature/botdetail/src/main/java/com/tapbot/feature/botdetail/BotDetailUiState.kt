@@ -3,6 +3,7 @@ package com.tapbot.feature.botdetail
 import com.tapbot.core.model.BotLogEntry
 import com.tapbot.core.model.BotMetadata
 import com.tapbot.core.model.BotRunState
+import com.tapbot.core.model.CustomBotDefinition
 
 sealed interface BotDetailUiState {
     object Loading : BotDetailUiState
@@ -20,7 +21,11 @@ sealed interface BotDetailUiState {
         val runState: BotRunState = BotRunState.Stopped,
         val logs: List<BotLogEntry> = emptyList(),
         val isSavingCredentials: Boolean = false,
-        val credentialSaveSuccess: Boolean = false
+        val credentialSaveSuccess: Boolean = false,
+        val verifiedBotUsername: String? = null,
+        val isVerifyingToken: Boolean = false,
+        val tokenVerifyError: String? = null,
+        val customDefinition: CustomBotDefinition? = null
     ) : BotDetailUiState
     data class Error(val message: String) : BotDetailUiState
 }

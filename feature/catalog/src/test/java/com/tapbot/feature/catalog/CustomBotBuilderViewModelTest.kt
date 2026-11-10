@@ -130,4 +130,61 @@ class CustomBotBuilderViewModelTest {
         assertTrue(installMgr.isInstalled(savedId))
         assertNotNull(instanceMgr.getInstanceByBotId(savedId))
     }
+
+    @Test
+    fun `applyBlueprint populates template rules and loadBotForEditing preserves id and createdAt`() = runTest(testDispatcher) {
+        val customRepo = CustomBotRepository(storageFile = null)
+        val credStore = FakeCredentialStore()
+        val cache = LocalCatalogCache(cacheFile = null)
+        val installMgr = DefaultLocalBotInstallationManager(storageFile = null, installDir = null)
+
+        val creatorVm = CustomBotBuilderViewModel(
+            customBotRepository = customRepo,
+            credentialStore = credStore,
+            localCatalogCache = cache,
+            localInstallationManager = installMgr
+        )
+
+        creatorVm.applyBlueprint("webhook_monitor")
+        val afterBlueprint = creatorVm.uiState.value
+        assertEquals("webhook_monitor", afterBlueprint.selectedBlueprintId)
+        assertEquals("Webhook Relay Bot", afterBlueprint.botName)
+        assertEquals(2, afterBlueprint.rules.size)
+        assertTrue(afterBlueprint.rules.any { it.command == "/webhook" })
+
+        creatorVm.updateTelegramToken("111222333:BlueprintTokenSecret_999")
+        creatorVm.saveCustomBot()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val createdId = creatorVm.uiState.value.savedBotId!!
+        val originalDef = customRepo.getDefinition(createdId)!!
+
+        // Now open an editor ViewModel for the existing custom bot
+        val editorVm = CustomBotBuilderViewModel(
+            customBotRepository = customRepo,
+            credentialStore = credStore,
+            localCatalogCache = cache,
+            localInstallationManager = installMgr
+        )
+        editorVm.loadBotForEditing(createdId)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val editState = editorVm.uiState.value
+        assertTrue(editState.isEditing)
+        assertEquals(createdId, editState.editingBotId)
+        assertEquals(originalDef.createdAt, editState.originalCreatedAt)
+        assertEquals("111222333:BlueprintTokenSecret_999", editState.telegramToken)
+
+        editorVm.updateBotName("Webhook Relay Pro")
+        editorVm.addRule()
+        editorVm.saveCustomBot()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(createdId, editorVm.uiState.value.savedBotId)
+        val updatedDef = customRepo.getDefinition(createdId)!!
+        assertEquals("Webhook Relay Pro", updatedDef.name)
+        assertEquals(originalDef.createdAt, updatedDef.createdAt)
+        assertEquals(3, updatedDef.rules.size)
+        assertEquals("Webhook Relay Pro", cache.getCachedBot(createdId)?.name)
+    }
 }

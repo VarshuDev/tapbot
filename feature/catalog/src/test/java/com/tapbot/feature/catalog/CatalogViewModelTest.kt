@@ -370,4 +370,25 @@ class CatalogViewModelTest {
         assertEquals("https://my-custom-catalog.example.com", viewModel.appPreferences.value.customCatalogUrl)
         assertTrue(repo.getBotsCount >= 2)
     }
+
+    @Test
+    fun resetFilters_clearsSearchQueryAndCategoryToRestoreAllBots() = runTest(testDispatcher) {
+        val repo = FakeCatalogRepository(Result.success(listOf(sampleBot1, sampleBot2)))
+        val viewModel = CatalogViewModel(repo)
+
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.selectCategory("Media")
+        viewModel.updateSearchQuery("NonExistentBotQuery")
+        val emptyState = viewModel.uiState.value as CatalogUiState.Success
+        assertEquals(0, emptyState.bots.size)
+        assertEquals("Media", emptyState.selectedCategory)
+        assertEquals("NonExistentBotQuery", emptyState.searchQuery)
+
+        viewModel.resetFilters()
+        val resetState = viewModel.uiState.value as CatalogUiState.Success
+        assertEquals("All", resetState.selectedCategory)
+        assertEquals("", resetState.searchQuery)
+        assertEquals(2, resetState.bots.size)
+    }
 }

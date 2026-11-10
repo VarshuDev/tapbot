@@ -204,9 +204,9 @@ class TapBotApplication : Application() {
 
     fun getAppVersionName(): String {
         return try {
-            packageManager.getPackageInfo(packageName, 0).versionName ?: "2.3.0"
+            packageManager.getPackageInfo(packageName, 0).versionName ?: "2.4.0"
         } catch (_: Exception) {
-            "2.3.0"
+            "2.4.0"
         }
     }
 
@@ -226,12 +226,12 @@ class TapBotApplication : Application() {
 
     fun buildDiagnosticsReport(): String {
         val pInfo = try { packageManager.getPackageInfo(packageName, 0) } catch (_: Exception) { null }
-        val vName = pInfo?.versionName ?: "2.3.0"
+        val vName = pInfo?.versionName ?: "2.4.0"
         val vCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            pInfo?.longVersionCode ?: 230L
+            pInfo?.longVersionCode ?: 240L
         } else {
             @Suppress("DEPRECATION")
-            pInfo?.versionCode?.toLong() ?: 230L
+            pInfo?.versionCode?.toLong() ?: 240L
         }
         val instances = botInstanceManager.instances.value
         val prefs = appPreferencesRepository.preferences.value

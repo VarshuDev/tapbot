@@ -15,6 +15,7 @@ import com.tapbot.core.model.BotInstanceStatus
 import com.tapbot.core.model.BotRunState
 import com.tapbot.core.model.LogLevel
 import com.tapbot.core.network.TelegramApiClient
+import com.tapbot.core.runner.audio.DeviceAudioPlayer
 import com.tapbot.core.runner.manager.BotInstanceManager
 import com.tapbot.core.runner.runtime.BotRuntime
 import com.tapbot.core.runner.runtime.BotRuntimeFactory
@@ -205,6 +206,7 @@ class BotForegroundService : Service() {
             logRepo?.appendLog(botId, LogLevel.ERROR, TAG, "CRASH DETECTED in '$botName': $crashMsg")
             manager?.recordCrash(effectiveInstallationId, crashMsg)
             _botStates.update { it + (botId to BotRunState.Error(crashMsg)) }
+            _botUsernames.update { it - botId }
             activeExecutions.remove(effectiveInstallationId)
             updateNotification()
             checkOrphanedService()
@@ -213,7 +215,17 @@ class BotForegroundService : Service() {
         val childJob = serviceScope.launch(crashHandler) {
             runtime.state.collect { st ->
                 when (st) {
+                    is BotRuntimeState.Connected -> {
+                        val uname = st.botUsername.trim().removePrefix("@")
+                        if (uname.isNotBlank()) {
+                            _botUsernames.update { it + (botId to uname) }
+                        }
+                    }
                     is BotRuntimeState.Running -> {
+                        val uname = st.botUsername.trim().removePrefix("@")
+                        if (uname.isNotBlank()) {
+                            _botUsernames.update { it + (botId to uname) }
+                        }
                         manager?.updateInstanceStatus(
                             effectiveInstallationId,
                             BotInstanceStatus.Running(
@@ -237,10 +249,12 @@ class BotForegroundService : Service() {
                         logRepo?.appendLog(botId, LogLevel.ERROR, TAG, "Runtime error: ${st.message}")
                         manager?.recordCrash(effectiveInstallationId, st.message)
                         _botStates.update { it + (botId to BotRunState.Error(st.message)) }
+                        _botUsernames.update { it - botId }
                     }
                     is BotRuntimeState.Stopped -> {
                         manager?.updateInstanceStatus(effectiveInstallationId, BotInstanceStatus.Stopped)
                         _botStates.update { it + (botId to BotRunState.Stopped) }
+                        _botUsernames.update { it - botId }
                     }
                     else -> {}
                 }
@@ -285,6 +299,8 @@ class BotForegroundService : Service() {
             val err = "Initialization failed: ${e.message}"
             logRepo?.appendLog(botId, LogLevel.ERROR, TAG, err)
             manager?.recordCrash(effectiveInstallationId, err)
+            _botStates.update { it + (botId to BotRunState.Error(err)) }
+            _botUsernames.update { it - botId }
             activeExecutions.remove(effectiveInstallationId)
             childJob.cancel()
         }
@@ -312,12 +328,15 @@ class BotForegroundService : Service() {
             )
             ServiceLocator.botInstanceManager?.updateInstanceStatus(execution.installationId, BotInstanceStatus.Stopped)
             _botStates.update { it + (execution.botId to BotRunState.Stopped) }
+            _botUsernames.update { it - execution.botId }
         } else {
-            val resolvedInstId = ServiceLocator.botInstanceManager?.getInstance(installationId)?.installationId
-                ?: ServiceLocator.botInstanceManager?.getInstanceByBotId(installationId)?.installationId
-                ?: installationId
+            val resolvedInstance = ServiceLocator.botInstanceManager?.getInstance(installationId)
+                ?: ServiceLocator.botInstanceManager?.getInstanceByBotId(installationId)
+            val resolvedInstId = resolvedInstance?.installationId ?: installationId
+            val targetBotId = resolvedInstance?.botId ?: installationId
             ServiceLocator.botInstanceManager?.updateInstanceStatus(resolvedInstId, BotInstanceStatus.Stopped)
-            _botStates.update { it + (installationId to BotRunState.Stopped) }
+            _botStates.update { it + (targetBotId to BotRunState.Stopped) }
+            _botUsernames.update { it - targetBotId - installationId }
         }
 
         updateNotification()
@@ -335,6 +354,7 @@ class BotForegroundService : Service() {
         activeExecutions.clear()
         _runtimeState.value = BotRuntimeState.Stopped
         _botStates.value = emptyMap()
+        _botUsernames.value = emptyMap()
 
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
@@ -380,6 +400,7 @@ class BotForegroundService : Service() {
         if (activeExecutions.isEmpty()) {
             _runtimeState.value = BotRuntimeState.Stopped
             _botStates.value = emptyMap()
+            _botUsernames.value = emptyMap()
             stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()
         }
@@ -456,6 +477,9 @@ class BotForegroundService : Service() {
         private val _botStates = MutableStateFlow<Map<String, BotRunState>>(emptyMap())
         val botStates: StateFlow<Map<String, BotRunState>> = _botStates.asStateFlow()
 
+        private val _botUsernames = MutableStateFlow<Map<String, String>>(emptyMap())
+        val botUsernames: StateFlow<Map<String, String>> = _botUsernames.asStateFlow()
+
         internal fun updateStateDirectly(state: BotRuntimeState) {
             _runtimeState.value = state
         }
@@ -478,4 +502,11 @@ object ServiceLocator {
     var botInstanceManager: BotInstanceManager? = null
     var appPreferencesRepository: com.tapbot.core.network.AppPreferencesRepository? = null
     var customBotRepository: com.tapbot.core.runner.custom.CustomBotRepository? = null
+
+    private val _activeAudioPlayer = MutableStateFlow<DeviceAudioPlayer?>(null)
+    val activeAudioPlayer: StateFlow<DeviceAudioPlayer?> = _activeAudioPlayer.asStateFlow()
+
+    fun setActiveAudioPlayer(player: DeviceAudioPlayer?) {
+        _activeAudioPlayer.value = player
+    }
 }

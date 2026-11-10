@@ -520,7 +520,7 @@ class ExonBotRuntime(
                 val uptime = formatUptime(System.currentTimeMillis() - startTime)
                 val aliveMsg = "✨ <b>ᴇxᴏɴ ʀᴏʙᴏᴛ ɪs ᴀʟɪᴠᴇ & ʀᴜɴɴɪɴɢ</b> ✨\n" +
                     "──────────────────\n" +
-                    "<b>• ᴠᴇʀsɪᴏɴ:</b> 2.3.0 (TapBot On-Device ART)\n" +
+                    "<b>• ᴠᴇʀsɪᴏɴ:</b> 2.4.0 (TapBot On-Device ART)\n" +
                     "<b>• ᴘʏᴛʜᴏɴ ᴘᴏʀᴛ:</b> ExonRobot 2.0 Persistence & Auto-Mod\n" +
                     "<b>• ᴇɴɢɪɴᴇ:</b> Native Kotlin Android Coroutines\n" +
                     "<b>• ᴜᴘᴛɪᴍᴇ:</b> <code>$uptime</code>"

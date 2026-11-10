@@ -77,12 +77,12 @@ class ApkDeliveryService(
             null
         }
 
-        val versionName = pInfo?.versionName ?: "2.3.0"
+        val versionName = pInfo?.versionName ?: "2.4.0"
         val versionCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            try { pInfo?.longVersionCode ?: 230L } catch (_: Throwable) { 230L }
+            try { pInfo?.longVersionCode ?: 240L } catch (_: Throwable) { 240L }
         } else {
             @Suppress("DEPRECATION")
-            try { pInfo?.versionCode?.toLong() ?: 230L } catch (_: Throwable) { 230L }
+            try { pInfo?.versionCode?.toLong() ?: 240L } catch (_: Throwable) { 240L }
         }
 
         return ApkFileInfo(

@@ -32,7 +32,20 @@ data class DraftCommandRule(
     val matchPrefix: Boolean = true
 )
 
+data class CustomBotBlueprint(
+    val id: String,
+    val title: String,
+    val tagline: String,
+    val defaultBotName: String,
+    val summary: String,
+    val welcomeMessage: String,
+    val rules: List<DraftCommandRule>
+)
+
 data class CustomBotBuilderUiState(
+    val editingBotId: String? = null,
+    val originalCreatedAt: Long? = null,
+    val selectedBlueprintId: String? = null,
     val botName: String = "",
     val summary: String = "",
     val telegramToken: String = "",
@@ -48,7 +61,9 @@ data class CustomBotBuilderUiState(
     val isSaving: Boolean = false,
     val errorMessage: String? = null,
     val savedBotId: String? = null
-)
+) {
+    val isEditing: Boolean get() = editingBotId != null
+}
 
 class CustomBotBuilderViewModel(
     private val customBotRepository: CustomBotRepository,
@@ -77,6 +92,59 @@ class CustomBotBuilderViewModel(
 
     fun updateWelcomeMessage(welcome: String) {
         _uiState.update { it.copy(welcomeMessage = welcome, errorMessage = null) }
+    }
+
+    fun applyBlueprint(blueprintId: String) {
+        val blueprint = STARTER_BLUEPRINTS.firstOrNull { it.id == blueprintId } ?: return
+        ruleCounter = maxOf(ruleCounter, blueprint.rules.size + 1)
+        _uiState.update { current ->
+            current.copy(
+                selectedBlueprintId = blueprint.id,
+                botName = if (current.isEditing && current.botName.isNotBlank()) current.botName else blueprint.defaultBotName,
+                summary = blueprint.summary,
+                welcomeMessage = blueprint.welcomeMessage,
+                rules = blueprint.rules,
+                errorMessage = null
+            )
+        }
+    }
+
+    fun loadBotForEditing(botId: String) {
+        if (botId.isBlank() || _uiState.value.editingBotId == botId) return
+        viewModelScope.launch {
+            val def = customBotRepository.getDefinition(botId) ?: return@launch
+            val savedToken = credentialStore?.getCredential(botId, "bot_token")?.takeIf { it.isNotBlank() }
+                ?: credentialStore?.getCredential(botId, "telegram_bot_token").orEmpty()
+
+            val mappedRules = def.rules.mapIndexed { idx, rule ->
+                DraftCommandRule(
+                    id = rule.id.ifBlank { "rule_${idx + 1}" },
+                    command = rule.command,
+                    description = rule.description,
+                    responseTemplate = rule.responseTemplate,
+                    webhookUrl = rule.webhookUrl.orEmpty(),
+                    webhookMethod = rule.webhookMethod,
+                    webhookBodyTemplate = rule.webhookBodyTemplate.orEmpty(),
+                    buttonLabel = rule.buttonLabel.orEmpty(),
+                    matchPrefix = rule.matchPrefix
+                )
+            }
+            ruleCounter = mappedRules.size + 1
+            _uiState.update { current ->
+                current.copy(
+                    editingBotId = def.id,
+                    originalCreatedAt = def.createdAt,
+                    selectedBlueprintId = null,
+                    botName = def.name,
+                    summary = def.summary,
+                    telegramToken = savedToken,
+                    welcomeMessage = def.welcomeMessage,
+                    rules = mappedRules.ifEmpty { current.rules },
+                    errorMessage = null,
+                    savedBotId = null
+                )
+            }
+        }
     }
 
     fun addRule() {
@@ -172,20 +240,25 @@ class CustomBotBuilderViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isSaving = true, errorMessage = null) }
 
-            val slug = name.lowercase(Locale.US)
-                .replace(Regex("[^a-z0-9]+"), "_")
-                .trim('_')
-                .ifBlank { "workflow" }
-                .take(24)
-            val botId = "bot_custom_${slug}_${System.currentTimeMillis()}"
+            val existingId = current.editingBotId
+            val botId = existingId ?: run {
+                val slug = name.lowercase(Locale.US)
+                    .replace(Regex("[^a-z0-9]+"), "_")
+                    .trim('_')
+                    .ifBlank { "workflow" }
+                    .take(24)
+                "bot_custom_${slug}_${System.currentTimeMillis()}"
+            }
 
+            val createdAt = current.originalCreatedAt ?: System.currentTimeMillis()
             val definition = CustomBotDefinition(
                 id = botId,
                 name = name,
                 summary = summary,
                 description = "$summary • Built with TapBot No-Code Builder (${cleanedRules.size} rules).",
                 welcomeMessage = current.welcomeMessage.trim().ifBlank { "Hello {user}! Send /help for commands." },
-                rules = cleanedRules
+                rules = cleanedRules,
+                createdAt = createdAt
             )
 
             // 1. Persist definition
@@ -200,16 +273,23 @@ class CustomBotBuilderViewModel(
             val metadata = definition.toBotMetadata()
             localCatalogCache?.updateBot(metadata)
 
-            val stubPkg = File.createTempFile("custom_${botId}_", ".botpkg").apply {
-                writeText("{\"id\":\"${botId}\",\"version\":\"1.0.0\",\"runtime\":\"built-in\"}")
-            }
-            try {
-                localInstallationManager?.installBot(metadata, stubPkg)
-                if (botInstanceManager != null && botInstanceManager.getInstanceByBotId(botId) == null) {
-                    botInstanceManager.install(metadata, stubPkg)
+            val needsInstall = existingId == null ||
+                localInstallationManager?.isInstalled(botId) != true ||
+                botInstanceManager?.getInstanceByBotId(botId) == null
+            if (needsInstall) {
+                val stubPkg = File.createTempFile("custom_${botId}_", ".botpkg").apply {
+                    writeText("{\"id\":\"${botId}\",\"version\":\"1.0.0\",\"runtime\":\"built-in\"}")
                 }
-            } finally {
-                stubPkg.delete()
+                try {
+                    if (localInstallationManager?.isInstalled(botId) != true) {
+                        localInstallationManager?.installBot(metadata, stubPkg)
+                    }
+                    if (botInstanceManager != null && botInstanceManager.getInstanceByBotId(botId) == null) {
+                        botInstanceManager.install(metadata, stubPkg)
+                    }
+                } finally {
+                    stubPkg.delete()
+                }
             }
 
             _uiState.update {
@@ -224,6 +304,115 @@ class CustomBotBuilderViewModel(
 
     companion object {
         private val TELEGRAM_TOKEN_REGEX = Regex("""^\d{5,16}:[a-zA-Z0-9_-]{6,64}$""")
+
+        val TEMPLATE_VARIABLES = listOf(
+            "{user}",
+            "{username}",
+            "{user_id}",
+            "{chat_id}",
+            "{args}",
+            "{date}",
+            "{webhook_response}"
+        )
+
+        val STARTER_BLUEPRINTS = listOf(
+            CustomBotBlueprint(
+                id = "support_desk",
+                title = "Support Desk",
+                tagline = "FAQ answers & ticket intake",
+                defaultBotName = "Support Desk Bot",
+                summary = "Instant FAQ replies & support ticket acknowledgements",
+                welcomeMessage = "Welcome {user}! Need help? Send /faq or /ticket <your issue>.",
+                rules = listOf(
+                    DraftCommandRule(
+                        id = "rule_1",
+                        command = "/faq",
+                        description = "Show common troubleshooting answers",
+                        responseTemplate = "Support FAQ for {user}:\n1. Check /status\n2. Describe your issue with /ticket <details>",
+                        buttonLabel = "Open Ticket Check"
+                    ),
+                    DraftCommandRule(
+                        id = "rule_2",
+                        command = "/ticket",
+                        description = "Log a support message",
+                        responseTemplate = "Ticket received from {username} (ID: {user_id}) at {date}.\nSummary: {args}"
+                    )
+                )
+            ),
+            CustomBotBlueprint(
+                id = "webhook_monitor",
+                title = "Webhook Monitor",
+                tagline = "Live HTTP GET/POST triggers",
+                defaultBotName = "Webhook Relay Bot",
+                summary = "Runs live HTTP webhooks on slash commands",
+                welcomeMessage = "Hello {user}! Use /health or /webhook <payload> to call configured endpoints.",
+                rules = listOf(
+                    DraftCommandRule(
+                        id = "rule_1",
+                        command = "/health",
+                        description = "Query live API endpoint status",
+                        responseTemplate = "Checked at {date} by {user}:\n{webhook_response}",
+                        webhookUrl = "https://httpbin.org/get?caller={user_id}",
+                        webhookMethod = CustomHttpMethod.GET,
+                        buttonLabel = "Re-check API"
+                    ),
+                    DraftCommandRule(
+                        id = "rule_2",
+                        command = "/webhook",
+                        description = "Forward custom JSON payload via POST",
+                        responseTemplate = "Webhook result for '{args}':\n{webhook_response}",
+                        webhookUrl = "https://httpbin.org/post",
+                        webhookMethod = CustomHttpMethod.POST
+                    )
+                )
+            ),
+            CustomBotBlueprint(
+                id = "lead_intake",
+                title = "Lead Capture",
+                tagline = "Collect requests & confirm IDs",
+                defaultBotName = "Lead Intake Bot",
+                summary = "Captures customer inquiries directly in Telegram",
+                welcomeMessage = "Hi {user}! Send /register <name or contact> to submit your request.",
+                rules = listOf(
+                    DraftCommandRule(
+                        id = "rule_1",
+                        command = "/register",
+                        description = "Submit inquiry details",
+                        responseTemplate = "Thanks {user} ({username})! Logged inquiry '{args}' from chat {chat_id} at {date}.",
+                        buttonLabel = "Send Another"
+                    ),
+                    DraftCommandRule(
+                        id = "rule_2",
+                        command = "/status",
+                        description = "Confirm intake availability",
+                        responseTemplate = "Intake Desk is online. Timestamp: {date}"
+                    )
+                )
+            ),
+            CustomBotBlueprint(
+                id = "daily_menu",
+                title = "Quick Menu",
+                tagline = "Info cards with inline button",
+                defaultBotName = "Community Menu Bot",
+                summary = "Serves structured menus & info buttons in chat",
+                welcomeMessage = "Hey {user}! Tap /menu or /about anytime.",
+                rules = listOf(
+                    DraftCommandRule(
+                        id = "rule_1",
+                        command = "/menu",
+                        description = "Show interactive command menu",
+                        responseTemplate = "Menu for {user}:\n• Send /about for info\n• Pass /menu <topic> to inspect items",
+                        buttonLabel = "Refresh Menu"
+                    ),
+                    DraftCommandRule(
+                        id = "rule_2",
+                        command = "/about",
+                        description = "About this bot",
+                        responseTemplate = "Hosted locally on Android via TapBot on {date}."
+                    )
+                )
+            )
+        )
 
         fun provideFactory(
             customBotRepository: CustomBotRepository,

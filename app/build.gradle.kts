@@ -12,8 +12,8 @@ android {
         applicationId = "com.tapbot"
         minSdk = 26
         targetSdk = 35
-        versionCode = 230
-        versionName = "2.3.0"
+        versionCode = 240
+        versionName = "2.4.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -64,6 +64,7 @@ dependencies {
     implementation(project(":core:network"))
     implementation(project(":core:logging"))
     implementation(project(":core:runner"))
+    implementation(project(":core:ui"))
     implementation(project(":feature:catalog"))
     implementation(project(":feature:botdetail"))
 

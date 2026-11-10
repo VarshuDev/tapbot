@@ -564,7 +564,15 @@ class CommanderBotRuntimeTest {
 
         runtime.initialize(ctx)
         runtime.start()
-        delay(350)
+        var waitedMs = 0
+        while (waitedMs < 2500) {
+            val ready = fakeApi.sentMessages.any { it.second.contains("Scheduled Reminder (`sch_1`)") } &&
+                fakeApi.editedMessages.any { it.third.contains("Android Battery Diagnostics") } &&
+                fakeManager.stoppedIds.contains("inst_exon_1")
+            if (ready) break
+            delay(40)
+            waitedMs += 40
+        }
         runtime.stop()
 
         assertTrue(fakeApi.sentMessages.any { it.second.contains("Speaking on phone speaker") && it.second.contains("Reminder check") })

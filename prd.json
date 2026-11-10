@@ -122,8 +122,8 @@
         "Tests pass"
       ],
       "priority": 8,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Verified AppPreferencesRepositoryTest, multi-bot & preference-gated BootCompletedReceiverTest, interactive SettingsScreen dialogs, and v2.3.0 (230) version bump"
     },
     {
       "id": "US-P3-02",
@@ -137,8 +137,8 @@
         "Unit tests pass"
       ],
       "priority": 9,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Verified CustomBotRepositoryTest, CustomWorkflowBotRuntimeTest (variables, GET/POST webhooks, inline callbacks), and BotRuntimeFactory routing"
     },
     {
       "id": "US-P3-03",
@@ -152,8 +152,8 @@
         "Unit tests pass"
       ],
       "priority": 10,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Verified CustomBotBuilderViewModelTest, CatalogViewModelTest custom/preferences sync, and full navigation wiring"
     },
     {
       "id": "US-P4-01",

@@ -22,6 +22,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
@@ -62,9 +63,16 @@ import com.tapbot.feature.catalog.ui.premiumCardBorder
 @Composable
 fun CatalogScreen(
     viewModel: CatalogViewModel,
-    onBotClick: (String) -> Unit
+    onBotClick: (String) -> Unit,
+    onBuildCustomBotClick: () -> Unit = {},
+    onClearCache: () -> Long = { 0L },
+    onRefreshCacheSizeBytes: () -> Long = { 0L },
+    onBuildDiagnosticsReport: (() -> String)? = null,
+    appVersionName: String = "2.3.0",
+    appVersionCode: Long = 230L
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val appPreferences by viewModel.appPreferences.collectAsState()
 
     when (val state = uiState) {
         is CatalogUiState.Loading -> {
@@ -167,7 +175,7 @@ fun CatalogScreen(
                                 Text(
                                     text = when (state.selectedTab) {
                                         1 -> "Local On-Device Execution"
-                                        2 -> "Security & Storage"
+                                        2 -> "Preferences, Security & Storage"
                                         else -> "Cloudflare Edge Verified"
                                     },
                                     color = BotHubTheme.SecondaryText,
@@ -176,6 +184,15 @@ fun CatalogScreen(
                             }
                         },
                         actions = {
+                            if (state.selectedTab == 0 || state.selectedTab == 1) {
+                                IconButton(onClick = onBuildCustomBotClick) {
+                                    Icon(
+                                        Icons.Default.Add,
+                                        contentDescription = "Build Custom Bot",
+                                        tint = BotHubTheme.PrimaryBlue
+                                    )
+                                }
+                            }
                             if (state.selectedTab == 0) {
                                 IconButton(
                                     onClick = { viewModel.refresh() },
@@ -242,11 +259,27 @@ fun CatalogScreen(
                                 onUpdateBot = viewModel::updateBot,
                                 onCheckForUpdates = viewModel::checkForUpdates,
                                 isCheckingUpdates = state.isCheckingUpdates,
-                                onBrowseStoreClick = { viewModel.selectTab(0) }
+                                onBrowseStoreClick = { viewModel.selectTab(0) },
+                                onBuildCustomBotClick = onBuildCustomBotClick
                             )
                         }
                         2 -> {
-                            SettingsScreen()
+                            SettingsScreen(
+                                preferences = appPreferences,
+                                installedInstances = state.installedInstances,
+                                customBotCount = state.customBotCount,
+                                appVersionName = appVersionName,
+                                appVersionCode = appVersionCode,
+                                initialCacheSizeBytes = onRefreshCacheSizeBytes(),
+                                onAutoStartOnBootChanged = viewModel::setAutoStartOnBoot,
+                                onWifiOnlyDownloadsChanged = viewModel::setWifiOnlyDownloads,
+                                onDiagnosticsExportEnabledChanged = viewModel::setDiagnosticsExportEnabled,
+                                onSaveCustomCatalogUrl = viewModel::saveCustomCatalogUrl,
+                                onStopAllBots = viewModel::stopAllRunningBots,
+                                onClearCache = onClearCache,
+                                onRefreshCacheSizeBytes = onRefreshCacheSizeBytes,
+                                onBuildDiagnosticsReport = onBuildDiagnosticsReport
+                            )
                         }
                     }
                 }

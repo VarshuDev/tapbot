@@ -83,10 +83,15 @@ fun MyBotsContent(
     onCheckForUpdates: () -> Unit = {},
     isCheckingUpdates: Boolean = false,
     onBrowseStoreClick: () -> Unit,
+    onBuildCustomBotClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     if (instances.isEmpty()) {
-        EmptyMyBotsView(onBrowseStoreClick = onBrowseStoreClick, modifier = modifier)
+        EmptyMyBotsView(
+            onBrowseStoreClick = onBrowseStoreClick,
+            onBuildCustomBotClick = onBuildCustomBotClick,
+            modifier = modifier
+        )
     } else {
         LazyColumn(
             modifier = modifier
@@ -101,7 +106,7 @@ fun MyBotsContent(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column {
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = "Installed Fleet",
                             color = BotHubTheme.PrimaryText,
@@ -117,34 +122,57 @@ fun MyBotsContent(
                         )
                     }
 
-                    Surface(
-                        onClick = onCheckForUpdates,
-                        enabled = !isCheckingUpdates,
-                        shape = RoundedCornerShape(BotHubTheme.RadiusPill),
-                        color = BotHubTheme.ElevatedSurface,
-                        border = BorderStroke(1.dp, BotHubTheme.Border)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Surface(
+                            onClick = onBuildCustomBotClick,
+                            shape = RoundedCornerShape(BotHubTheme.RadiusPill),
+                            color = BotHubTheme.BlueSubtle,
+                            border = BorderStroke(1.dp, BotHubTheme.PrimaryBlue.copy(alpha = 0.5f))
                         ) {
-                            if (isCheckingUpdates) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(12.dp),
-                                    strokeWidth = 2.dp,
-                                    color = BotHubTheme.PrimaryBlue
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text("Checking...", color = BotHubTheme.SecondaryText, fontSize = 11.sp)
-                            } else {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
                                 Icon(
-                                    Icons.Default.Sync,
-                                    contentDescription = "Check for updates",
+                                    Icons.Default.Add,
+                                    contentDescription = "Build Custom Bot",
                                     modifier = Modifier.size(14.dp),
                                     tint = BotHubTheme.PrimaryBlue
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
-                                Text("Check Updates", color = BotHubTheme.PrimaryText, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                                Text("Build", color = BotHubTheme.PrimaryBlue, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                            }
+                        }
+
+                        Surface(
+                            onClick = onCheckForUpdates,
+                            enabled = !isCheckingUpdates,
+                            shape = RoundedCornerShape(BotHubTheme.RadiusPill),
+                            color = BotHubTheme.ElevatedSurface,
+                            border = BorderStroke(1.dp, BotHubTheme.Border)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                if (isCheckingUpdates) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(12.dp),
+                                        strokeWidth = 2.dp,
+                                        color = BotHubTheme.PrimaryBlue
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text("Checking...", color = BotHubTheme.SecondaryText, fontSize = 11.sp)
+                                } else {
+                                    Icon(
+                                        Icons.Default.Sync,
+                                        contentDescription = "Check for updates",
+                                        modifier = Modifier.size(14.dp),
+                                        tint = BotHubTheme.PrimaryBlue
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Updates", color = BotHubTheme.PrimaryText, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                                }
                             }
                         }
                     }
@@ -403,7 +431,11 @@ private fun StatusDiagnosticDetail(status: BotInstanceStatus, startedAt: Long?) 
 }
 
 @Composable
-private fun EmptyMyBotsView(onBrowseStoreClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun EmptyMyBotsView(
+    onBrowseStoreClick: () -> Unit,
+    onBuildCustomBotClick: () -> Unit = {},
+    modifier: Modifier = Modifier
+) {
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -436,7 +468,7 @@ private fun EmptyMyBotsView(onBrowseStoreClick: () -> Unit, modifier: Modifier =
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "You haven't deployed any bots yet. Browse the Bot Store to install Gemini AI Assistant, Music Bot, or Utility Bot.",
+                text = "You haven't deployed any bots yet. Browse the Bot Store or create a custom no-code workflow bot.",
                 color = BotHubTheme.SecondaryText,
                 fontSize = 13.sp,
                 lineHeight = 18.sp,
@@ -453,9 +485,20 @@ private fun EmptyMyBotsView(onBrowseStoreClick: () -> Unit, modifier: Modifier =
                 ),
                 contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp)
             ) {
-                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                Icon(Icons.Default.SmartToy, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("Browse Bot Store", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+            }
+            Spacer(modifier = Modifier.height(10.dp))
+            OutlinedButton(
+                onClick = onBuildCustomBotClick,
+                shape = RoundedCornerShape(BotHubTheme.RadiusMd),
+                border = BorderStroke(1.dp, BotHubTheme.Border),
+                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 10.dp)
+            ) {
+                Icon(Icons.Default.Add, contentDescription = null, tint = BotHubTheme.PrimaryBlue, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Build Custom Bot", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = BotHubTheme.PrimaryText)
             }
         }
     }

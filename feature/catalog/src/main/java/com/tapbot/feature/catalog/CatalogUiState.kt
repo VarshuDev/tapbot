@@ -19,7 +19,8 @@ sealed interface CatalogUiState {
         val installedInstances: List<BotInstance> = emptyList(),
         val availableUpdates: Map<String, BotVersion> = emptyMap(),
         val updateProgress: Map<String, BotUpdateProgress> = emptyMap(),
-        val isCheckingUpdates: Boolean = false
+        val isCheckingUpdates: Boolean = false,
+        val customBotCount: Int = 0
     ) : CatalogUiState
     data class Error(val message: String) : CatalogUiState
 }

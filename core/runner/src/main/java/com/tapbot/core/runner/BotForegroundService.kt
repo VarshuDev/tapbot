@@ -97,7 +97,7 @@ class BotForegroundService : Service() {
         val targetInstallationId = intent?.getStringExtra(EXTRA_INSTALLATION_ID)
             ?: intent?.getStringExtra(EXTRA_BOT_ID)
 
-        if (action == ACTION_START_BOT || action == ACTION_RESTART_BOT) {
+        if (action == ACTION_START_BOT || action == ACTION_RESTART_BOT || action == ACTION_RECOVER_ACTIVE) {
             val count = maxOf(activeExecutions.size, 1)
             val names = activeExecutions.values.map { it.botName }.ifEmpty { listOf(targetInstallationId ?: "Bot") }
             val notification = notificationHelper.buildForegroundNotification(count, names)
@@ -120,6 +120,12 @@ class BotForegroundService : Service() {
                     val id = targetInstallationId ?: DEFAULT_BOT_ID
                     stopBotInstance(id)
                     startBotInstance(id)
+                }
+            }
+            ACTION_RECOVER_ACTIVE -> {
+                val explicitIds = intent?.getStringArrayExtra(EXTRA_INSTALLATION_IDS)?.toList().orEmpty()
+                serviceScope.launch {
+                    recoverActiveInstances(explicitIds)
                 }
             }
             ACTION_STOP_ALL -> {
@@ -334,11 +340,14 @@ class BotForegroundService : Service() {
         stopSelf()
     }
 
-    private suspend fun recoverActiveInstances() {
+    private suspend fun recoverActiveInstances(explicitIds: List<String> = emptyList()) {
         val manager = ServiceLocator.botInstanceManager ?: return
-        val runningInstances = manager.instances.value.filter { it.status.isRunning }
-        for (inst in runningInstances) {
-            startBotInstance(inst.installationId)
+        val managerRunningIds = manager.instances.value
+            .filter { it.status.isRunning }
+            .map { it.installationId }
+        val allIds = (explicitIds + managerRunningIds).distinct()
+        for (instId in allIds) {
+            startBotInstance(instId)
         }
     }
 
@@ -433,8 +442,10 @@ class BotForegroundService : Service() {
         const val ACTION_STOP_BOT = "com.tapbot.action.STOP_BOT"
         const val ACTION_STOP_ALL = "com.tapbot.action.STOP_ALL"
         const val ACTION_RESTART_BOT = "com.tapbot.action.RESTART_BOT"
+        const val ACTION_RECOVER_ACTIVE = "com.tapbot.action.RECOVER_ACTIVE"
         const val EXTRA_BOT_ID = "extra_bot_id"
         const val EXTRA_INSTALLATION_ID = "extra_installation_id"
+        const val EXTRA_INSTALLATION_IDS = "extra_installation_ids"
         const val DEFAULT_BOT_ID = "bot_pingpong_poc"
         private const val TAG = "BotForegroundService"
         private const val PREFS_NAME = "tapbot_service_state"
@@ -465,4 +476,6 @@ object ServiceLocator {
     var logRepository: BotLogRepository? = null
     var telegramApiClient: TelegramApiClient? = null
     var botInstanceManager: BotInstanceManager? = null
+    var appPreferencesRepository: com.tapbot.core.network.AppPreferencesRepository? = null
+    var customBotRepository: com.tapbot.core.runner.custom.CustomBotRepository? = null
 }

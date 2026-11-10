@@ -25,6 +25,14 @@ class BootCompletedReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent?) {
         val action = intent?.action ?: return
+        handleBootAction(context, action)
+    }
+
+    internal fun handleBootAction(
+        context: Context,
+        action: String,
+        recoveryDispatcher: ((installationIds: List<String>) -> Unit)? = null
+    ) {
         if (action != Intent.ACTION_BOOT_COMPLETED &&
             action != "android.intent.action.QUICKBOOT_POWERON" &&
             action != Intent.ACTION_MY_PACKAGE_REPLACED
@@ -33,27 +41,47 @@ class BootCompletedReceiver : BroadcastReceiver() {
         }
 
         try {
+            val prefsRepo = ServiceLocator.appPreferencesRepository
+            val autoStartEnabled = prefsRepo?.preferences?.value?.autoStartOnBoot ?: true
             val manager = ServiceLocator.botInstanceManager
             val runningInstances = manager?.instances?.value?.filter { it.status.isRunning } ?: emptyList()
 
-            // If bots were running prior to reboot / update, auto-recover them
-            if (runningInstances.isNotEmpty()) {
-                val serviceIntent = Intent(context, BotForegroundService::class.java).apply {
-                    this.action = BotForegroundService.ACTION_RESTART_BOT
-                    putExtra(BotForegroundService.EXTRA_INSTALLATION_ID, runningInstances.first().installationId)
-                }
+            if (!autoStartEnabled) {
+                ServiceLocator.logRepository?.appendLog(
+                    botId = "system",
+                    level = LogLevel.INFO,
+                    tag = TAG,
+                    message = "Auto-start on boot disabled in preferences; skipping recovery of ${runningInstances.size} bot(s) after $action"
+                )
+                return
+            }
 
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    context.startForegroundService(serviceIntent)
+            // If bots were running prior to reboot / update, auto-recover ALL of them
+            if (runningInstances.isNotEmpty()) {
+                val idList = runningInstances.map { it.installationId }
+                val ids = idList.toTypedArray()
+
+                if (recoveryDispatcher != null) {
+                    recoveryDispatcher.invoke(idList)
                 } else {
-                    context.startService(serviceIntent)
+                    val serviceIntent = Intent(context, BotForegroundService::class.java).apply {
+                        this.action = BotForegroundService.ACTION_RECOVER_ACTIVE
+                        putExtra(BotForegroundService.EXTRA_INSTALLATION_ID, idList.first())
+                        putExtra(BotForegroundService.EXTRA_INSTALLATION_IDS, ids)
+                    }
+
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        context.startForegroundService(serviceIntent)
+                    } else {
+                        context.startService(serviceIntent)
+                    }
                 }
 
                 ServiceLocator.logRepository?.appendLog(
                     botId = runningInstances.first().botId,
                     level = LogLevel.INFO,
                     tag = TAG,
-                    message = "Auto-recovering ${runningInstances.size} bot(s) after system event: $action"
+                    message = "Auto-recovering ${runningInstances.size} bot(s) (${ids.joinToString()}) after system event: $action"
                 )
             }
         } catch (e: Exception) {

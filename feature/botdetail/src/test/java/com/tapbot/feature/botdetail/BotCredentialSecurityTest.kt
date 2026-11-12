@@ -34,6 +34,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import java.io.File
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class BotCredentialSecurityTest {
@@ -167,7 +169,14 @@ class BotCredentialSecurityTest {
             targetFile: File,
             onProgress: (Float) -> Unit
         ): Result<File> {
-            targetFile.writeText("VALID_PAYLOAD")
+            ZipOutputStream(targetFile.outputStream()).use { zip ->
+                zip.putNextEntry(ZipEntry("manifest.json"))
+                zip.write(
+                    """{"id":"secure-tele-bot","version":"2.0.0","runtime":"native_art","minimumAppVersion":1}"""
+                        .toByteArray()
+                )
+                zip.closeEntry()
+            }
             return Result.success(targetFile)
         }
     }

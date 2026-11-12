@@ -11,5 +11,6 @@ data class BotPackageInfo(
     val sha256Checksum: String,
     val runtimeType: String = "built-in", // e.g. "built-in", "dex"
     val entryClass: String? = null,
-    val packageSizeBytes: Long = 0L
+    val packageSizeBytes: Long = 0L,
+    val signature: String? = null
 )

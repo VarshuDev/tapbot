@@ -18,16 +18,16 @@ class DeviceActionControllerTest {
     }
 
     @Test
-    fun `isOwnerAuthorized verifies owner matching and initial setup`() {
+    fun `isOwnerAuthorized verifies owner matching and fails closed when unconfigured`() {
         assertTrue(controller.isOwnerAuthorized("12345678", 12345678L))
         assertTrue(controller.isOwnerAuthorized("  987654  ", 987654L))
 
         assertFalse(controller.isOwnerAuthorized("12345678", 87654321L))
         assertFalse(controller.isOwnerAuthorized("12345678", null))
 
-        assertTrue(controller.isOwnerAuthorized(null, 12345678L))
-        assertTrue(controller.isOwnerAuthorized("", 12345678L))
-        assertTrue(controller.isOwnerAuthorized("   ", 12345678L))
+        assertFalse(controller.isOwnerAuthorized(null, 12345678L))
+        assertFalse(controller.isOwnerAuthorized("", 12345678L))
+        assertFalse(controller.isOwnerAuthorized("   ", 12345678L))
     }
 
     @Test

@@ -4,12 +4,14 @@ import com.tapbot.core.model.InlineKeyboardButton
 import com.tapbot.core.model.InlineKeyboardMarkup
 import com.tapbot.core.model.LogLevel
 import com.tapbot.core.model.TelegramCallbackQuery
+import com.tapbot.core.model.TelegramUser
 import com.tapbot.core.runner.ServiceLocator
 import com.tapbot.core.runner.audio.AudioSourceType
 import com.tapbot.core.runner.audio.AudioStreamResolver
 import com.tapbot.core.runner.audio.AudioTrack
 import com.tapbot.core.runner.audio.DeviceAudioPlayer
 import com.tapbot.core.runner.audio.PlaybackStatus
+import com.tapbot.core.runner.security.RuntimeAccessAuthorizer
 import com.tapbot.core.runner.util.AdaptiveBackoff
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -157,7 +159,7 @@ class MusicBotRuntime(
                             val chatId = message.chat.id
                             messageCounter++
 
-                            handleCommand(ctx, token, chatId, text)
+                            handleCommand(ctx, token, chatId, text, message.from, message.chat.type)
                         }
 
                         _state.value = BotRuntimeState.Running(
@@ -188,13 +190,32 @@ class MusicBotRuntime(
         ctx: RuntimeContext,
         token: String,
         chatId: Long,
-        text: String
+        text: String,
+        fromUser: TelegramUser? = null,
+        chatType: String = "private"
     ): String {
         val parts = text.split("\\s+".toRegex())
         val command = parts.firstOrNull()?.lowercase(Locale.ROOT)
             ?.removeSuffix("@${(state.value as? BotRuntimeState.Running)?.botUsername ?: ""}")
             .orEmpty()
         val query = parts.drop(1).joinToString(" ").trim()
+
+        if (!RuntimeAccessAuthorizer.isChatAllowed(ctx, chatId)) {
+            return "⛔ Unauthorized chat."
+        }
+
+        if (command in PRIVILEGED_MUSIC_COMMANDS && !RuntimeAccessAuthorizer.isAuthorizedForPrivilegedAction(
+                ctx = ctx,
+                token = token,
+                chatId = chatId,
+                chatType = chatType,
+                senderId = fromUser?.id
+            )
+        ) {
+            val denied = "⛔ Access denied: only the configured owner or group admin can run `$command`."
+            ctx.telegramApi.sendMessage(token, chatId, denied, "Markdown")
+            return denied
+        }
 
         var attachControls = false
 
@@ -322,6 +343,24 @@ class MusicBotRuntime(
         val msg = callback.message
         val chatId = msg?.chat?.id
         val messageId = msg?.messageId
+        val chatType = msg?.chat?.type ?: "private"
+
+        if (chatId != null && !RuntimeAccessAuthorizer.isChatAllowed(ctx, chatId)) {
+            ctx.telegramApi.answerCallbackQuery(token, callback.id, "⛔ Unauthorized chat.", showAlert = true)
+            return
+        }
+        if (chatId != null && data in PRIVILEGED_MUSIC_CALLBACKS &&
+            !RuntimeAccessAuthorizer.isAuthorizedForPrivilegedAction(
+                ctx = ctx,
+                token = token,
+                chatId = chatId,
+                chatType = chatType,
+                senderId = callback.from.id
+            )
+        ) {
+            ctx.telegramApi.answerCallbackQuery(token, callback.id, "⛔ Owner/Admin only.", showAlert = true)
+            return
+        }
 
         var toast = "Updated"
         when (data) {
@@ -766,6 +805,12 @@ class MusicBotRuntime(
 
     companion object {
         private const val TAG = "MusicBotRuntime"
+        private val PRIVILEGED_MUSIC_COMMANDS = setOf(
+            "/volume", "/vol", "/mode", "/stop", "/seek", "/remove", "/rm"
+        )
+        private val PRIVILEGED_MUSIC_CALLBACKS = setOf(
+            "music:voldown", "music:volup", "music:stop"
+        )
 
         fun parseSeekMilliseconds(raw: String): Long? {
             val trimmed = raw.trim()

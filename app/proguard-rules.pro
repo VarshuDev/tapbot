@@ -35,6 +35,16 @@
 
 # Android Keystore & Security
 -keep class com.tapbot.core.security.** { *; }
+-keep class androidx.security.crypto.** { *; }
+-keep class com.google.crypto.tink.** { *; }
+-keep class com.tapbot.core.runner.** { *; }
+-keep class com.tapbot.core.logging.** { *; }
+-keep class com.tapbot.feature.** { *; }
+-dontwarn com.google.errorprone.annotations.**
+-dontwarn javax.annotation.**
+-dontwarn org.bouncycastle.**
+-dontwarn com.google.api.client.http.**
+-dontwarn org.joda.time.Instant
 
 # AndroidX Compose & Lifecycle
 -keep class androidx.compose.** { *; }

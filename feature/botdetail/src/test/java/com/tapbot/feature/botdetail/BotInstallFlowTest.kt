@@ -31,6 +31,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import java.io.File
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
 
 class BotInstallFlowTest {
 
@@ -122,7 +124,8 @@ class BotInstallFlowTest {
     }
 
     private class FakeDownloader(
-        var failChecksum: Boolean = false
+        var failChecksum: Boolean = false,
+        var manifestBotIdOverride: String? = null
     ) : BotPackageDownloader {
         var downloadCalls = 0
         override suspend fun downloadPackage(
@@ -138,7 +141,15 @@ class BotInstallFlowTest {
             return if (failChecksum) {
                 Result.failure(SecurityException("SHA-256 verification failed"))
             } else {
-                targetFile.writeText("VALID_PACKAGE_PAYLOAD")
+                val manifestId = manifestBotIdOverride ?: "ai-summarizer-bot"
+                ZipOutputStream(targetFile.outputStream()).use { zip ->
+                    zip.putNextEntry(ZipEntry("manifest.json"))
+                    zip.write(
+                        """{"id":"$manifestId","version":"2.1.0","runtime":"native_art","minimumAppVersion":1}"""
+                            .toByteArray()
+                    )
+                    zip.closeEntry()
+                }
                 Result.success(targetFile)
             }
         }
@@ -408,5 +419,66 @@ class BotInstallFlowTest {
         testDispatcher.scheduler.advanceUntilIdle()
 
         assertEquals("inst_bot_ai_assistant", managerStoppedId)
+    }
+
+    @Test
+    fun installFlow_spoofedTapbotInternalPath_doesNotBypassFailedVerification() = runTest(testDispatcher) {
+        val spoofedBot = sampleBot.copy(
+            id = "spoof-bot",
+            packageInfo = sampleBot.packageInfo.copy(
+                packageUrl = "https://evil.example.com/tapbot.internal/evil.botpkg"
+            )
+        )
+        val repoWithSpoof = object : CatalogRepository by fakeCatalogRepo {
+            override suspend fun getBotDetails(botId: String, forceRefresh: Boolean) = Result.success(spoofedBot)
+        }
+        val downloader = FakeDownloader(failChecksum = true)
+        val installer = FakeInstallationManager()
+
+        val viewModel = BotDetailViewModel(
+            botId = spoofedBot.id,
+            catalogRepository = repoWithSpoof,
+            credentialStore = fakeCredentialStore,
+            botServiceController = fakeController,
+            logRepository = fakeLogRepo,
+            packageDownloader = downloader,
+            installationManager = installer,
+            appVersionCode = 1
+        )
+
+        testDispatcher.scheduler.advanceUntilIdle()
+        viewModel.installBot()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val state = viewModel.uiState.value as BotDetailUiState.Success
+        assertFalse("Spoofed tapbot.internal path must never bypass failed verification", state.isInstalled)
+        assertEquals(0, installer.installCalls)
+        assertNotNull(state.installError)
+    }
+
+    @Test
+    fun installFlow_mismatchedManifestId_rejectsPackage() = runTest(testDispatcher) {
+        val downloader = FakeDownloader(manifestBotIdOverride = "attacker-bot")
+        val installer = FakeInstallationManager()
+
+        val viewModel = BotDetailViewModel(
+            botId = sampleBot.id,
+            catalogRepository = fakeCatalogRepo,
+            credentialStore = fakeCredentialStore,
+            botServiceController = fakeController,
+            logRepository = fakeLogRepo,
+            packageDownloader = downloader,
+            installationManager = installer,
+            appVersionCode = 1
+        )
+
+        testDispatcher.scheduler.advanceUntilIdle()
+        viewModel.installBot()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val state = viewModel.uiState.value as BotDetailUiState.Success
+        assertFalse("Manifest ID mismatch must reject installation", state.isInstalled)
+        assertEquals(0, installer.installCalls)
+        assertTrue(state.installError?.contains("mismatch", ignoreCase = true) == true)
     }
 }

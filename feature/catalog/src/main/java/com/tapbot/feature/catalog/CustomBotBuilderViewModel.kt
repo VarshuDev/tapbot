@@ -8,6 +8,7 @@ import com.tapbot.core.model.CustomBotDefinition
 import com.tapbot.core.model.CustomHttpMethod
 import com.tapbot.core.network.LocalBotInstallationManager
 import com.tapbot.core.network.LocalCatalogCache
+import com.tapbot.core.network.UrlSecurityValidator
 import com.tapbot.core.runner.custom.CustomBotRepository
 import com.tapbot.core.runner.manager.BotInstanceManager
 import com.tapbot.core.security.CredentialStore
@@ -212,9 +213,21 @@ class CustomBotBuilderViewModel(
                 _uiState.update { it.copy(errorMessage = "Response template for '$rawCmd' cannot be blank.") }
                 return
             }
-            if (hookUrl.isNotBlank() && !hookUrl.startsWith("http://") && !hookUrl.startsWith("https://")) {
-                _uiState.update { it.copy(errorMessage = "Webhook URL for '$rawCmd' must start with http:// or https://.") }
-                return
+            if (hookUrl.isNotBlank()) {
+                if (!hookUrl.startsWith("http://") && !hookUrl.startsWith("https://")) {
+                    _uiState.update { it.copy(errorMessage = "Webhook URL for '$rawCmd' must start with http:// or https://.") }
+                    return
+                }
+                val templateNormalizedUrl = hookUrl.replace(Regex("\\{[a-zA-Z0-9_]+\\}"), "sample")
+                val urlValidation = UrlSecurityValidator.validateUrlSyntax(
+                    templateNormalizedUrl,
+                    UrlSecurityValidator.ValidationOptions(requireHttps = true)
+                )
+                if (urlValidation.isFailure) {
+                    val reason = urlValidation.exceptionOrNull()?.message ?: "Unsafe or insecure webhook URL"
+                    _uiState.update { it.copy(errorMessage = "Webhook URL for '$rawCmd' is blocked: $reason") }
+                    return
+                }
             }
 
             cleanedRules.add(

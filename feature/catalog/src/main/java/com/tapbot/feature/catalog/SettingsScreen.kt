@@ -1,10 +1,14 @@
 package com.tapbot.feature.catalog
 
+import android.app.Activity
 import android.content.ClipData
+import android.content.ClipDescription
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.pm.ApplicationInfo
 import android.os.Build
 import android.os.Environment
+import android.os.PersistableBundle
 import android.os.StatFs
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.BorderStroke
@@ -85,8 +89,10 @@ import com.tapbot.core.model.BotInstance
 import com.tapbot.core.model.BotInstanceStatus
 import com.tapbot.core.network.AppPreferences
 import com.tapbot.core.network.CloudflareCatalogApi
+import com.tapbot.core.network.UrlSecurityValidator
 import com.tapbot.core.runner.telemetry.DeviceTelemetryProvider
 import com.tapbot.core.security.SecretRedactor
+import com.tapbot.core.security.SecurityWindowManager
 import com.tapbot.core.ui.components.MonospaceBadge
 import com.tapbot.core.ui.components.PrimaryButton
 import com.tapbot.core.ui.motion.TapBotMotion
@@ -147,6 +153,18 @@ fun SettingsScreen(
     }
 
     if (!isPreview) {
+        DisposableEffect(reportPreview != null) {
+            val activity = context as? Activity
+            if (reportPreview != null) {
+                SecurityWindowManager.setSecureFlag(activity, true)
+            }
+            onDispose {
+                if (reportPreview != null) {
+                    SecurityWindowManager.setSecureFlag(activity, false)
+                }
+            }
+        }
+
         DisposableEffect(lifecycleOwner, context) {
             val observer = LifecycleEventObserver { _, event ->
                 if (event == Lifecycle.Event.ON_RESUME) {
@@ -497,7 +515,7 @@ fun SettingsScreen(
                                 val raw = onBuildDiagnosticsReport()
                                 val clean = SecretRedactor.redact(raw)
                                 reportPreview = clean
-                                copyToClipboard(context, "TapBot Diagnostics", clean)
+                                copyToClipboard(context, "TapBot Diagnostics", clean, isSensitive = true)
                                 statusNotice = "Copied redacted diagnostics report to clipboard."
                             },
                             modifier = Modifier
@@ -710,9 +728,27 @@ private fun CustomCatalogUrlSheet(
     onDismiss: () -> Unit,
     onSaveUrl: (String) -> Unit
 ) {
+    val context = LocalContext.current
+    val isDebuggable = (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var urlInput by remember(currentUrl) { mutableStateOf(currentUrl) }
     var urlError by remember { mutableStateOf<String?>(null) }
+
+    fun onSaveUrlValidated(trimmed: String) {
+        val check = UrlSecurityValidator.validateUrlSyntax(
+            trimmed,
+            UrlSecurityValidator.ValidationOptions(
+                requireHttps = !isDebuggable,
+                allowLoopbackHosts = isDebuggable
+            )
+        )
+        if (check.isFailure) {
+            urlError = check.exceptionOrNull()?.message
+                ?: "Enter a valid HTTPS URL (loopback HTTP allowed in debug builds only)"
+        } else {
+            onSaveUrl(trimmed)
+        }
+    }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -779,10 +815,10 @@ private fun CustomCatalogUrlSheet(
                     text = "Save & Refresh",
                     onClick = {
                         val trimmed = urlInput.trim()
-                        if (trimmed.isNotBlank() && !trimmed.startsWith("http://") && !trimmed.startsWith("https://")) {
-                            urlError = "URL must start with http:// or https://"
+                        if (trimmed.isBlank()) {
+                            onSaveUrl("")
                         } else {
-                            onSaveUrl(trimmed)
+                            onSaveUrlValidated(trimmed)
                         }
                     },
                     modifier = Modifier.weight(1f)
@@ -983,10 +1019,17 @@ private fun SettingsInfoRow(label: String, value: String) {
     }
 }
 
-private fun copyToClipboard(context: Context, label: String, text: String) {
+private fun copyToClipboard(context: Context, label: String, text: String, isSensitive: Boolean = false) {
     try {
         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
-        clipboard?.setPrimaryClip(ClipData.newPlainText(label, text))
+        val clip = ClipData.newPlainText(label, text).apply {
+            if (isSensitive && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                description.extras = PersistableBundle().apply {
+                    putBoolean(ClipDescription.EXTRA_IS_SENSITIVE, true)
+                }
+            }
+        }
+        clipboard?.setPrimaryClip(clip)
     } catch (_: Exception) {}
 }
 

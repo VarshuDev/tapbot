@@ -4,7 +4,9 @@ import com.tapbot.core.model.LogLevel
 import com.tapbot.core.model.TelegramMessage
 import com.tapbot.core.network.GeminiApiClient
 import com.tapbot.core.network.GeminiChatMessage
+import com.tapbot.core.runner.security.RuntimeAccessAuthorizer
 import com.tapbot.core.runner.util.AdaptiveBackoff
+import com.tapbot.core.security.SecretRedactor
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -12,6 +14,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import java.util.ArrayDeque
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 
@@ -43,6 +46,7 @@ class AIBotRuntime(
     private val chatHistories = ConcurrentHashMap<Long, MutableList<GeminiChatMessage>>()
     private val chatModels = ConcurrentHashMap<Long, String>()
     private val chatSystemPrompts = ConcurrentHashMap<Long, String>()
+    private val chatRateWindows = ConcurrentHashMap<Long, ArrayDeque<Long>>()
 
     override suspend fun initialize(context: RuntimeContext) {
         this.context = context
@@ -158,6 +162,7 @@ class AIBotRuntime(
         if (rawText.isBlank()) return null
 
         val chatId = message.chat.id
+        if (!RuntimeAccessAuthorizer.isChatAllowed(ctx, chatId)) return null
         val isPrivate = message.chat.type.equals("private", ignoreCase = true)
 
         if (rawText.startsWith("/")) {
@@ -177,6 +182,8 @@ class AIBotRuntime(
                 "ask" -> {
                     if (arg.isBlank()) {
                         "Usage: `/ask <question>`\nTip: In private chat you can also message me directly without `/ask`."
+                    } else if (!tryConsumeRateLimit(chatId)) {
+                        "⏳ Rate limit exceeded for this chat. Please wait a moment before sending another AI request."
                     } else {
                         queryGeminiWithMemory(ctx, token, chatId, arg)
                     }
@@ -189,6 +196,8 @@ class AIBotRuntime(
                     }
                     if (targetText.isBlank()) {
                         "Please provide text (`/summarize <text>`) or reply `/summarize` to a message."
+                    } else if (!tryConsumeRateLimit(chatId)) {
+                        "⏳ Rate limit exceeded for this chat. Please wait a moment before sending another AI request."
                     } else {
                         queryGeminiOneShot(
                             ctx = ctx,
@@ -201,6 +210,8 @@ class AIBotRuntime(
                 "code" -> {
                     if (arg.isBlank()) {
                         "Usage: `/code <language & task>`\nExample: `/code kotlin debounce flow extension`"
+                    } else if (!tryConsumeRateLimit(chatId)) {
+                        "⏳ Rate limit exceeded for this chat. Please wait a moment before sending another AI request."
                     } else {
                         queryGeminiOneShot(
                             ctx = ctx,
@@ -210,8 +221,34 @@ class AIBotRuntime(
                         )
                     }
                 }
-                "model" -> handleModelCommand(chatId, arg)
-                "system" -> handleSystemCommand(chatId, arg)
+                "model" -> {
+                    if (arg.isNotBlank() && !RuntimeAccessAuthorizer.isAuthorizedForPrivilegedAction(
+                            ctx = ctx,
+                            token = token,
+                            chatId = chatId,
+                            chatType = message.chat.type,
+                            senderId = message.from?.id
+                        )
+                    ) {
+                        "⛔ Access denied: only configured owner or group admin can change `/model`."
+                    } else {
+                        handleModelCommand(chatId, arg)
+                    }
+                }
+                "system" -> {
+                    if (arg.isNotBlank() && !RuntimeAccessAuthorizer.isAuthorizedForPrivilegedAction(
+                            ctx = ctx,
+                            token = token,
+                            chatId = chatId,
+                            chatType = message.chat.type,
+                            senderId = message.from?.id
+                        )
+                    ) {
+                        "⛔ Access denied: only configured owner or group admin can change `/system`."
+                    } else {
+                        handleSystemCommand(chatId, arg)
+                    }
+                }
                 "clear", "reset" -> {
                     chatHistories.remove(chatId)
                     "🧹 Cleared conversation history for this chat."
@@ -237,7 +274,11 @@ class AIBotRuntime(
             }
             if (prompt.isBlank()) return null
 
-            val reply = queryGeminiWithMemory(ctx, token, chatId, prompt)
+            val reply = if (!tryConsumeRateLimit(chatId)) {
+                "⏳ Rate limit exceeded for this chat. Please wait a moment before sending another AI request."
+            } else {
+                queryGeminiWithMemory(ctx, token, chatId, prompt)
+            }
             val replyToId = if (isPrivate) null else message.messageId
             sendChunkedReply(ctx, token, chatId, reply, replyToId)
             ctx.log(LogLevel.INFO, TAG, "Handled natural AI prompt -> reply sent.")
@@ -295,7 +336,7 @@ class AIBotRuntime(
                         history.removeAt(history.size - 1)
                     }
                 }
-                "⚠️ Gemini request failed: ${err.message ?: "Unknown network/API error"}"
+                "⚠️ Gemini request failed: ${SecretRedactor.redactThrowable(err, "Unknown network/API error")}"
             }
         )
     }
@@ -321,7 +362,23 @@ class AIBotRuntime(
         )
 
         return res.getOrElse { err ->
-            "⚠️ Gemini request failed: ${err.message ?: "Unknown network/API error"}"
+            "⚠️ Gemini request failed: ${SecretRedactor.redactThrowable(err, "Unknown network/API error")}"
+        }
+    }
+
+    private fun tryConsumeRateLimit(chatId: Long, nowMs: Long = System.currentTimeMillis()): Boolean {
+        val window = chatRateWindows.computeIfAbsent(chatId) { ArrayDeque() }
+        synchronized(window) {
+            val cutoff = nowMs - 60_000L
+            while (window.isNotEmpty()) {
+                val oldest = window.peekFirst() ?: break
+                if (oldest < cutoff) window.removeFirst() else break
+            }
+            if (window.size >= MAX_REQUESTS_PER_MINUTE) {
+                return false
+            }
+            window.addLast(nowMs)
+            return true
         }
     }
 
@@ -435,6 +492,7 @@ class AIBotRuntime(
         private const val TAG = "AIBotRuntime"
         private const val MAX_HISTORY_MESSAGES = 20
         private const val TELEGRAM_CHUNK_LIMIT = 4000
+        private const val MAX_REQUESTS_PER_MINUTE = 20
 
         internal fun splitTelegramChunks(text: String, maxLen: Int = TELEGRAM_CHUNK_LIMIT): List<String> {
             if (text.length <= maxLen) return listOf(text)

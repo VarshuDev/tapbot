@@ -30,7 +30,7 @@ function jsonResponse<T>(data: ApiResponse<T>, status = 200): Response {
 }
 
 function generateId(prefix: string): string {
-    return `${prefix}_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+    return `${prefix}_${crypto.randomUUID()}`;
 }
 
 async function recordAuditLog(
@@ -91,13 +91,36 @@ function normalizeLifecycle(status: string): BotLifecycleStatus | null {
 }
 
 function resolveBaseUrl(request: Request, url: URL): string {
-    const forwardedProto = request.headers.get('x-forwarded-proto');
-    const isHttps = forwardedProto === 'https' ||
+    const cfVisitor = request.headers.get('cf-visitor');
+    const isCfHttps = Boolean(cfVisitor && cfVisitor.includes('"scheme":"https"'));
+    const isHttps = isCfHttps ||
                     url.protocol === 'https:' ||
-                    url.hostname.includes('trycloudflare.com') ||
-                    url.hostname.includes('workers.dev');
+                    url.hostname.endsWith('.trycloudflare.com') ||
+                    url.hostname.endsWith('.workers.dev');
     const scheme = isHttps ? 'https' : 'http';
     return `${scheme}://${url.host}`;
+}
+
+function isValidIconUrl(raw: string): boolean {
+    const trimmed = raw.trim();
+    if (!trimmed) return true;
+    if (trimmed.startsWith('/') && !trimmed.startsWith('//')) {
+        return !/[\r\n\0]/.test(trimmed);
+    }
+    try {
+        const parsed = new URL(trimmed);
+        return parsed.protocol === 'https:';
+    } catch {
+        return false;
+    }
+}
+
+function isValidPackageKey(rawKey: string): boolean {
+    const key = rawKey.trim();
+    if (!key || key.length > 256) return false;
+    if (key.startsWith('/') || key.includes('\\') || key.includes('..')) return false;
+    if (/[\x00-\x1F\x7F]/.test(key)) return false;
+    return /^[a-zA-Z0-9._/-]+$/.test(key);
 }
 
 export async function handleAdminRoutes(request: Request, env: Env, url: URL): Promise<Response | null> {
@@ -110,7 +133,7 @@ export async function handleAdminRoutes(request: Request, env: Env, url: URL): P
     }
 
     // Enforce Admin Authentication
-    const authResult = verifyAdminAuth(request, env);
+    const authResult = await verifyAdminAuth(request, env);
     if (!authResult.authorized && authResult.errorResponse) {
         return authResult.errorResponse;
     }
@@ -311,6 +334,13 @@ export async function handleAdminRoutes(request: Request, env: Env, url: URL): P
         }
 
         const slug = body.slug.trim().toLowerCase();
+        const iconUrl = body.iconUrl ? body.iconUrl.trim() : null;
+        if (iconUrl && !isValidIconUrl(iconUrl)) {
+            return jsonResponse({
+                success: false,
+                error: { code: 'VALIDATION_ERROR', message: 'iconUrl must be an https:// URL or relative path' }
+            }, 400);
+        }
 
         // Check slug uniqueness
         const existing = await env.DB.prepare('SELECT id FROM bots WHERE slug = ?').bind(slug).first();
@@ -336,7 +366,7 @@ export async function handleAdminRoutes(request: Request, env: Env, url: URL): P
             body.name.trim(),
             body.description.trim(),
             body.longDescription ? body.longDescription.trim() : null,
-            body.iconUrl ? body.iconUrl.trim() : null,
+            iconUrl,
             body.category.trim(),
             runtime,
             status,
@@ -437,6 +467,12 @@ export async function handleAdminRoutes(request: Request, env: Env, url: URL): P
         const description = body.description !== undefined ? body.description.trim() : bot.description;
         const longDescription = body.longDescription !== undefined ? (body.longDescription ? body.longDescription.trim() : null) : bot.long_description;
         const iconUrl = body.iconUrl !== undefined ? (body.iconUrl ? body.iconUrl.trim() : null) : bot.icon_url;
+        if (iconUrl && !isValidIconUrl(iconUrl)) {
+            return jsonResponse({
+                success: false,
+                error: { code: 'VALIDATION_ERROR', message: 'iconUrl must be an https:// URL or relative path' }
+            }, 400);
+        }
         const category = body.category !== undefined ? body.category.trim() : bot.category;
         const runtime = body.runtime !== undefined ? body.runtime.trim() : bot.runtime;
 
@@ -953,6 +989,12 @@ export async function handleAdminRoutes(request: Request, env: Env, url: URL): P
         const sha256 = hashArr.map((b) => b.toString(16).padStart(2, '0')).join('');
 
         const customKey = request.headers.get('X-Package-Key');
+        if (customKey && customKey.trim().length > 0 && !isValidPackageKey(customKey)) {
+            return jsonResponse({
+                success: false,
+                error: { code: 'VALIDATION_ERROR', message: 'Invalid X-Package-Key format' }
+            }, 400);
+        }
         const safeFilename = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
         const packageKey = customKey && customKey.trim().length > 0
             ? customKey.trim()

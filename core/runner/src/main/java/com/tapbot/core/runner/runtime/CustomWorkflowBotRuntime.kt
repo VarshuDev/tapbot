@@ -10,9 +10,12 @@ import com.tapbot.core.model.TelegramCallbackQuery
 import com.tapbot.core.model.TelegramChat
 import com.tapbot.core.model.TelegramMessage
 import com.tapbot.core.model.TelegramUser
+import com.tapbot.core.network.UrlSecurityValidator
 import com.tapbot.core.runner.ServiceLocator
 import com.tapbot.core.runner.custom.CustomBotRepository
+import com.tapbot.core.runner.security.RuntimeAccessAuthorizer
 import com.tapbot.core.runner.util.AdaptiveBackoff
+import com.tapbot.core.security.SecretRedactor
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -22,6 +25,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import okhttp3.MediaType.Companion.toMediaType
@@ -33,7 +37,6 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
-import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
 
 /**
@@ -50,10 +53,12 @@ class CustomWorkflowBotRuntime(
     override val botId: String,
     private val definitionOverride: CustomBotDefinition? = null,
     private val repositoryProvider: () -> CustomBotRepository? = { ServiceLocator.customBotRepository },
-    private val httpClient: OkHttpClient = OkHttpClient.Builder()
-        .connectTimeout(10, TimeUnit.SECONDS)
-        .readTimeout(15, TimeUnit.SECONDS)
-        .build(),
+    private val httpClient: OkHttpClient = UrlSecurityValidator.createSafeHttpClient(
+        options = UrlSecurityValidator.ValidationOptions(requireHttps = true),
+        connectTimeoutSeconds = 10,
+        readTimeoutSeconds = 15,
+        followRedirects = false
+    ),
     private val dateProvider: () -> String = {
         SimpleDateFormat("yyyy-MM-dd HH:mm:ss 'UTC'", Locale.US).apply {
             timeZone = TimeZone.getTimeZone("UTC")
@@ -201,6 +206,10 @@ class CustomWorkflowBotRuntime(
         val def = resolveDefinition()
         val msg = callback.message
         val chat = msg?.chat
+        if (chat != null && !isSenderAndChatPermitted(ctx, chat.id, callback.from.id)) {
+            ctx.telegramApi.answerCallbackQuery(token, callback.id, "⛔ Unauthorized chat or user.", showAlert = true)
+            return
+        }
 
         val matchedRule = def?.rules?.firstOrNull { rule ->
             (!rule.buttonCallbackData.isNullOrBlank() && rule.buttonCallbackData == data) ||
@@ -246,6 +255,9 @@ class CustomWorkflowBotRuntime(
         message: TelegramMessage,
         text: String
     ) {
+        if (!isSenderAndChatPermitted(ctx, message.chat.id, message.from?.id)) {
+            return
+        }
         val definition = resolveDefinition()
         val trimmed = text.trim()
         val parts = trimmed.split("\\s+".toRegex(), limit = 2)
@@ -434,11 +446,23 @@ class CustomWorkflowBotRuntime(
         args: String
     ): String = withContext(Dispatchers.IO) {
         val rawUrl = rule.webhookUrl?.trim().orEmpty()
-        if (!rawUrl.startsWith("http://") && !rawUrl.startsWith("https://")) {
-            return@withContext "Invalid webhook URL scheme"
+        val preCheck = UrlSecurityValidator.validateUrlSyntax(
+            rawUrl,
+            UrlSecurityValidator.ValidationOptions(requireHttps = true)
+        )
+        if (preCheck.isFailure) {
+            return@withContext "Blocked webhook URL: ${preCheck.exceptionOrNull()?.message ?: "HTTPS public host required"}"
         }
 
         val resolvedUrl = substituteUrlVariables(rawUrl, from, chat, args)
+        val postCheck = UrlSecurityValidator.validateUrlSyntax(
+            resolvedUrl,
+            UrlSecurityValidator.ValidationOptions(requireHttps = true)
+        )
+        if (postCheck.isFailure) {
+            return@withContext "Blocked resolved webhook URL: ${postCheck.exceptionOrNull()?.message ?: "Invalid target"}"
+        }
+
         val reqBuilder = Request.Builder().url(resolvedUrl)
         for ((k, v) in rule.webhookHeaders) {
             if (k.isNotBlank()) {
@@ -456,7 +480,8 @@ class CustomWorkflowBotRuntime(
                         from = from,
                         chat = chat,
                         args = args,
-                        webhookResponse = ""
+                        webhookResponse = "",
+                        escapeJson = true
                     )
                 } else {
                     buildJsonObject {
@@ -475,15 +500,19 @@ class CustomWorkflowBotRuntime(
 
         try {
             httpClient.newCall(reqBuilder.build()).execute().use { response ->
-                val body = response.body?.string()?.trim().orEmpty()
+                val body = UrlSecurityValidator.readResponseBodyCapped(
+                    response.body,
+                    MAX_WEBHOOK_RESPONSE_BYTES
+                ).trim()
+                val safeBody = SecretRedactor.redact(body)
                 if (response.isSuccessful) {
-                    body.ifBlank { "HTTP ${response.code} OK" }
+                    safeBody.ifBlank { "HTTP ${response.code} OK" }
                 } else {
-                    "Webhook HTTP ${response.code}: ${body.ifBlank { response.message }}"
+                    "Webhook HTTP ${response.code}: ${safeBody.ifBlank { response.message }}"
                 }
             }
         } catch (e: Exception) {
-            "Webhook error: ${e.message ?: "Request failed"}"
+            "Webhook error: ${SecretRedactor.redactThrowable(e, "Request failed")}"
         }
     }
 
@@ -536,25 +565,50 @@ class CustomWorkflowBotRuntime(
         from: TelegramUser?,
         chat: TelegramChat,
         args: String,
-        webhookResponse: String
+        webhookResponse: String,
+        escapeJson: Boolean = false
     ): String {
-        val user = from?.firstName ?: from?.username ?: "User"
-        val username = from?.username?.let { "@$it" } ?: user
+        val rawUser = from?.firstName ?: from?.username ?: "User"
+        val rawUsername = from?.username?.let { "@$it" } ?: rawUser
         val userId = (from?.id ?: 0L).toString()
         val chatId = chat.id.toString()
-        val date = dateProvider()
+        val rawDate = dateProvider()
+
+        val user = if (escapeJson) escapeJsonStringContent(rawUser) else rawUser
+        val username = if (escapeJson) escapeJsonStringContent(rawUsername) else rawUsername
+        val safeArgs = if (escapeJson) escapeJsonStringContent(args) else args
+        val date = if (escapeJson) escapeJsonStringContent(rawDate) else rawDate
+        val resp = if (escapeJson) escapeJsonStringContent(webhookResponse) else webhookResponse
 
         return template
             .replace("{user}", user)
             .replace("{username}", username)
             .replace("{user_id}", userId)
             .replace("{chat_id}", chatId)
-            .replace("{args}", args)
+            .replace("{args}", safeArgs)
             .replace("{date}", date)
-            .replace("{webhook_response}", webhookResponse)
+            .replace("{webhook_response}", resp)
+    }
+
+    private fun escapeJsonStringContent(raw: String): String {
+        val serialized = JsonPrimitive(raw).toString()
+        return if (serialized.length >= 2 && serialized.startsWith("\"") && serialized.endsWith("\"")) {
+            serialized.substring(1, serialized.length - 1)
+        } else {
+            serialized
+        }
+    }
+
+    private fun isSenderAndChatPermitted(ctx: RuntimeContext, chatId: Long, senderId: Long?): Boolean {
+        if (!RuntimeAccessAuthorizer.isChatAllowed(ctx, chatId)) return false
+        if (RuntimeAccessAuthorizer.configuredOwnerId(ctx) != null && !RuntimeAccessAuthorizer.isConfiguredOwner(ctx, senderId)) {
+            return false
+        }
+        return true
     }
 
     companion object {
         private const val TAG = "CustomWorkflowBot"
+        private const val MAX_WEBHOOK_RESPONSE_BYTES = 1L * 1024L * 1024L
     }
 }

@@ -67,7 +67,13 @@ class DefaultLocalBotInstallationManager(
             if (freeBytes < requiredBytes) {
                 throw java.io.IOException("Insufficient storage space: only ${freeBytes / (1024 * 1024)} MB available (required: ${requiredBytes / (1024 * 1024)} MB).")
             }
-            targetArchive = File(installDir, "${bot.id}_${bot.version}.botpkg")
+            val safeId = sanitizeFilenameSegment(bot.id)
+            val safeVersion = sanitizeFilenameSegment(bot.version)
+            val candidate = File(installDir, "${safeId}_${safeVersion}.botpkg")
+            if (!candidate.canonicalPath.startsWith(installDir.canonicalPath + File.separator)) {
+                throw SecurityException("Invalid bot install target path")
+            }
+            targetArchive = candidate
             if (packageFile.absolutePath != targetArchive.absolutePath) {
                 packageFile.copyTo(targetArchive, overwrite = true)
             }
@@ -127,5 +133,13 @@ class DefaultLocalBotInstallationManager(
                 // Ignore disk write failure
             }
         }
+    }
+
+    private fun sanitizeFilenameSegment(raw: String): String {
+        val cleaned = raw.trim().replace(Regex("[^a-zA-Z0-9._-]"), "_")
+        if (cleaned.isBlank() || cleaned == "." || cleaned == "..") {
+            throw SecurityException("Invalid identifier segment for local package path")
+        }
+        return cleaned
     }
 }

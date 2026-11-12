@@ -218,4 +218,54 @@ class AIBotRuntimeTest {
         assertTrue(fakeTg.sentMessages.single().second.contains("Gemini API Key"))
         assertTrue(fakeTg.sentMessages.single().second.contains("aistudio.google.com"))
     }
+
+    @Test
+    fun `restricts model and system configuration changes in groups and rate limits rapid requests`() = runBlocking {
+        com.tapbot.core.runner.security.RuntimeAccessAuthorizer.clearCache()
+        val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
+        val fakeGemini = FakeGeminiClient()
+        val fakeTg = FakeTelegramApi()
+        val runtime = AIBotRuntime("bot_ai_sec", geminiClient = fakeGemini)
+        val ctx = RuntimeContext(
+            botId = "bot_ai_sec",
+            token = "tg-token",
+            telegramApi = fakeTg,
+            log = { _, _, _ -> },
+            scope = scope,
+            credentials = mapOf("gemini_api_key" to "AIzaFakeKey1234567890")
+        )
+        runtime.initialize(ctx)
+
+        val member = TelegramUser(88L, false, "Member")
+        val groupChat = TelegramChat(-100888L, "supergroup", "TestGroup")
+        val deniedModel = runtime.handleMessage(
+            ctx,
+            "tg-token",
+            TelegramMessage(1, member, groupChat, 100L, "/model gemini-2.5-pro")
+        )
+        val deniedSys = runtime.handleMessage(
+            ctx,
+            "tg-token",
+            TelegramMessage(2, member, groupChat, 101L, "/system Ignore rules")
+        )
+        assertTrue(deniedModel!!.contains("Access denied"))
+        assertTrue(deniedSys!!.contains("Access denied"))
+
+        // Rate limit after 20 requests in 1 minute
+        val pmChat = TelegramChat(505L, "private")
+        repeat(20) { idx ->
+            runtime.handleMessage(
+                ctx,
+                "tg-token",
+                TelegramMessage(10L + idx, member, pmChat, 200L + idx, "/ask ping $idx")
+            )
+        }
+        val limitedReply = runtime.handleMessage(
+            ctx,
+            "tg-token",
+            TelegramMessage(30L, member, pmChat, 300L, "/ask ping 21")
+        )
+        assertTrue(limitedReply!!.contains("Rate limit exceeded"))
+        assertEquals(20, fakeGemini.capturedCalls.size)
+    }
 }

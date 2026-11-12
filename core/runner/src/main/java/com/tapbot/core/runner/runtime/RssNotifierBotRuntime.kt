@@ -2,9 +2,12 @@ package com.tapbot.core.runner.runtime
 
 import com.tapbot.core.model.LogLevel
 import com.tapbot.core.model.TelegramMessage
+import com.tapbot.core.network.UrlSecurityValidator
 import com.tapbot.core.runner.rss.RssFeedParser
 import com.tapbot.core.runner.rss.RssItem
+import com.tapbot.core.runner.security.RuntimeAccessAuthorizer
 import com.tapbot.core.runner.util.AdaptiveBackoff
+import com.tapbot.core.security.SecretRedactor
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -228,6 +231,21 @@ class RssNotifierBotRuntime(
         val cmd = cmdToken.removePrefix("/").substringBefore("@").lowercase(Locale.ROOT)
         val arg = parts.getOrNull(1)?.trim().orEmpty()
         val chatId = message.chat.id
+        if (!RuntimeAccessAuthorizer.isChatAllowed(ctx, chatId)) return null
+
+        val isAdminCommand = cmd in ADMIN_COMMANDS
+        if (isAdminCommand && !RuntimeAccessAuthorizer.isAuthorizedForPrivilegedAction(
+                ctx = ctx,
+                token = token,
+                chatId = chatId,
+                chatType = message.chat.type,
+                senderId = message.from?.id
+            )
+        ) {
+            val denied = "⛔ Access denied: only the configured owner or group admin can run `/$cmd`."
+            ctx.telegramApi.sendMessage(token, chatId, denied, null, message.messageId)
+            return denied
+        }
 
         val reply = when (cmd) {
             "start", "help" -> formatHelp()
@@ -330,8 +348,12 @@ class RssNotifierBotRuntime(
 
     private suspend fun handleAddFeed(urlArg: String): String {
         val url = urlArg.trim()
-        if (!url.startsWith("http://", ignoreCase = true) && !url.startsWith("https://", ignoreCase = true)) {
-            return "Usage: /addfeed https://example.com/feed.xml"
+        val validation = UrlSecurityValidator.validateUrlSyntax(
+            url,
+            UrlSecurityValidator.ValidationOptions(requireHttps = false)
+        )
+        if (validation.isFailure) {
+            return "❌ Blocked or invalid RSS/Atom URL: ${validation.exceptionOrNull()?.message ?: "Use a public HTTP(S) feed URL."}"
         }
         return stateMutex.withLock {
             if (feeds.contains(url)) {
@@ -484,15 +506,24 @@ class RssNotifierBotRuntime(
         private const val TAG = "RssNotifierRuntime"
         private const val MAX_SEEN_IDS = 1500
         private const val MAX_ITEMS_PER_CHECK = 5
+        private const val MAX_FEED_BYTES = 2L * 1024L * 1024L
+        private val ADMIN_COMMANDS = setOf(
+            "addfeed", "removefeed", "delfeed", "interval", "settarget", "checknow", "poll"
+        )
 
         fun defaultFeedFetcher(
-            client: OkHttpClient = OkHttpClient.Builder()
-                .connectTimeout(20, TimeUnit.SECONDS)
-                .readTimeout(25, TimeUnit.SECONDS)
-                .followRedirects(true)
-                .build()
+            client: OkHttpClient = UrlSecurityValidator.createSafeHttpClient(
+                options = UrlSecurityValidator.ValidationOptions(requireHttps = false),
+                connectTimeoutSeconds = 20,
+                readTimeoutSeconds = 25,
+                followRedirects = false
+            )
         ): suspend (String) -> Result<String> = { feedUrl ->
             runCatching {
+                UrlSecurityValidator.validateUrlSyntax(
+                    feedUrl,
+                    UrlSecurityValidator.ValidationOptions(requireHttps = false)
+                ).getOrThrow()
                 withContext(Dispatchers.IO) {
                     val req = Request.Builder()
                         .url(feedUrl)
@@ -504,7 +535,7 @@ class RssNotifierBotRuntime(
                         if (!resp.isSuccessful) {
                             throw IOException("HTTP ${resp.code} fetching feed")
                         }
-                        resp.body?.string().orEmpty()
+                        UrlSecurityValidator.readResponseBodyCapped(resp.body, MAX_FEED_BYTES)
                     }
                 }
             }

@@ -88,4 +88,29 @@ class SecretRedactorTest {
         val sanitized = SecretRedactor.redact(normalText)
         assertEquals(normalText, sanitized)
     }
+
+    @Test
+    fun `redact Gemini API keys, headers, and URL query credentials`() {
+        val geminiKey = "AIza" + "SyUnitTestFakeGeminiKey0123456789abcde"
+        val url = "https://generativelanguage.googleapis.com/v1beta/models?key=$geminiKey&token=supersecrettoken123"
+        val header = "x-goog-api-key: $geminiKey"
+
+        val redactedUrl = SecretRedactor.redact(url)
+        val redactedHeader = SecretRedactor.redact(header)
+
+        assertFalse(redactedUrl.contains(geminiKey))
+        assertFalse(redactedUrl.contains("supersecrettoken123"))
+        assertTrue(redactedUrl.contains("[REDACTED_API_KEY]") || redactedUrl.contains("[REDACTED_CREDENTIAL]"))
+        assertFalse(redactedHeader.contains(geminiKey))
+    }
+
+    @Test
+    fun `unregisterSecret stops redacting removed dynamic secret`() {
+        val dynamicSecret = "unique-webhook-secret-998877"
+        SecretRedactor.registerSecret(dynamicSecret)
+        assertTrue(SecretRedactor.redact("hdr $dynamicSecret").contains("[REDACTED_SECRET]"))
+
+        SecretRedactor.unregisterSecret(dynamicSecret)
+        assertEquals("hdr $dynamicSecret", SecretRedactor.redact("hdr $dynamicSecret"))
+    }
 }

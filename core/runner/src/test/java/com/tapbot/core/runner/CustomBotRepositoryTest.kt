@@ -66,4 +66,43 @@ class CustomBotRepositoryTest {
         assertFalse(reloaded.deleteDefinition("custom_deploy_1"))
         assertNull(CustomBotRepository(file).getDefinition("custom_deploy_1"))
     }
+
+    @Test
+    fun `registers and unregisters sensitive webhook header secrets with SecretRedactor`() {
+        com.tapbot.core.security.SecretRedactor.clearRegisteredSecrets()
+        val file = tempFolder.newFile("custom_bots_secret.json")
+        val repo = CustomBotRepository(file)
+        val secretToken = "wh_super_secret_token_98765"
+        val def = CustomBotDefinition(
+            id = "custom_sec_hdr",
+            name = "Header Bot",
+            summary = "Secret header test",
+            rules = listOf(
+                CommandRule(
+                    id = "r1",
+                    command = "/ping",
+                    responseTemplate = "{webhook_response}",
+                    webhookUrl = "https://hooks.example.com/run",
+                    webhookHeaders = mapOf(
+                        "Authorization" to "Bearer $secretToken",
+                        "X-Api-Key" to "custom_header_secret_12345",
+                        "Content-Type" to "application/json"
+                    )
+                )
+            )
+        )
+
+        repo.saveDefinition(def)
+        val redacted = com.tapbot.core.security.SecretRedactor.redact("Failed calling with Bearer $secretToken")
+        assertFalse(redacted.contains(secretToken))
+        assertTrue(redacted.contains("[REDACTED_"))
+        val redactedApiKey = com.tapbot.core.security.SecretRedactor.redact("Header custom_header_secret_12345 leaked")
+        assertFalse(redactedApiKey.contains("custom_header_secret_12345"))
+        assertTrue(redactedApiKey.contains("[REDACTED_"))
+
+        repo.deleteDefinition("custom_sec_hdr")
+        val afterDelete = com.tapbot.core.security.SecretRedactor.redact("Header custom_header_secret_12345 cleared")
+        assertEquals("Header custom_header_secret_12345 cleared", afterDelete)
+        com.tapbot.core.security.SecretRedactor.clearRegisteredSecrets()
+    }
 }

@@ -4,9 +4,46 @@
 
 import { Env, ApiResponse } from '../types';
 
-export function verifyAdminAuth(request: Request, env: Env): { authorized: boolean; errorResponse?: Response } {
-    const configuredKey = env.ADMIN_API_KEY || 'dev-admin-secret-key-change-in-prod';
-    
+async function timingSafeEqualStrings(a: string, b: string): Promise<boolean> {
+    const encoder = new TextEncoder();
+    const [hashA, hashB] = await Promise.all([
+        crypto.subtle.digest('SHA-256', encoder.encode(a)),
+        crypto.subtle.digest('SHA-256', encoder.encode(b))
+    ]);
+    const bytesA = new Uint8Array(hashA);
+    const bytesB = new Uint8Array(hashB);
+    let diff = 0;
+    for (let i = 0; i < bytesA.length; i++) {
+        diff |= bytesA[i] ^ bytesB[i];
+    }
+    return diff === 0;
+}
+
+export async function verifyAdminAuth(
+    request: Request,
+    env: Env
+): Promise<{ authorized: boolean; errorResponse?: Response }> {
+    const configuredKey = env.ADMIN_API_KEY?.trim();
+    if (!configuredKey) {
+        const payload: ApiResponse = {
+            success: false,
+            error: {
+                code: 'SERVICE_UNAVAILABLE',
+                message: 'Admin authentication is not configured on the server'
+            }
+        };
+
+        return {
+            authorized: false,
+            errorResponse: new Response(JSON.stringify(payload), {
+                status: 503,
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+        };
+    }
+
     // Check Authorization: Bearer <key>
     const authHeader = request.headers.get('Authorization');
     let providedKey: string | null = null;
@@ -20,7 +57,7 @@ export function verifyAdminAuth(request: Request, env: Env): { authorized: boole
         providedKey = request.headers.get('X-Admin-Key')?.trim() || null;
     }
 
-    if (!providedKey || providedKey !== configuredKey) {
+    if (!providedKey || !(await timingSafeEqualStrings(providedKey, configuredKey))) {
         const payload: ApiResponse = {
             success: false,
             error: {
@@ -34,7 +71,8 @@ export function verifyAdminAuth(request: Request, env: Env): { authorized: boole
             errorResponse: new Response(JSON.stringify(payload), {
                 status: 401,
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'WWW-Authenticate': 'Bearer realm="TapBot Admin API"'
                 }
             })
         };

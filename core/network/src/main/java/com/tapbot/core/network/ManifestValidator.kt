@@ -45,30 +45,71 @@ class ManifestValidator(
             throw IllegalArgumentException("Package file does not exist or is empty: ${packageFile.name}")
         }
 
-        // Check if package is a valid zip archive containing manifest.json
-        try {
-            ZipFile(packageFile).use { zip ->
-                val manifestEntry = zip.getEntry("manifest.json") ?: zip.getEntry("bot/manifest.json")
-                if (manifestEntry != null) {
-                    val content = zip.getInputStream(manifestEntry).bufferedReader().use { it.readText() }
-                    return@runCatching validateManifestContent(content, expectedBotId, expectedVersion)
-                } else {
-                    throw IllegalArgumentException("Package archive is missing required manifest.json")
+        // Enforce strict ZIP archive validation with Zip-Slip and Zip-Bomb guards
+        ZipFile(packageFile).use { zip ->
+            var entryCount = 0
+            var totalUncompressed = 0L
+            val canonicalRoot = File("/tapbot_pkg_root").canonicalFile
+            val entries = zip.entries()
+            while (entries.hasMoreElements()) {
+                val entry = entries.nextElement()
+                entryCount++
+                if (entryCount > MAX_ZIP_ENTRIES) {
+                    throw SecurityException("Package archive exceeds maximum entry count ($MAX_ZIP_ENTRIES)")
+                }
+
+                val entryName = entry.name
+                if (entryName.isBlank() ||
+                    entryName.contains('\u0000') ||
+                    entryName.startsWith("/") ||
+                    entryName.startsWith("\\") ||
+                    entryName.contains("..")
+                ) {
+                    throw SecurityException("Unsafe Zip-Slip path detected in archive entry: '$entryName'")
+                }
+                val resolved = File(canonicalRoot, entryName).canonicalFile
+                if (!resolved.path.startsWith(canonicalRoot.path + File.separator) && resolved != canonicalRoot) {
+                    throw SecurityException("Archive entry escapes package root: '$entryName'")
+                }
+
+                val entrySize = entry.size
+                if (entrySize > 0L) {
+                    totalUncompressed += entrySize
+                    if (totalUncompressed > MAX_UNCOMPRESSED_BYTES) {
+                        throw SecurityException("Package archive exceeds maximum uncompressed size ($MAX_UNCOMPRESSED_BYTES bytes)")
+                    }
                 }
             }
-        } catch (e: java.util.zip.ZipException) {
-            // Not a zip archive, proceed to flat fallback
-        }
 
-        // Fallback for flat non-zip stub/test packages or direct manifests
-        ManifestValidationResult(
-            isValid = true,
-            botId = expectedBotId,
-            version = expectedVersion,
-            runtime = "native_art",
-            minimumAppVersion = 1,
-            details = "Verified structure for ${packageFile.name}"
-        )
+            val manifestEntry = zip.getEntry("manifest.json") ?: zip.getEntry("bot/manifest.json")
+                ?: throw IllegalArgumentException("Package archive is missing required manifest.json")
+            if (manifestEntry.size > MAX_MANIFEST_BYTES) {
+                throw SecurityException("manifest.json exceeds maximum allowed size ($MAX_MANIFEST_BYTES bytes)")
+            }
+
+            val content = zip.getInputStream(manifestEntry).use { input ->
+                val buffer = ByteArray(8192)
+                val out = java.io.ByteArrayOutputStream()
+                var total = 0
+                while (true) {
+                    val read = input.read(buffer)
+                    if (read == -1) break
+                    total += read
+                    if (total > MAX_MANIFEST_BYTES) {
+                        throw SecurityException("manifest.json stream exceeds maximum allowed size")
+                    }
+                    out.write(buffer, 0, read)
+                }
+                out.toString(Charsets.UTF_8.name())
+            }
+            validateManifestContent(content, expectedBotId, expectedVersion)
+        }
+    }
+
+    companion object {
+        private const val MAX_ZIP_ENTRIES = 500
+        private const val MAX_UNCOMPRESSED_BYTES = 50L * 1024 * 1024
+        private const val MAX_MANIFEST_BYTES = 256 * 1024
     }
 
     /**

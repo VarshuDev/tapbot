@@ -44,9 +44,8 @@ The TapBot backend only serves public catalog metadata, versions, changelogs, an
 ### 2.1 Malicious Package Replacement
 * **Threat:** An attacker replaces legitimate `.botpkg` distribution packages with compromised code intended to exfiltrate tokens or execute malicious payloads.
 * **Mitigation:**
-  * **Cryptographic Hash Verification:** Every package release is registered in Cloudflare D1 with a SHA-256 checksum calculated at build time.
-  * **Streaming Integrity Verification:** During download, `Sha256PackageVerifier` streams the bytes through `MessageDigest("SHA-256")`. If the computed digest does not match the metadata checksum byte-for-byte, the file is rejected immediately and deleted from disk before any installation or execution can occur.
-  * **Future Digital Signing:** The architecture is designed with the `DigitalSignatureVerifier` hook, allowing packages to be verified against the publisher's Ed25519/RSA-PSS public key.
+  * **Cryptographic Integrity & Signatures:** During download, [`Sha256PackageVerifier`](file:///c:/Users/varshan/Downloads/projects/tapbot/core/network/src/main/java/com/tapbot/core/network/PackageVerifier.kt) streams bytes through `MessageDigest("SHA-256")` and delegates optional/configured detached signatures to [`Ed25519SignatureVerifier`](file:///c:/Users/varshan/Downloads/projects/tapbot/core/network/src/main/java/com/tapbot/core/network/Ed25519SignatureVerifier.kt). Tampered binaries are deleted immediately before installation.
+  * **ZIP & Manifest Hardening:** Remote `.botpkg` archives are validated by [`ManifestValidator`](file:///c:/Users/varshan/Downloads/projects/tapbot/core/network/src/main/java/com/tapbot/core/network/ManifestValidator.kt) against Zip Slip path traversal, zip bombs (entry count, uncompressed size, compression ratio), manifest ID spoofing, and incompatible app/runtime versions. Built-in bypasses accept only strict internal schemes (`local://`, `asset://`) or the exact `assets.tapbot.internal` host.
 
 ### 2.2 Compromised CDN (Cloudflare R2)
 * **Threat:** The storage CDN hosting `.botpkg` binaries is breached, and packages are altered or swapped directly on the CDN.
@@ -65,7 +64,7 @@ The TapBot backend only serves public catalog metadata, versions, changelogs, an
 * **Mitigation:**
   * **Local Injection:** Bot credentials are read from `CredentialStore` and injected directly into the local runtime process/coroutine environment.
   * **Android Component Security:** `BotForegroundService` is configured with `android:exported="false"` in `AndroidManifest.xml`. External applications cannot bind to or command the service.
-  * **Direct TLS to Telegram:** Outbound bot traffic goes directly from the local device to `https://api.telegram.org` over TLS 1.3.
+  * **Direct TLS & SSRF Protection:** Release builds enforce `android:usesCleartextTraffic="false"` and strict `<base-config cleartextTrafficPermitted="false" />` (loopback HTTP is allowed only in debug builds). Outbound HTTP clients are built with [`UrlSecurityValidator`](file:///c:/Users/varshan/Downloads/projects/tapbot/core/network/src/main/java/com/tapbot/core/network/UrlSecurityValidator.kt) to block plaintext endpoints, loopback/link-local/metadata IPs, and unsafe redirects, while capping streamed response sizes.
 
 ### 2.5 Logs Containing Secrets (Logcat, Crash Reports, UI)
 * **Threat:** Sensitive tokens and API keys are printed in Android logcat, crash traces, analytics, or UI console panes.
@@ -91,11 +90,16 @@ The TapBot backend only serves public catalog metadata, versions, changelogs, an
   * **`DowngradeAttackChecker`:** Validates incoming package versions against currently installed versions using Semantic Versioning (SemVer: `MAJOR.MINOR.PATCH`).
   * If the incoming package version is lower than the installed version, the installation is aborted with `SecurityException("Downgrade attack detected")`.
 
-### 2.8 Screen Capture & Task Switcher Exposure
-* **Threat:** Background spyware captures screenshots of the credential input field, or the OS task switcher displays a plaintext preview of the user's Telegram token.
+### 2.8 Screen Capture, Clipboard & Bot Runtime Controls
+* **Threat:** Background spyware captures screenshots or clipboard history of entered tokens, unauthorized Telegram users execute privileged admin commands, or custom workflow definitions leak on disk.
 * **Mitigation:**
-  * **`FLAG_SECURE` Enforced:** `SecurityWindowManager.setSecureFlag(activity, true)` sets `WindowManager.LayoutParams.FLAG_SECURE` whenever the `BotDetailScreen` is active.
-  * Screenshots, screen recordings, and OS recent app thumbnail captures are blocked by the Android window compositor.
+  * **`FLAG_SECURE` Enforced:** [`SecurityWindowManager.setSecureFlag`](file:///c:/Users/varshan/Downloads/projects/tapbot/core/security/src/main/java/com/tapbot/core/security/SecurityWindowManager.kt) enforces `WindowManager.LayoutParams.FLAG_SECURE` on `BotDetailScreen`, `CustomBotBuilderScreen`, and the diagnostics report modal in `SettingsScreen`. On Android 13+ (API 33+), secret and diagnostics clipboard copies set `ClipDescription.EXTRA_IS_SENSITIVE`.
+  * **Fail-Closed Commander Pairing:** When `owner_id` is unset on TapBot Commander, [`CommanderPairingManager`](file:///c:/Users/varshan/Downloads/projects/tapbot/core/runner/src/main/java/com/tapbot/core/runner/security/CommanderPairingManager.kt) blocks all commands until an owner is claimed once in private DM via `/pair <code>` using a short-lived in-app OTP (5-minute TTL, 5-attempt lockout).
+  * **Encrypted Custom Bots:** [`CustomBotRepository`](file:///c:/Users/varshan/Downloads/projects/tapbot/core/runner/src/main/java/com/tapbot/core/runner/custom/CustomBotRepository.kt) encrypts persisted custom bot JSON via Keystore-backed AES-GCM and registers webhook secrets with `SecretRedactor` (unregistering them upon deletion).
+
+### 2.9 Catalog Backend & Admin SPA Hardening (`backend/`)
+* **Fail-Closed Auth & Strict CORS:** `verifyAdminAuth` fails closed with HTTP `503` if `ADMIN_API_KEY` is unconfigured, validates bearer/header tokens using fixed-length SHA-256 constant-time comparison, and removes default secrets from `wrangler.toml`. Admin CORS restricts `/api/v1/admin/*` to `ADMIN_ALLOWED_ORIGIN` or same-origin instead of wildcard `*`.
+* **CSP & Input Validation:** The `/admin` dashboard enforces a per-request CSP nonce (`script-src 'self' 'nonce-...'`) with delegated DOM event listeners (zero inline JS handlers), extended HTML/attribute escaping, sanitized image URLs, strict `iconUrl` (`https://` or relative `/`) and `X-Package-Key` validation, safe `Content-Disposition` filenames, and scrubbed unhandled error responses.
 
 ---
 
@@ -126,9 +130,13 @@ The security guarantees are verified by the automated test suite:
 | Test Class | Scope |
 | :--- | :--- |
 | [`BotCredentialSecurityTest.kt`](file:///c:/Users/varshan/Downloads/projects/tapbot/feature/botdetail/src/test/java/com/tapbot/feature/botdetail/BotCredentialSecurityTest.kt) | Verifies user tokens never reach backend, missing credentials prevent start, deletion wipes storage, logs are redacted |
+| [`BotInstallFlowTest.kt`](file:///c:/Users/varshan/Downloads/projects/tapbot/feature/botdetail/src/test/java/com/tapbot/feature/botdetail/BotInstallFlowTest.kt) | Verified package install gating, spoofed internal URL rejection, and mismatched manifest rejection |
 | [`CredentialStoreTest.kt`](file:///c:/Users/varshan/Downloads/projects/tapbot/core/security/src/test/java/com/tapbot/core/security/CredentialStoreTest.kt) | Unit tests for Keystore credential storage lifecycle and isolation |
-| [`SecretRedactorTest.kt`](file:///c:/Users/varshan/Downloads/projects/tapbot/core/security/src/test/java/com/tapbot/core/security/SecretRedactorTest.kt) | Unit tests verifying regex scrubbing of Telegram tokens, API keys, and registered secrets |
+| [`SecretRedactorTest.kt`](file:///c:/Users/varshan/Downloads/projects/tapbot/core/security/src/test/java/com/tapbot/core/security/SecretRedactorTest.kt) | Unit tests verifying regex scrubbing of Telegram tokens, API keys, and registered/unregistered secrets |
 | [`PackageVerifierTest.kt`](file:///c:/Users/varshan/Downloads/projects/tapbot/core/network/src/test/java/com/tapbot/core/network/PackageVerifierTest.kt) | Streaming SHA-256 validation, corrupt package deletion, downgrade protection |
+| [`UrlSecurityValidatorTest.kt`](file:///c:/Users/varshan/Downloads/projects/tapbot/core/network/src/test/java/com/tapbot/core/network/UrlSecurityValidatorTest.kt) | HTTPS enforcement, SSRF private/metadata IP blocking, response cap checks |
+| [`CommanderPairingManagerTest.kt`](file:///c:/Users/varshan/Downloads/projects/tapbot/core/runner/src/test/java/com/tapbot/core/runner/CommanderPairingManagerTest.kt) | Fail-closed `/pair <code>` OTP generation, expiry, attempt lockout, and owner claim |
+| [`api.test.ts`](file:///c:/Users/varshan/Downloads/projects/tapbot/backend/test/api.test.ts) | Cloudflare Worker Vitest suite covering fail-closed auth (`503`), admin CORS, CSP nonce, XSS/traversal/URL validation |
 
 ---
 

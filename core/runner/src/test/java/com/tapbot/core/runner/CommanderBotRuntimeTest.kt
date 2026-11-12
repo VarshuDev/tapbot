@@ -283,6 +283,7 @@ class CommanderBotRuntimeTest {
         val ctx = RuntimeContext(
             botId = "bot_commander",
             token = "fake_token",
+            credentials = mapOf("owner_id" to "100"),
             telegramApi = fakeApi,
             log = { _, _, _ -> },
             scope = this
@@ -474,6 +475,7 @@ class CommanderBotRuntimeTest {
         val ctx = RuntimeContext(
             botId = "bot_commander",
             token = "fake_token",
+            credentials = mapOf("owner_id" to "100"),
             telegramApi = fakeApi,
             log = { _, _, _ -> },
             scope = this
@@ -587,5 +589,56 @@ class CommanderBotRuntimeTest {
         assertTrue(fakeApi.answeredCallbacks.any { it.first == "cb_unauthorized" && it.third })
         assertTrue(fakeApi.editedMessages.any { it.third.contains("Android Battery Diagnostics") })
         assertTrue(fakeManager.stoppedIds.contains("inst_exon_1"))
+    }
+
+    @Test
+    fun `fails closed when unconfigured and pairs owner once via pair in private DM`() = runBlocking {
+        com.tapbot.core.runner.security.CommanderPairingManager.revoke("bot_commander_pair")
+        val fakeApi = FakeTelegramApiClient()
+        val guest = TelegramUser(id = 7777L, isBot = false, firstName = "Alice", username = "alice")
+        val intruder = TelegramUser(id = 8888L, isBot = false, firstName = "Eve", username = "eve")
+        val dmChat = TelegramChat(id = 7777L, type = "private")
+        val groupChat = TelegramChat(id = -10099L, type = "supergroup")
+
+        val code = com.tapbot.core.runner.security.CommanderPairingManager.issuePairingCode("bot_commander_pair").code
+        fakeApi.updateQueue.add(
+            listOf(
+                // Unpaired owner_id -> /apk and /search must fail closed
+                TelegramUpdate(1, TelegramMessage(10, intruder, dmChat, 100L, "/apk")),
+                TelegramUpdate(2, TelegramMessage(11, intruder, dmChat, 101L, "/search exon")),
+                // Public /myid still works
+                TelegramUpdate(3, TelegramMessage(12, guest, dmChat, 102L, "/myid")),
+                // /pair in group must be rejected
+                TelegramUpdate(4, TelegramMessage(13, guest, groupChat, 103L, "/pair $code")),
+                // /pair in private DM with valid code pairs owner_id = 7777
+                TelegramUpdate(5, TelegramMessage(14, guest, dmChat, 104L, "/pair $code")),
+                // Paired owner can now access /store and /status
+                TelegramUpdate(6, TelegramMessage(15, guest, dmChat, 105L, "/store")),
+                // Non-owner remains denied
+                TelegramUpdate(7, TelegramMessage(16, intruder, dmChat, 106L, "/store"))
+            )
+        )
+
+        val runtime = CommanderBotRuntime("bot_commander_pair")
+        val ctx = RuntimeContext(
+            botId = "bot_commander_pair",
+            token = "fake_token",
+            telegramApi = fakeApi,
+            log = { _, _, _ -> },
+            scope = this
+        )
+
+        runtime.initialize(ctx)
+        runtime.start()
+        delay(200)
+        runtime.stop()
+        com.tapbot.core.runner.security.CommanderPairingManager.revoke("bot_commander_pair")
+
+        assertTrue(fakeApi.sentMessages.any { it.first == 7777L && it.second.contains("Pairing Required") })
+        assertTrue(fakeApi.sentMessages.any { it.first == 7777L && it.second.contains("Your Telegram ID:") && it.second.contains("7777") })
+        assertTrue(fakeApi.sentMessages.any { it.first == -10099L && it.second.contains("private direct message") })
+        assertTrue(fakeApi.sentMessages.any { it.first == 7777L && it.second.contains("Commander Paired Successfully") })
+        assertTrue(fakeApi.sentMessages.any { it.first == 7777L && it.second.contains("Cloudflare Bot Store") || it.second.contains("TapBot") })
+        assertTrue(fakeApi.sentMessages.count { it.second.contains("Access Denied") || it.second.contains("Pairing Required") } >= 2)
     }
 }

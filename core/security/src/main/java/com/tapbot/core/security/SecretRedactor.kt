@@ -29,14 +29,29 @@ object SecretRedactor {
         """\bsk-ant-[a-zA-Z0-9_-]{20,90}\b"""
     )
 
+    // Matches Google / Gemini API Keys: e.g. AIzaSy...
+    private val GEMINI_API_KEY_REGEX = Regex(
+        """\bAIza[0-9A-Za-z_-]{33,39}\b"""
+    )
+
     // Matches Bearer authorization headers: e.g. Bearer eyJhbGciOi...
     private val BEARER_TOKEN_REGEX = Regex(
-        """(?i)\b(Bearer\s+)[a-zA-Z0-9_\-\.]{16,}\b"""
+        """(?i)\b(Bearer\s+)[a-zA-Z0-9_\-\.=]{16,}\b"""
+    )
+
+    // Matches HTTP header credentials (Authorization, x-goog-api-key, x-api-key, etc.)
+    private val HTTP_HEADER_SECRET_REGEX = Regex(
+        """(?i)((?:x-goog-api-key|x-api-key|x-auth-token|x-webhook-secret)\s*:\s*)(?!\[REDACTED)([^\r\n,;"]+)"""
+    )
+
+    // Matches URL query string credentials (?key=..., &token=..., &api_key=...)
+    private val URL_QUERY_SECRET_REGEX = Regex(
+        """(?i)([?&](?:api[_-]?key|key|token|bot_token|access_token|secret|password|auth)=)([^&\s#]+)"""
     )
 
     // Matches JSON / key-value credential fields: e.g. "bot_token": "secret123"
     private val KEY_VALUE_CREDENTIAL_REGEX = Regex(
-        """(?i)("?(?:bot_token|token|api_?key|secret|password)"?\s*[:=]\s*")([^"]{6,})(")"""
+        """(?i)("?(?:bot_token|access_token|webhook_secret|auth_token|token|api_?key|secret|password)"?\s*[:=]\s*")([^"]{6,})(")"""
     )
 
     // Set of user-configured dynamic secrets registered at runtime
@@ -53,6 +68,15 @@ object SecretRedactor {
     }
 
     /**
+     * Removes a previously registered secret string from the in-memory set.
+     */
+    fun unregisterSecret(secret: String?) {
+        if (!secret.isNullOrBlank()) {
+            registeredSecrets.remove(secret.trim())
+        }
+    }
+
+    /**
      * Clears all registered dynamic secrets.
      */
     fun clearRegisteredSecrets() {
@@ -60,18 +84,28 @@ object SecretRedactor {
     }
 
     /**
+     * Sanitizes any throwable message safely.
+     */
+    fun redactThrowable(throwable: Throwable?, fallback: String = "Operation failed"): String {
+        val raw = throwable?.message?.takeIf { it.isNotBlank() } ?: fallback
+        return redact(raw)
+    }
+
+    /**
      * Sanitizes any text string by replacing detected Telegram bot tokens, API keys,
-     * bearer tokens, and registered secrets with safe redacted masks.
+     * bearer tokens, URL query secrets, headers, and registered secrets with safe redacted masks.
      */
     fun redact(text: String?): String {
         if (text == null || text.isEmpty()) return ""
 
         var sanitized: String = text
 
-        // 1. Redact dynamically registered secrets first
-        for (secret in registeredSecrets) {
-            if (sanitized.contains(secret)) {
-                sanitized = sanitized.replace(secret, "[REDACTED_SECRET]")
+        // 1. Redact dynamically registered secrets first (longest first to avoid partial match leaks)
+        if (registeredSecrets.isNotEmpty()) {
+            for (secret in registeredSecrets.sortedByDescending { it.length }) {
+                if (sanitized.contains(secret)) {
+                    sanitized = sanitized.replace(secret, "[REDACTED_SECRET]")
+                }
             }
         }
 
@@ -88,27 +122,46 @@ object SecretRedactor {
             maskTelegramToken(fullToken)
         }
 
-        // 4. Redact OpenAI keys
-        sanitized = OPENAI_API_KEY_REGEX.replace(sanitized) { matchResult ->
-            val key = matchResult.value
-            val prefix = key.take(7)
-            "${prefix}****:[REDACTED_API_KEY]"
-        }
-
-        // 5. Redact Anthropic keys
+        // 4. Redact Anthropic keys (before generic sk- regex)
         sanitized = ANTHROPIC_API_KEY_REGEX.replace(sanitized) { matchResult ->
             val key = matchResult.value
             val prefix = key.take(7)
             "${prefix}****:[REDACTED_API_KEY]"
         }
 
-        // 6. Redact Bearer tokens
+        // 5. Redact OpenAI keys
+        sanitized = OPENAI_API_KEY_REGEX.replace(sanitized) { matchResult ->
+            val key = matchResult.value
+            val prefix = key.take(7)
+            "${prefix}****:[REDACTED_API_KEY]"
+        }
+
+        // 6. Redact Google / Gemini keys
+        sanitized = GEMINI_API_KEY_REGEX.replace(sanitized) { matchResult ->
+            val key = matchResult.value
+            val prefix = key.take(6)
+            "${prefix}****:[REDACTED_API_KEY]"
+        }
+
+        // 7. Redact Bearer tokens
         sanitized = BEARER_TOKEN_REGEX.replace(sanitized) { matchResult ->
             val prefix = matchResult.groupValues[1]
             "${prefix}[REDACTED_BEARER_TOKEN]"
         }
 
-        // 7. Redact JSON key-value credentials
+        // 8. Redact HTTP header credentials
+        sanitized = HTTP_HEADER_SECRET_REGEX.replace(sanitized) { matchResult ->
+            val prefix = matchResult.groupValues[1]
+            "${prefix}[REDACTED_SECRET]"
+        }
+
+        // 9. Redact URL query parameter secrets
+        sanitized = URL_QUERY_SECRET_REGEX.replace(sanitized) { matchResult ->
+            val prefix = matchResult.groupValues[1]
+            "${prefix}[REDACTED_CREDENTIAL]"
+        }
+
+        // 10. Redact JSON key-value credentials
         sanitized = KEY_VALUE_CREDENTIAL_REGEX.replace(sanitized) { matchResult ->
             val prefix = matchResult.groupValues[1]
             val suffix = matchResult.groupValues[3]

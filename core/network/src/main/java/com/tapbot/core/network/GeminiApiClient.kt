@@ -1,5 +1,7 @@
 package com.tapbot.core.network
 
+import com.tapbot.core.security.SecretRedactor
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
@@ -124,7 +126,7 @@ open class GeminiApiClient(
 
         withContext(Dispatchers.IO) {
             client.newCall(request).execute().use { response ->
-                val rawBody = response.body?.string().orEmpty()
+                val rawBody = UrlSecurityValidator.readResponseBodyCapped(response.body, MAX_RESPONSE_BYTES)
                 val parsed = if (rawBody.isNotBlank()) {
                     try {
                         json.decodeFromString<GeminiGenerateContentResponse>(rawBody)
@@ -134,12 +136,15 @@ open class GeminiApiClient(
                 } else null
 
                 if (!response.isSuccessful) {
-                    val apiMessage = parsed?.error?.message ?: response.message.ifBlank { "HTTP ${response.code}" }
+                    val apiMessage = SecretRedactor.redact(
+                        parsed?.error?.message ?: response.message.ifBlank { "HTTP ${response.code}" }
+                    )
                     throw IOException("Gemini API error (${response.code}): $apiMessage")
                 }
 
                 if (parsed?.error != null) {
-                    throw IOException("Gemini API error: ${parsed.error.message ?: "Unknown error"}")
+                    val errMsg = SecretRedactor.redact(parsed.error.message ?: "Unknown error")
+                    throw IOException("Gemini API error: $errMsg")
                 }
 
                 val firstCandidate = parsed?.candidates?.firstOrNull()
@@ -156,11 +161,20 @@ open class GeminiApiClient(
                 text
             }
         }
+    }.recoverCatching { err ->
+        if (err is CancellationException) throw err
+        val redacted = SecretRedactor.redactThrowable(err, "Gemini API request failed")
+        when (err) {
+            is IllegalArgumentException -> throw IllegalArgumentException(redacted)
+            is SecurityException -> throw SecurityException(redacted)
+            else -> throw IOException(redacted)
+        }
     }
 
     companion object {
         const val DEFAULT_BASE_URL = "https://generativelanguage.googleapis.com"
         const val DEFAULT_MODEL = "gemini-2.5-flash"
+        private const val MAX_RESPONSE_BYTES = 2L * 1024 * 1024
 
         val sharedClient: OkHttpClient by lazy {
             OkHttpClient.Builder()

@@ -277,4 +277,77 @@ class CustomWorkflowBotRuntimeTest {
         assertEquals("cb_99", tgApi.answeredCallbacks[0].first)
         assertTrue(tgApi.replies[5].text.contains("Hello Varshan [id=4242]"))
     }
+
+    @Test
+    fun `blocks SSRF metadata webhook URLs and escapes JSON body template variables`() = runBlocking {
+        val capturedBodies = mutableListOf<String>()
+        var networkCalls = 0
+        val fakeClient = OkHttpClient.Builder()
+            .addInterceptor { chain ->
+                networkCalls++
+                val req = chain.request()
+                val buf = Buffer()
+                req.body?.writeTo(buf)
+                capturedBodies.add(buf.readUtf8())
+                Response.Builder()
+                    .request(req)
+                    .protocol(Protocol.HTTP_1_1)
+                    .code(200)
+                    .message("OK")
+                    .body("OK".toResponseBody("text/plain".toMediaType()))
+                    .build()
+            }
+            .build()
+
+        val definition = CustomBotDefinition(
+            id = "custom_sec",
+            name = "SecBot",
+            summary = "Security test",
+            rules = listOf(
+                CommandRule(
+                    id = "r_ssrf",
+                    command = "/ssrf",
+                    responseTemplate = "Result: {webhook_response}",
+                    webhookUrl = "http://169.254.169.254/latest/meta-data/",
+                    webhookMethod = CustomHttpMethod.GET
+                ),
+                CommandRule(
+                    id = "r_json",
+                    command = "/post",
+                    responseTemplate = "Posted: {webhook_response}",
+                    webhookUrl = "https://hooks.example.com/ingest",
+                    webhookMethod = CustomHttpMethod.POST,
+                    webhookBodyTemplate = """{"user":"{user}","args":"{args}"}"""
+                )
+            )
+        )
+
+        val tgApi = FakeTelegramApiClient()
+        val user = TelegramUser(id = 77L, isBot = false, firstName = "A\"b")
+        val chat = TelegramChat(id = 88L, type = "private")
+        tgApi.updatesQueue.add(
+            listOf(
+                TelegramUpdate(1L, TelegramMessage(1L, user, chat, 100L, "/ssrf")),
+                TelegramUpdate(2L, TelegramMessage(2L, user, chat, 101L, "/post hello \",\"injected\":true"))
+            )
+        )
+
+        val runtime = CustomWorkflowBotRuntime(
+            botId = "custom_sec",
+            definitionOverride = definition,
+            httpClient = fakeClient
+        )
+        runtime.initialize(RuntimeContext("custom_sec", "TOKEN", tgApi, { _, _, _ -> }, this))
+        runtime.start()
+        delay(200)
+        runtime.stop()
+
+        assertTrue(tgApi.replies.any { it.text.contains("Blocked webhook URL") })
+        assertEquals(1, networkCalls)
+        assertEquals(1, capturedBodies.size)
+        assertEquals(
+            """{"user":"A\"b","args":"hello \",\"injected\":true"}""",
+            capturedBodies.single()
+        )
+    }
 }

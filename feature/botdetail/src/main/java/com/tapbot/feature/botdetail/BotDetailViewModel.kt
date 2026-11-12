@@ -10,12 +10,14 @@ import com.tapbot.core.network.CatalogApi
 import com.tapbot.core.network.CatalogRepository
 import com.tapbot.core.network.DowngradeAttackChecker
 import com.tapbot.core.network.LocalBotInstallationManager
+import com.tapbot.core.network.ManifestValidator
 import com.tapbot.core.network.OfflineFirstCatalogRepository
 import com.tapbot.core.network.TelegramApiClient
 import com.tapbot.core.runner.BotForegroundService
 import com.tapbot.core.runner.BotServiceController
 import com.tapbot.core.runner.custom.CustomBotRepository
 import com.tapbot.core.runner.manager.BotInstanceManager
+import com.tapbot.core.runner.security.CommanderPairingManager
 import com.tapbot.core.security.SecretRedactor
 import com.tapbot.core.security.SecureCredentialStore
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,6 +26,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.io.File
+import java.net.URI
 
 class BotDetailViewModel(
     private val botId: String,
@@ -62,6 +65,11 @@ class BotDetailViewModel(
         logRepository = logRepository,
         packageDownloader = null,
         installationManager = null
+    )
+
+    private val manifestValidator = ManifestValidator(
+        appVersionCode = appVersionCode,
+        supportedRuntimes = SUPPORTED_RUNTIMES
     )
 
     private val _uiState = MutableStateFlow<BotDetailUiState>(BotDetailUiState.Loading)
@@ -111,6 +119,9 @@ class BotDetailViewModel(
                         ?.trim()
                         ?.removePrefix("@")
                         ?.takeIf { it.isNotBlank() }
+                    val activePairing = if (botId == "bot_commander") {
+                        CommanderPairingManager.getActiveCode(botId)
+                    } else null
 
                     _uiState.value = BotDetailUiState.Success(
                         bot = customDef?.toBotMetadata() ?: bot,
@@ -121,11 +132,15 @@ class BotDetailViewModel(
                         runState = botServiceController.getBotRunState(botId).value,
                         logs = logRepository.getLogStream(botId).value,
                         verifiedBotUsername = liveUsername,
-                        customDefinition = customDef
+                        customDefinition = customDef,
+                        activePairingCode = activePairing?.code,
+                        pairingCodeExpiresAtMs = activePairing?.expiresAtMs
                     )
                 }
                 .onFailure { err ->
-                    _uiState.value = BotDetailUiState.Error(err.message ?: "Failed to load bot details")
+                    _uiState.value = BotDetailUiState.Error(
+                        SecretRedactor.redact(err.message ?: "Failed to load bot details")
+                    )
                 }
         }
     }
@@ -216,8 +231,9 @@ class BotDetailViewModel(
                 return@launch
             }
 
-            // Step 4 & 5: Download package & verify SHA-256
+            // Step 4 & 5: Download package & verify SHA-256 + manifest structure
             val tempTarget = File.createTempFile("tapbot_${bot.id}_", ".botpkg")
+            val isInternalPkg = isBuiltInInternalPackageUrl(bot.packageInfo.packageUrl)
             val downloadResult = if (packageDownloader != null && bot.packageInfo.packageUrl.isNotBlank()) {
                 val res = packageDownloader.downloadPackage(
                     packageUrl = bot.packageInfo.packageUrl,
@@ -229,8 +245,15 @@ class BotDetailViewModel(
                         }
                     }
                 )
-                if (res.isFailure && (bot.packageInfo.packageUrl.contains("tapbot.internal") || !bot.packageInfo.packageUrl.startsWith("http"))) {
+                if (res.isFailure && isInternalPkg) {
                     Result.success(tempTarget)
+                } else if (res.isSuccess && !isInternalPkg) {
+                    val archive = res.getOrThrow()
+                    manifestValidator.validatePackage(
+                        packageFile = archive,
+                        expectedBotId = bot.id,
+                        expectedVersion = bot.version
+                    ).map { archive }
                 } else {
                     res
                 }
@@ -260,11 +283,14 @@ class BotDetailViewModel(
                     }
                 }
                 .onFailure { err ->
+                    runCatching { if (tempTarget.exists()) tempTarget.delete() }
                     _uiState.update { st ->
                         if (st is BotDetailUiState.Success) {
                             st.copy(
                                 isInstalling = false,
-                                installError = err.message ?: "Package verification or download failed"
+                                installError = SecretRedactor.redact(
+                                    err.message ?: "Package verification or download failed"
+                                )
                             )
                         } else st
                     }
@@ -498,9 +524,14 @@ class BotDetailViewModel(
     }
 
     fun deleteCredentials() {
-        _uiState.value as? BotDetailUiState.Success ?: return
+        val current = _uiState.value as? BotDetailUiState.Success ?: return
+        val oldSecrets = current.credentials.values.toList()
         viewModelScope.launch {
             credentialStore.deleteCredentials(botId)
+            oldSecrets.forEach { SecretRedactor.unregisterSecret(it) }
+            if (botId == "bot_commander") {
+                CommanderPairingManager.revoke(botId)
+            }
             _uiState.update { st ->
                 if (st is BotDetailUiState.Success) {
                     st.copy(
@@ -511,10 +542,25 @@ class BotDetailViewModel(
                         isConfiguring = true,
                         verifiedBotUsername = null,
                         isVerifyingToken = false,
-                        tokenVerifyError = null
+                        tokenVerifyError = null,
+                        activePairingCode = null,
+                        pairingCodeExpiresAtMs = null
                     )
                 } else st
             }
+        }
+    }
+
+    fun generateCommanderPairingCode() {
+        if (botId != "bot_commander") return
+        val challenge = CommanderPairingManager.issuePairingCode(botId)
+        _uiState.update { st ->
+            if (st is BotDetailUiState.Success) {
+                st.copy(
+                    activePairingCode = challenge.code,
+                    pairingCodeExpiresAtMs = challenge.expiresAtMs
+                )
+            } else st
         }
     }
 
@@ -572,8 +618,10 @@ class BotDetailViewModel(
                         _uiState.update { st ->
                             if (st is BotDetailUiState.Success) {
                                 st.copy(
-                                    generalCredentialError = startRes.exceptionOrNull()?.message
-                                        ?: "Failed to start bot instance"
+                                    generalCredentialError = SecretRedactor.redact(
+                                        startRes.exceptionOrNull()?.message
+                                            ?: "Failed to start bot instance"
+                                    )
                                 )
                             } else st
                         }
@@ -596,6 +644,21 @@ class BotDetailViewModel(
 
     fun clearLogs() {
         logRepository.clearLogs(botId)
+    }
+
+    private fun isBuiltInInternalPackageUrl(packageUrl: String): Boolean {
+        val trimmed = packageUrl.trim()
+        if (trimmed.isBlank()) return false
+        if (trimmed.startsWith("local://", ignoreCase = true) ||
+            trimmed.startsWith("asset://", ignoreCase = true)
+        ) {
+            return true
+        }
+        if (!trimmed.contains("://")) {
+            return true
+        }
+        val host = runCatching { URI(trimmed).host }.getOrNull() ?: return false
+        return host.equals("assets.tapbot.internal", ignoreCase = true)
     }
 
     companion object {

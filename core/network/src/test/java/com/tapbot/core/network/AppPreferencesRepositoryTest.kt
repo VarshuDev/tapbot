@@ -62,6 +62,22 @@ class AppPreferencesRepositoryTest {
             repo.effectiveCatalogUrl("https://default.worker.dev")
         )
 
+        repo.setCustomCatalogUrl("http://insecure.example.com/catalog")
+        assertEquals(
+            "https://default.worker.dev",
+            repo.effectiveCatalogUrl("https://default.worker.dev")
+        )
+
+        repo.setCustomCatalogUrl("http://localhost:8787")
+        assertEquals(
+            "https://default.worker.dev",
+            repo.effectiveCatalogUrl("https://default.worker.dev", allowLocalhostHttp = false)
+        )
+        assertEquals(
+            "http://localhost:8787",
+            repo.effectiveCatalogUrl("https://default.worker.dev", allowLocalhostHttp = true)
+        )
+
         repo.setAutoStartOnBoot(false)
         repo.setCustomCatalogUrl("https://edge.example.com")
         repo.resetToDefaults()

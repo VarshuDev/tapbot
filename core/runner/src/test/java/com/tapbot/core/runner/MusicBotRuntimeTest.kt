@@ -360,4 +360,30 @@ class MusicBotRuntimeTest {
         assertTrue(fakeApi.answeredCallbacks.any { it.first == "cb_vol" && it.second?.contains("Volume") == true })
         assertTrue(fakeApi.editedMessages.isNotEmpty())
     }
+
+    @Test
+    fun `denies non-admin group members on privileged playback commands`() = runBlocking {
+        val fakeApi = MockTelegramApiClient()
+        val runtime = MusicBotRuntime("bot_music")
+        val ctx = RuntimeContext(
+            botId = "bot_music",
+            token = "TOKEN",
+            credentials = mapOf("owner_id" to "999"),
+            telegramApi = fakeApi,
+            log = { _, _, _ -> },
+            scope = this
+        )
+        runtime.initialize(ctx)
+
+        val guest = TelegramUser(id = 111L, isBot = false, firstName = "Guest")
+        val owner = TelegramUser(id = 999L, isBot = false, firstName = "Owner")
+
+        val deniedVol = runtime.handleCommand(ctx, "TOKEN", -1001L, "/volume 50", guest, "supergroup")
+        val deniedMode = runtime.handleCommand(ctx, "TOKEN", -1001L, "/mode chat", guest, "supergroup")
+        assertTrue(deniedVol.contains("Access denied"))
+        assertTrue(deniedMode.contains("Access denied"))
+
+        val allowedVol = runtime.handleCommand(ctx, "TOKEN", -1001L, "/volume 65", owner, "supergroup")
+        assertTrue(allowedVol.contains("65%"))
+    }
 }

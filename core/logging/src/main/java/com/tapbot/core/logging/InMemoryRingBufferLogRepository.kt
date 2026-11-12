@@ -2,6 +2,7 @@ package com.tapbot.core.logging
 
 import com.tapbot.core.model.BotLogEntry
 import com.tapbot.core.model.LogLevel
+import com.tapbot.core.security.SecretRedactor
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -22,7 +23,7 @@ class InMemoryRingBufferLogRepository(
         val entry = BotLogEntry(
             botId = botId,
             level = level,
-            tag = tag,
+            tag = SecretRedactor.redact(tag),
             message = SecretRedactor.redact(message)
         )
         val flow = botLogFlows.computeIfAbsent(botId) { MutableStateFlow(emptyList()) }

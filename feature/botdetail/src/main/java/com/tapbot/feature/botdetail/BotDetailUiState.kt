@@ -25,7 +25,9 @@ sealed interface BotDetailUiState {
         val verifiedBotUsername: String? = null,
         val isVerifyingToken: Boolean = false,
         val tokenVerifyError: String? = null,
-        val customDefinition: CustomBotDefinition? = null
+        val customDefinition: CustomBotDefinition? = null,
+        val activePairingCode: String? = null,
+        val pairingCodeExpiresAtMs: Long? = null
     ) : BotDetailUiState
     data class Error(val message: String) : BotDetailUiState
 }

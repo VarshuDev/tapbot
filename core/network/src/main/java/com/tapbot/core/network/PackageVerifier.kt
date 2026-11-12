@@ -44,10 +44,13 @@ interface DigitalSignatureVerifier {
 }
 
 /**
- * Production implementation verifying SHA-256 integrity of downloaded `.botpkg` archives.
+ * Production implementation verifying SHA-256 integrity and optional/required Ed25519 digital signatures
+ * of downloaded `.botpkg` archives.
  */
 class Sha256PackageVerifier(
-    private val signatureVerifier: DigitalSignatureVerifier? = null
+    private val signatureVerifier: DigitalSignatureVerifier? = null,
+    private val trustedPublicKeyPem: String = "",
+    private val requireSignature: Boolean = false
 ) : PackageVerifier {
 
     override suspend fun verifyPackage(
@@ -58,6 +61,11 @@ class Sha256PackageVerifier(
         runCatching {
             if (!packageFile.exists() || packageFile.length() == 0L) {
                 throw SecurityException("Package file does not exist or is empty: ${packageFile.name}")
+            }
+
+            val cleanExpected = expectedSha256.trim()
+            if (!SHA256_HEX_REGEX.matches(cleanExpected)) {
+                throw SecurityException("Invalid or missing expected SHA-256 checksum")
             }
 
             val digest = MessageDigest.getInstance("SHA-256")
@@ -71,17 +79,34 @@ class Sha256PackageVerifier(
 
             val computed = digest.digest().joinToString("") { "%02x".format(it) }
 
-            if (!computed.equals(expectedSha256.trim(), ignoreCase = true)) {
+            if (!computed.equals(cleanExpected, ignoreCase = true)) {
                 packageFile.delete() // Purge corrupt or tampered package immediately
                 throw SecurityException(
-                    "Integrity verification failed! Expected SHA-256: $expectedSha256, Computed: $computed"
+                    "Integrity verification failed! Expected SHA-256: $cleanExpected, Computed: $computed"
                 )
             }
 
-            // Optional future digital signature check
+            val verifier = signatureVerifier
+                ?: if (trustedPublicKeyPem.isNotBlank() || !signature.isNullOrBlank()) {
+                    Ed25519SignatureVerifier()
+                } else {
+                    null
+                }
+
             var signatureValid = false
-            if (signature != null && signatureVerifier != null) {
-                val sigResult = signatureVerifier.verifySignature(packageFile, signature, "")
+            if (requireSignature) {
+                if (signature.isNullOrBlank() || verifier == null || trustedPublicKeyPem.isBlank()) {
+                    packageFile.delete()
+                    throw SecurityException("Cryptographic package signature is required for ${packageFile.name}")
+                }
+            }
+
+            if (!signature.isNullOrBlank()) {
+                if (verifier == null || trustedPublicKeyPem.isBlank()) {
+                    packageFile.delete()
+                    throw SecurityException("Package signature present without configured trusted public key")
+                }
+                val sigResult = verifier.verifySignature(packageFile, signature, trustedPublicKeyPem)
                 if (sigResult.isFailure || sigResult.getOrNull() != true) {
                     packageFile.delete()
                     throw SecurityException("Cryptographic digital signature verification failed for ${packageFile.name}")
@@ -93,9 +118,17 @@ class Sha256PackageVerifier(
                 isValid = true,
                 computedSha256 = computed,
                 isSignatureVerified = signatureValid,
-                details = "SHA-256 verified successfully ($computed)"
+                details = if (signatureValid) {
+                    "SHA-256 and Ed25519 signature verified ($computed)"
+                } else {
+                    "SHA-256 verified successfully ($computed)"
+                }
             )
         }
+    }
+
+    companion object {
+        internal val SHA256_HEX_REGEX = Regex("^[a-fA-F0-9]{64}$")
     }
 }
 

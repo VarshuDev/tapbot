@@ -91,7 +91,14 @@ data class TelegramChat(
 data class TelegramChatMember(
     val user: TelegramUser,
     val status: String,
-    @SerialName("custom_title") val customTitle: String? = null
+    @SerialName("custom_title") val customTitle: String? = null,
+    @SerialName("can_manage_chat") val canManageChat: Boolean = false,
+    @SerialName("can_delete_messages") val canDeleteMessages: Boolean = false,
+    @SerialName("can_restrict_members") val canRestrictMembers: Boolean = false,
+    @SerialName("can_promote_members") val canPromoteMembers: Boolean = false,
+    @SerialName("can_change_info") val canChangeInfo: Boolean = false,
+    @SerialName("can_invite_users") val canInviteUsers: Boolean = false,
+    @SerialName("can_pin_messages") val canPinMessages: Boolean = false
 )
 
 @Serializable

@@ -11,13 +11,16 @@ import com.tapbot.core.network.CatalogRepository
 import com.tapbot.core.network.CloudflareCatalogApi
 import com.tapbot.core.network.CloudflareRemoteBotDataSource
 import com.tapbot.core.network.DefaultLocalBotInstallationManager
+import com.tapbot.core.network.Ed25519SignatureVerifier
 import com.tapbot.core.network.LocalBotInstallationManager
 import com.tapbot.core.network.LocalCatalogCache
 import com.tapbot.core.network.MockCatalogApi
 import com.tapbot.core.network.OfflineFirstCatalogRepository
 import com.tapbot.core.network.OkHttpBotPackageDownloader
 import com.tapbot.core.network.RemoteBotDataSource
+import com.tapbot.core.network.Sha256PackageVerifier
 import com.tapbot.core.network.TelegramApiClient
+import com.tapbot.core.network.UrlSecurityValidator
 import com.tapbot.core.runner.AndroidBotServiceController
 import com.tapbot.core.runner.BotForegroundService
 import com.tapbot.core.runner.BotServiceController
@@ -90,9 +93,9 @@ class TapBotApplication : Application() {
     override fun onCreate() {
         super.onCreate()
 
-        // 0. Initialize persistent user preferences and custom workflow bot repository
+        // 0. Initialize persistent user preferences and encrypted custom workflow bot repository
         appPreferencesRepository = AppPreferencesRepository(File(filesDir, "app_preferences.json"))
-        customBotRepository = CustomBotRepository(File(filesDir, "custom_bots.json"))
+        customBotRepository = CustomBotRepository(File(filesDir, "custom_bots.json"), androidContext = this)
 
         // 1. Initialize secure storage backed by Android Keystore
         credentialStore = KeystoreSecureCredentialStore(this)
@@ -102,7 +105,12 @@ class TapBotApplication : Application() {
         logRepository = InMemoryRingBufferLogRepository(maxCapacityPerBot = 500)
 
         // 3. Initialize Catalog data source, cache, and repository connecting to Cloudflare Workers / D1 API
-        val okHttpClient = OkHttpClient()
+        val okHttpClient = UrlSecurityValidator.createSafeHttpClient(
+            options = UrlSecurityValidator.ValidationOptions(
+                requireHttps = !BuildConfig.DEBUG,
+                allowLoopbackHosts = BuildConfig.DEBUG
+            )
+        )
         val backendUrlProvider: () -> String = {
             appPreferencesRepository.effectiveCatalogUrl(CloudflareCatalogApi.DEFAULT_BASE_URL)
         }
@@ -125,14 +133,22 @@ class TapBotApplication : Application() {
             remoteSource = remoteBotDataSource,
             cache = localCatalogCache
         )
-        catalogApi = CloudflareCatalogApi(baseUrlProvider = backendUrlProvider, fallback = MockCatalogApi())
+        catalogApi = CloudflareCatalogApi(
+            baseUrlProvider = backendUrlProvider,
+            client = okHttpClient,
+            fallback = MockCatalogApi()
+        )
 
         // 4. Initialize package downloader and local installation manager
         val packageCacheDir = File(cacheDir, "package_cache")
         seedBundledPackages(packageCacheDir)
         botPackageDownloader = OkHttpBotPackageDownloader(
             client = okHttpClient,
-            cacheDir = packageCacheDir
+            cacheDir = packageCacheDir,
+            packageVerifier = Sha256PackageVerifier(
+                signatureVerifier = Ed25519SignatureVerifier()
+            ),
+            allowLoopbackHttp = BuildConfig.DEBUG
         )
         localBotInstallationManager = DefaultLocalBotInstallationManager(
             storageFile = File(filesDir, "installed_bots.json"),

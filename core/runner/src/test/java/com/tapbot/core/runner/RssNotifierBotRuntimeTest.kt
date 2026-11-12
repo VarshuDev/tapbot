@@ -216,4 +216,37 @@ class RssNotifierBotRuntimeTest {
         )
         assertTrue(feedsOut!!.contains("https://example.com/atom.xml"))
     }
+
+    @Test
+    fun `blocks SSRF metadata feed URLs and denies non-admin group feed management`() = runBlocking {
+        com.tapbot.core.runner.security.RuntimeAccessAuthorizer.clearCache()
+        val fakeTg = FakeTelegramApi()
+        val runtime = RssNotifierBotRuntime(
+            botId = "bot_rss_sec",
+            feedFetcher = RssNotifierBotRuntime.defaultFeedFetcher()
+        )
+        val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
+        val ctx = RuntimeContext("bot_rss_sec", "rss-token", fakeTg, { _, _, _ -> }, scope)
+        runtime.initialize(ctx)
+
+        val blocked = runtime.handleMessage(
+            ctx,
+            "rss-token",
+            TelegramMessage(60, TelegramUser(1, false, "Admin"), TelegramChat(777L, "private"), 2003L, "/addfeed http://169.254.169.254/latest/meta-data/")
+        )
+        assertTrue(blocked!!.contains("Blocked or invalid RSS/Atom URL"))
+
+        val groupDenied = runtime.handleMessage(
+            ctx,
+            "rss-token",
+            TelegramMessage(61, TelegramUser(42L, false, "Member"), TelegramChat(-100777L, "supergroup"), 2004L, "/addfeed https://example.com/feed.xml")
+        )
+        assertTrue(groupDenied!!.contains("Access denied"))
+        val feedsAfter = runtime.handleMessage(
+            ctx,
+            "rss-token",
+            TelegramMessage(62, TelegramUser(1, false, "Admin"), TelegramChat(777L, "private"), 2005L, "/feeds")
+        )
+        assertTrue(feedsAfter!!.contains("No RSS/Atom feeds") || !feedsAfter.contains("example.com"))
+    }
 }

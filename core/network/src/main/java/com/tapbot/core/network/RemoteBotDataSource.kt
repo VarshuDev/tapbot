@@ -8,6 +8,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.IOException
@@ -50,20 +51,17 @@ class CloudflareRemoteBotDataSource(
     override suspend fun getPublishedBots(category: String?, search: String?): Result<List<BotMetadata>> =
         withContext(Dispatchers.IO) {
             runCatching {
-                var url = "${currentBaseUrl()}/api/v1/bots"
-                val queryParams = mutableListOf<String>()
+                val urlBuilder = currentBaseUrl().toHttpUrl().newBuilder()
+                    .addPathSegments("api/v1/bots")
                 if (!category.isNullOrBlank() && !category.equals("All", ignoreCase = true)) {
-                    queryParams.add("category=${category.lowercase()}")
+                    urlBuilder.addQueryParameter("category", category.lowercase())
                 }
                 if (!search.isNullOrBlank()) {
-                    queryParams.add("search=${search.trim()}")
-                }
-                if (queryParams.isNotEmpty()) {
-                    url += "?" + queryParams.joinToString("&")
+                    urlBuilder.addQueryParameter("search", search.trim())
                 }
 
                 val request = Request.Builder()
-                    .url(url)
+                    .url(urlBuilder.build())
                     .header("Accept", "application/json")
                     .get()
                     .build()
@@ -72,7 +70,8 @@ class CloudflareRemoteBotDataSource(
                     if (!response.isSuccessful) {
                         throw IOException("HTTP ${response.code}: ${response.message}")
                     }
-                    val bodyString = response.body?.string() ?: throw IOException("Empty response body")
+                    val bodyString = UrlSecurityValidator.readResponseBodyCapped(response.body, MAX_CATALOG_JSON_BYTES)
+                        .takeIf { it.isNotEmpty() } ?: throw IOException("Empty response body")
                     val wrapper = json.decodeFromString<ApiEnvelope<List<CloudflareBotDto>>>(bodyString)
                     if (!wrapper.success || wrapper.data == null) {
                         throw IOException(wrapper.error?.message ?: "Failed to fetch published bots")
@@ -85,7 +84,10 @@ class CloudflareRemoteBotDataSource(
     override suspend fun getBotDetails(botId: String): Result<BotMetadata> =
         withContext(Dispatchers.IO) {
             runCatching {
-                val url = "${currentBaseUrl()}/api/v1/bots/$botId"
+                val url = currentBaseUrl().toHttpUrl().newBuilder()
+                    .addPathSegments("api/v1/bots")
+                    .addPathSegment(botId)
+                    .build()
                 val request = Request.Builder()
                     .url(url)
                     .header("Accept", "application/json")
@@ -99,7 +101,8 @@ class CloudflareRemoteBotDataSource(
                     if (!response.isSuccessful) {
                         throw IOException("HTTP ${response.code}: ${response.message}")
                     }
-                    val bodyString = response.body?.string() ?: throw IOException("Empty response body")
+                    val bodyString = UrlSecurityValidator.readResponseBodyCapped(response.body, MAX_CATALOG_JSON_BYTES)
+                        .takeIf { it.isNotEmpty() } ?: throw IOException("Empty response body")
                     val wrapper = json.decodeFromString<ApiEnvelope<CloudflareBotDto>>(bodyString)
                     if (!wrapper.success || wrapper.data == null) {
                         throw IOException(wrapper.error?.message ?: "Failed to retrieve bot $botId")
@@ -112,7 +115,9 @@ class CloudflareRemoteBotDataSource(
     override suspend fun getCategories(): Result<List<String>> =
         withContext(Dispatchers.IO) {
             runCatching {
-                val url = "${currentBaseUrl()}/api/v1/categories"
+                val url = currentBaseUrl().toHttpUrl().newBuilder()
+                    .addPathSegments("api/v1/categories")
+                    .build()
                 val request = Request.Builder()
                     .url(url)
                     .header("Accept", "application/json")
@@ -123,7 +128,8 @@ class CloudflareRemoteBotDataSource(
                     if (!response.isSuccessful) {
                         throw IOException("HTTP ${response.code}: ${response.message}")
                     }
-                    val bodyString = response.body?.string() ?: throw IOException("Empty response body")
+                    val bodyString = UrlSecurityValidator.readResponseBodyCapped(response.body, MAX_CATALOG_JSON_BYTES)
+                        .takeIf { it.isNotEmpty() } ?: throw IOException("Empty response body")
                     val wrapper = json.decodeFromString<ApiEnvelope<List<CloudflareCategoryDto>>>(bodyString)
                     if (!wrapper.success || wrapper.data == null) {
                         throw IOException(wrapper.error?.message ?: "Failed to fetch categories")
@@ -138,7 +144,11 @@ class CloudflareRemoteBotDataSource(
     override suspend fun getBotVersions(botId: String): Result<List<BotVersion>> =
         withContext(Dispatchers.IO) {
             runCatching {
-                val url = "${currentBaseUrl()}/api/v1/bots/$botId/versions"
+                val url = currentBaseUrl().toHttpUrl().newBuilder()
+                    .addPathSegments("api/v1/bots")
+                    .addPathSegment(botId)
+                    .addPathSegment("versions")
+                    .build()
                 val request = Request.Builder()
                     .url(url)
                     .header("Accept", "application/json")
@@ -149,7 +159,8 @@ class CloudflareRemoteBotDataSource(
                     if (!response.isSuccessful) {
                         throw IOException("HTTP ${response.code}: ${response.message}")
                     }
-                    val bodyString = response.body?.string() ?: throw IOException("Empty response body")
+                    val bodyString = UrlSecurityValidator.readResponseBodyCapped(response.body, MAX_CATALOG_JSON_BYTES)
+                        .takeIf { it.isNotEmpty() } ?: throw IOException("Empty response body")
                     val wrapper = json.decodeFromString<ApiEnvelope<List<CloudflareVersionDto>>>(bodyString)
                     if (!wrapper.success || wrapper.data == null) {
                         throw IOException(wrapper.error?.message ?: "Failed to fetch versions for $botId")
@@ -162,7 +173,11 @@ class CloudflareRemoteBotDataSource(
     override suspend fun getLatestVersion(botId: String): Result<BotVersion?> =
         withContext(Dispatchers.IO) {
             runCatching {
-                val url = "${currentBaseUrl()}/api/v1/bots/$botId/versions/latest"
+                val url = currentBaseUrl().toHttpUrl().newBuilder()
+                    .addPathSegments("api/v1/bots")
+                    .addPathSegment(botId)
+                    .addPathSegments("versions/latest")
+                    .build()
                 val request = Request.Builder()
                     .url(url)
                     .header("Accept", "application/json")
@@ -174,7 +189,8 @@ class CloudflareRemoteBotDataSource(
                     if (!response.isSuccessful) {
                         throw IOException("HTTP ${response.code}: ${response.message}")
                     }
-                    val bodyString = response.body?.string() ?: throw IOException("Empty response body")
+                    val bodyString = UrlSecurityValidator.readResponseBodyCapped(response.body, MAX_CATALOG_JSON_BYTES)
+                        .takeIf { it.isNotEmpty() } ?: throw IOException("Empty response body")
                     val wrapper = json.decodeFromString<ApiEnvelope<CloudflareVersionDto>>(bodyString)
                     if (!wrapper.success || wrapper.data == null) {
                         null
@@ -187,5 +203,6 @@ class CloudflareRemoteBotDataSource(
 
     companion object {
         const val DEFAULT_BASE_URL = "https://tapbot-catalog.workers.dev"
+        private const val MAX_CATALOG_JSON_BYTES = 5L * 1024 * 1024
     }
 }

@@ -5,6 +5,7 @@ import com.tapbot.core.model.PromoteChatMemberPayload
 import com.tapbot.core.model.RestrictChatPermissions
 import com.tapbot.core.model.TelegramCallbackQuery
 import com.tapbot.core.model.TelegramChat
+import com.tapbot.core.model.TelegramChatMember
 import com.tapbot.core.model.TelegramFileRef
 import com.tapbot.core.model.TelegramMessage
 import com.tapbot.core.model.TelegramMessageEntity
@@ -16,6 +17,7 @@ import com.tapbot.core.runner.moderation.ExonModerationStore
 import com.tapbot.core.runner.runtime.BotRuntimeFactory
 import com.tapbot.core.runner.runtime.ExonBotRuntime
 import com.tapbot.core.runner.runtime.RuntimeContext
+import com.tapbot.core.runner.security.RuntimeAccessAuthorizer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -198,6 +200,20 @@ class ExonBotRuntimeTest {
         ): Result<Boolean> {
             deletedMessages.add(chatId to messageId)
             return Result.success(true)
+        }
+
+        val members = mutableMapOf<Pair<Long, Long>, TelegramChatMember>()
+
+        override suspend fun getChatMember(
+            token: String,
+            chatId: Long,
+            userId: Long
+        ): Result<TelegramChatMember> {
+            val member = members[chatId to userId] ?: TelegramChatMember(
+                user = TelegramUser(id = userId, isBot = false, firstName = "User$userId"),
+                status = if (userId == 1L) "creator" else "member"
+            )
+            return Result.success(member)
         }
     }
 
@@ -506,6 +522,149 @@ class ExonBotRuntimeTest {
             assertTrue(fakeApi2.sentMessages.any { it.second.contains("No spamming allowed") })
         } finally {
             tempFile.delete()
+        }
+    }
+
+    @Test
+    fun `non-admin group member is denied moderation and config commands`() = runBlocking {
+        RuntimeAccessAuthorizer.clearCache()
+        val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
+        try {
+            val fakeApi = FakeTelegramApiClient()
+            val chatId = 9001L
+            val nonAdmin = TelegramUser(id = 55L, isBot = false, firstName = "Member", username = "member55")
+            val target = TelegramUser(id = 66L, isBot = false, firstName = "Target", username = "target66")
+            fakeApi.members[chatId to 55L] = TelegramChatMember(user = nonAdmin, status = "member")
+            fakeApi.members[chatId to 66L] = TelegramChatMember(user = target, status = "member")
+
+            val chat = TelegramChat(id = chatId, type = "supergroup", title = "Test Group")
+            val replyMsg = TelegramMessage(messageId = 1, from = target, chat = chat, date = 100L, text = "hi")
+            fakeApi.updateQueue.add(
+                listOf(
+                    TelegramUpdate(1, TelegramMessage(2, from = nonAdmin, chat = chat, date = 101L, text = "/ban", replyToMessage = replyMsg)),
+                    TelegramUpdate(2, TelegramMessage(3, from = nonAdmin, chat = chat, date = 102L, text = "/promote", replyToMessage = replyMsg)),
+                    TelegramUpdate(3, TelegramMessage(4, from = nonAdmin, chat = chat, date = 103L, text = "/setrules No spam")),
+                    TelegramUpdate(4, TelegramMessage(5, from = nonAdmin, chat = chat, date = 104L, text = "/lock links"))
+                )
+            )
+
+            val runtime = ExonBotRuntime("bot_exon_sec_9001")
+            val ctx = RuntimeContext(
+                botId = "bot_exon_sec_9001",
+                token = "dummy_token_exon",
+                telegramApi = fakeApi,
+                log = { _, _, _ -> },
+                scope = scope,
+                networkState = kotlinx.coroutines.flow.MutableStateFlow(true)
+            )
+            runtime.initialize(ctx)
+            val job = scope.launch { runtime.start() }
+            delay(250)
+            runtime.stop()
+            job.cancel()
+
+            assertTrue(fakeApi.bannedUsers.isEmpty())
+            assertTrue(fakeApi.promotedPayloads.isEmpty())
+            assertTrue(fakeApi.sentMessages.size >= 4)
+            assertTrue(fakeApi.sentMessages.all { it.second.contains("ᴀᴄᴄᴇss ᴅᴇɴɪᴇᴅ") })
+        } finally {
+            scope.cancel()
+            RuntimeAccessAuthorizer.clearCache()
+        }
+    }
+
+    @Test
+    fun `cannot moderate chat creator or self-demote`() = runBlocking {
+        RuntimeAccessAuthorizer.clearCache()
+        val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
+        try {
+            val fakeApi = FakeTelegramApiClient()
+            val chatId = 9002L
+            val admin = TelegramUser(id = 10L, isBot = false, firstName = "Mod", username = "mod10")
+            val creator = TelegramUser(id = 1L, isBot = false, firstName = "Owner", username = "owner1")
+            fakeApi.members[chatId to 10L] = TelegramChatMember(
+                user = admin,
+                status = "administrator",
+                canRestrictMembers = true,
+                canPromoteMembers = true
+            )
+            fakeApi.members[chatId to 1L] = TelegramChatMember(user = creator, status = "creator")
+
+            val chat = TelegramChat(id = chatId, type = "supergroup", title = "Test Group")
+            val creatorMsg = TelegramMessage(messageId = 10, from = creator, chat = chat, date = 100L, text = "boss")
+            val adminSelfMsg = TelegramMessage(messageId = 12, from = admin, chat = chat, date = 102L, text = "self")
+            fakeApi.updateQueue.add(
+                listOf(
+                    TelegramUpdate(10, TelegramMessage(11, from = admin, chat = chat, date = 101L, text = "/ban", replyToMessage = creatorMsg)),
+                    TelegramUpdate(11, TelegramMessage(13, from = admin, chat = chat, date = 103L, text = "/demote", replyToMessage = adminSelfMsg))
+                )
+            )
+
+            val runtime = ExonBotRuntime("bot_exon_sec_9002")
+            val ctx = RuntimeContext(
+                botId = "bot_exon_sec_9002",
+                token = "dummy_token_exon",
+                telegramApi = fakeApi,
+                log = { _, _, _ -> },
+                scope = scope,
+                networkState = kotlinx.coroutines.flow.MutableStateFlow(true)
+            )
+            runtime.initialize(ctx)
+            val job = scope.launch { runtime.start() }
+            delay(250)
+            runtime.stop()
+            job.cancel()
+
+            assertTrue(fakeApi.bannedUsers.isEmpty())
+            assertTrue(fakeApi.promotedPayloads.isEmpty())
+            assertTrue(fakeApi.sentMessages.size >= 2)
+        } finally {
+            scope.cancel()
+            RuntimeAccessAuthorizer.clearCache()
+        }
+    }
+
+    @Test
+    fun `html escapes untrusted username and chat title in exon responses`() = runBlocking {
+        RuntimeAccessAuthorizer.clearCache()
+        val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
+        try {
+            val fakeApi = FakeTelegramApiClient()
+            val chatId = 9003L
+            val xssUser = TelegramUser(
+                id = 1L,
+                isBot = false,
+                firstName = "<b>Alice</b>",
+                username = "evil<script>alert(1)</script>"
+            )
+            val chat = TelegramChat(id = chatId, type = "supergroup", title = "<img src=x onerror=alert(1)>")
+            fakeApi.updateQueue.add(
+                listOf(
+                    TelegramUpdate(20, TelegramMessage(20, from = xssUser, chat = chat, date = 200L, text = "/info"))
+                )
+            )
+
+            val runtime = ExonBotRuntime("bot_exon_sec_9003")
+            val ctx = RuntimeContext(
+                botId = "bot_exon_sec_9003",
+                token = "dummy_token_exon",
+                telegramApi = fakeApi,
+                log = { _, _, _ -> },
+                scope = scope,
+                networkState = kotlinx.coroutines.flow.MutableStateFlow(true)
+            )
+            runtime.initialize(ctx)
+            val job = scope.launch { runtime.start() }
+            delay(250)
+            runtime.stop()
+            job.cancel()
+
+            val lastReply = fakeApi.sentMessages.lastOrNull()?.second ?: ""
+            assertTrue(!lastReply.contains("<script>"))
+            assertTrue(lastReply.contains("&lt;script&gt;") || lastReply.contains("&lt;b&gt;"))
+        } finally {
+            scope.cancel()
+            RuntimeAccessAuthorizer.clearCache()
         }
     }
 }

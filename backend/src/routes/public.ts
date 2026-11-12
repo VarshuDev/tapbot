@@ -50,11 +50,12 @@ function mapVersionRow(row: BotVersionRow, baseUrl: string): BotVersionDto {
 }
 
 function resolveBaseUrl(request: Request, url: URL): string {
-    const forwardedProto = request.headers.get('x-forwarded-proto');
-    const isHttps = forwardedProto === 'https' ||
+    const cfVisitor = request.headers.get('cf-visitor');
+    const isCfHttps = Boolean(cfVisitor && cfVisitor.includes('"scheme":"https"'));
+    const isHttps = isCfHttps ||
                     url.protocol === 'https:' ||
-                    url.hostname.includes('trycloudflare.com') ||
-                    url.hostname.includes('workers.dev');
+                    url.hostname.endsWith('.trycloudflare.com') ||
+                    url.hostname.endsWith('.workers.dev');
     const scheme = isHttps ? 'https' : 'http';
     return `${scheme}://${url.host}`;
 }
@@ -444,9 +445,11 @@ export async function handlePublicRoutes(request: Request, env: Env, url: URL): 
         const contentType = object.httpMetadata?.contentType || 'application/octet-stream';
         headers.set('Content-Type', contentType);
         const isImage = contentType.startsWith('image/');
+        const rawFilename = rawKey.split('/').pop() || 'package.botpkg';
+        const safeFilename = rawFilename.replace(/[^a-zA-Z0-9._-]/g, '_') || 'package.botpkg';
         const disposition = isImage
             ? 'inline'
-            : `attachment; filename="${rawKey.split('/').pop() || 'package.botpkg'}"`;
+            : `attachment; filename="${safeFilename}"; filename*=UTF-8''${encodeURIComponent(safeFilename)}`;
         headers.set('Content-Disposition', disposition);
         headers.set('Cache-Control', 'public, max-age=31536000, immutable');
 

@@ -17,5 +17,6 @@ data class BotVersion(
     val minimumAppVersion: Int = 1,
     val minimumRuntimeVersion: String = "1.0.0",
     val isPublished: Boolean = true,
-    val publishedAt: String = ""
+    val publishedAt: String = "",
+    val signature: String? = null
 )

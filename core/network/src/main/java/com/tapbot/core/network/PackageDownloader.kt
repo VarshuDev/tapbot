@@ -29,6 +29,16 @@ class PackageDownloader(
         expectedSha256: String
     ): Flow<DownloadState> = flow {
         try {
+            val cleanExpected = expectedSha256.trim()
+            if (!Sha256PackageVerifier.SHA256_HEX_REGEX.matches(cleanExpected)) {
+                emit(DownloadState.Failed(SecurityException("Valid expected SHA-256 checksum is required")))
+                return@flow
+            }
+            UrlSecurityValidator.validateUrlSyntax(
+                url,
+                UrlSecurityValidator.ValidationOptions(requireHttps = true, allowLoopbackHosts = false)
+            ).getOrThrow()
+
             destinationFile.parentFile?.mkdirs()
             val request = Request.Builder().url(url).build()
 
@@ -63,9 +73,9 @@ class PackageDownloader(
                 }
 
                 val calculatedHash = digest.digest().joinToString("") { "%02x".format(it) }
-                if (expectedSha256.isNotBlank() && !calculatedHash.equals(expectedSha256, ignoreCase = true)) {
+                if (!calculatedHash.equals(cleanExpected, ignoreCase = true)) {
                     destinationFile.delete()
-                    emit(DownloadState.Failed(SecurityException("SHA-256 checksum mismatch! Expected: $expectedSha256, Calculated: $calculatedHash")))
+                    emit(DownloadState.Failed(SecurityException("SHA-256 checksum mismatch! Expected: $cleanExpected, Calculated: $calculatedHash")))
                 } else {
                     emit(DownloadState.Success(destinationFile, calculatedHash))
                 }

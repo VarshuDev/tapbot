@@ -4,7 +4,9 @@
  * Redesigned with ui-ux-pro-max Light Theme Design System
  */
 
-export function renderDashboardHtml(): string {
+export function renderDashboardHtml(nonce = ''): string {
+    const safeNonce = nonce.replace(/[^A-Za-z0-9+/=_-]/g, '');
+    const nonceAttr = safeNonce ? ` nonce="${safeNonce}"` : '';
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -919,13 +921,13 @@ export function renderDashboardHtml(): string {
             </div>
         </div>
         <div class="nav-actions">
-            <button class="btn btn-secondary btn-sm" onclick="loadDashboardData()" title="Refresh store data">
+            <button id="btn-refresh-dashboard" class="btn btn-secondary btn-sm" title="Refresh store data">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
                 </svg>
                 Refresh
             </button>
-            <button class="btn btn-secondary btn-sm" onclick="toggleAuditDrawer()" title="View admin audit trail">
+            <button id="btn-toggle-audit" class="btn btn-secondary btn-sm" title="View admin audit trail">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                     <polyline points="14 2 14 8 20 8"/>
@@ -934,7 +936,7 @@ export function renderDashboardHtml(): string {
                 </svg>
                 Audit Trail
             </button>
-            <button class="btn btn-danger btn-sm" onclick="handleLogout()" title="Sign out of admin session">
+            <button id="btn-logout" class="btn btn-danger btn-sm" title="Sign out of admin session">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
                     <polyline points="16 17 21 12 16 7"/>
@@ -1031,12 +1033,12 @@ export function renderDashboardHtml(): string {
                 </div>
                 <div class="filters-toolbar">
                     <div class="filter-tabs">
-                        <div class="filter-tab active" data-filter="all" onclick="setFilter('all', this)">All</div>
-                        <div class="filter-tab" data-filter="published" onclick="setFilter('published', this)">Published</div>
-                        <div class="filter-tab" data-filter="draft" onclick="setFilter('draft', this)">Draft</div>
-                        <div class="filter-tab" data-filter="review" onclick="setFilter('review', this)">Review</div>
-                        <div class="filter-tab" data-filter="unpublished" onclick="setFilter('unpublished', this)">Unpublished</div>
-                        <div class="filter-tab" data-filter="archived" onclick="setFilter('archived', this)">Archived</div>
+                        <div class="filter-tab active" data-filter="all">All</div>
+                        <div class="filter-tab" data-filter="published">Published</div>
+                        <div class="filter-tab" data-filter="draft">Draft</div>
+                        <div class="filter-tab" data-filter="review">Review</div>
+                        <div class="filter-tab" data-filter="unpublished">Unpublished</div>
+                        <div class="filter-tab" data-filter="archived">Archived</div>
                     </div>
                     <div class="search-box">
                         <span class="search-icon" aria-hidden="true">
@@ -1045,9 +1047,9 @@ export function renderDashboardHtml(): string {
                                 <line x1="21" y1="21" x2="16.65" y2="16.65"/>
                             </svg>
                         </span>
-                        <input type="text" id="search-input" class="search-input" placeholder="Search bots..." oninput="handleSearch()">
+                        <input type="text" id="search-input" class="search-input" placeholder="Search bots...">
                     </div>
-                    <button class="btn btn-primary" onclick="openCreateBotModal()">
+                    <button id="btn-create-bot" class="btn btn-primary">
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                             <line x1="12" y1="5" x2="12" y2="19"/>
                             <line x1="5" y1="12" x2="19" y2="12"/>
@@ -1115,7 +1117,7 @@ export function renderDashboardHtml(): string {
                 <div id="auth-error" style="color: var(--status-archived); font-size: 0.82rem; display: none; margin-top: 0.5rem; font-weight: 500;"></div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-primary" style="width: 100%;" onclick="handleAuthSubmit()">
+                <button id="btn-auth-submit" class="btn btn-primary" style="width: 100%;">
                     Authorize & Enter Dashboard
                 </button>
             </div>
@@ -1127,14 +1129,14 @@ export function renderDashboardHtml(): string {
         <div class="modal-box">
             <div class="modal-header">
                 <div class="modal-title" id="bot-modal-title">Create Bot</div>
-                <button class="modal-close" onclick="closeModal('bot-modal')" aria-label="Close modal">&times;</button>
+                <button class="modal-close" data-close-modal="bot-modal" aria-label="Close modal">&times;</button>
             </div>
             <div class="modal-body">
                 <input type="hidden" id="bot-form-id">
                 <div class="form-row">
                     <div class="form-group">
                         <label class="form-label">Bot Name *</label>
-                        <input type="text" id="bot-form-name" class="form-control" placeholder="e.g. Ping Pong Runner" oninput="handleNameSlugAutoFill()">
+                        <input type="text" id="bot-form-name" class="form-control" placeholder="e.g. Ping Pong Runner">
                     </div>
                     <div class="form-group">
                         <label class="form-label">Slug (Unique ID) *</label>
@@ -1174,8 +1176,8 @@ export function renderDashboardHtml(): string {
                     <label class="form-label">Bot Icon</label>
                     <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
                         <input type="text" id="bot-form-icon-url" class="form-control" placeholder="Icon URL (e.g. https://... or upload below)">
-                        <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('icon-file-input').click()">Upload File</button>
-                        <input type="file" id="icon-file-input" accept="image/*" style="display: none;" onchange="handleIconFileUpload(this)">
+                        <button type="button" id="btn-upload-icon" class="btn btn-secondary btn-sm">Upload File</button>
+                        <input type="file" id="icon-file-input" accept="image/*" style="display: none;">
                     </div>
                     <div id="icon-preview-wrap" style="display: none; align-items: center; gap: 0.6rem;">
                         <img id="icon-preview-img" src="" alt="Icon preview" style="width: 36px; height: 36px; border-radius: var(--radius-sm); object-fit: cover; border: 1px solid var(--border-subtle);">
@@ -1194,8 +1196,8 @@ export function renderDashboardHtml(): string {
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="closeModal('bot-modal')">Cancel</button>
-                <button class="btn btn-primary" onclick="saveBotForm()">Save Bot</button>
+                <button class="btn btn-secondary" data-close-modal="bot-modal">Cancel</button>
+                <button id="btn-save-bot" class="btn btn-primary">Save Bot</button>
             </div>
         </div>
     </div>
@@ -1205,7 +1207,7 @@ export function renderDashboardHtml(): string {
         <div class="modal-box modal-box-lg">
             <div class="modal-header">
                 <div class="modal-title" id="version-modal-title">Package & Version Management</div>
-                <button class="modal-close" onclick="closeModal('version-modal')" aria-label="Close modal">&times;</button>
+                <button class="modal-close" data-close-modal="version-modal" aria-label="Close modal">&times;</button>
             </div>
             <div class="modal-body">
                 <input type="hidden" id="ver-bot-id">
@@ -1243,7 +1245,7 @@ export function renderDashboardHtml(): string {
                     </h4>
 
                     <!-- Drag & Drop Package Zone -->
-                    <div class="dropzone" id="pkg-dropzone" onclick="document.getElementById('pkg-file-input').click()">
+                    <div class="dropzone" id="pkg-dropzone">
                         <div class="dropzone-icon">
                             <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -1253,7 +1255,7 @@ export function renderDashboardHtml(): string {
                         </div>
                         <div class="dropzone-text" id="dropzone-label">Click or drag & drop <strong>.botpkg</strong> or <strong>.zip</strong> archive here</div>
                         <div class="dropzone-subtext">Automatic package size verification and Web Crypto SHA-256 calculation</div>
-                        <input type="file" id="pkg-file-input" accept=".botpkg,.zip" style="display: none;" onchange="handlePackageFileSelect(this)">
+                        <input type="file" id="pkg-file-input" accept=".botpkg,.zip" style="display: none;">
                     </div>
 
                     <div style="margin-top: 1.25rem;">
@@ -1302,14 +1304,14 @@ export function renderDashboardHtml(): string {
                             </select>
                         </div>
 
-                        <button class="btn btn-primary" style="width: 100%;" id="btn-submit-version" onclick="submitNewVersion()" disabled>
+                        <button class="btn btn-primary" style="width: 100%;" id="btn-submit-version" disabled>
                             Upload & Register Version
                         </button>
                     </div>
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="closeModal('version-modal')">Close</button>
+                <button class="btn btn-secondary" data-close-modal="version-modal">Close</button>
             </div>
         </div>
     </div>
@@ -1319,7 +1321,7 @@ export function renderDashboardHtml(): string {
         <div class="modal-box modal-box-lg">
             <div class="modal-header">
                 <div class="modal-title" id="credential-modal-title">Configure Required Credentials</div>
-                <button class="modal-close" onclick="closeModal('credential-modal')" aria-label="Close modal">&times;</button>
+                <button class="modal-close" data-close-modal="credential-modal" aria-label="Close modal">&times;</button>
             </div>
             <div class="modal-body">
                 <input type="hidden" id="cred-bot-id">
@@ -1387,13 +1389,13 @@ export function renderDashboardHtml(): string {
                             </label>
                         </div>
                     </div>
-                    <button class="btn btn-primary btn-sm" onclick="addCredentialSubmit()">
+                    <button id="btn-add-credential" class="btn btn-primary btn-sm">
                         Save Credential Specification
                     </button>
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="closeModal('credential-modal')">Close</button>
+                <button class="btn btn-secondary" data-close-modal="credential-modal">Close</button>
             </div>
         </div>
     </div>
@@ -1410,7 +1412,7 @@ export function renderDashboardHtml(): string {
                 </svg>
                 Store Audit Trail
             </div>
-            <button class="modal-close" onclick="toggleAuditDrawer()" aria-label="Close drawer">&times;</button>
+            <button id="btn-close-audit" class="modal-close" aria-label="Close drawer">&times;</button>
         </div>
         <div class="drawer-body" id="audit-logs-list">
             <div class="empty-state">Loading audit trail...</div>
@@ -1423,7 +1425,7 @@ export function renderDashboardHtml(): string {
     <!-- ================================================================= -->
     <!-- APPLICATION JAVASCRIPT                                            -->
     <!-- ================================================================= -->
-    <script>
+    <script${nonceAttr}>
         const AUTH_STORAGE_KEY = 'tapbot_admin_key';
         let allBots = [];
         let currentFilter = 'all';
@@ -1554,7 +1556,30 @@ export function renderDashboardHtml(): string {
                 .replace(/&/g, '&amp;')
                 .replace(/</g, '&lt;')
                 .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;');
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;')
+                .replace(/\`/g, '&#96;');
+        }
+
+        function sanitizeImageUrl(url) {
+            if (!url) return '';
+            const trimmed = String(url).trim();
+            if (!trimmed) return '';
+            if (trimmed.startsWith('/') && !trimmed.startsWith('//')) {
+                return trimmed;
+            }
+            try {
+                const parsed = new URL(trimmed);
+                if (parsed.protocol === 'https:') {
+                    return trimmed;
+                }
+                if (parsed.protocol === 'http:' && (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1')) {
+                    return trimmed;
+                }
+            } catch {
+                return '';
+            }
+            return '';
         }
 
         function formatBytes(bytes) {
@@ -1632,8 +1657,9 @@ export function renderDashboardHtml(): string {
 
             tbody.innerHTML = filtered.map(bot => {
                 const status = (bot.status || 'draft').toLowerCase();
-                const iconHtml = bot.iconUrl
-                    ? '<img class="bot-icon" src="' + escapeHtml(bot.iconUrl) + '" alt="' + escapeHtml(bot.name) + '">'
+                const safeIconUrl = sanitizeImageUrl(bot.iconUrl);
+                const iconHtml = safeIconUrl
+                    ? '<img class="bot-icon" src="' + escapeHtml(safeIconUrl) + '" alt="' + escapeHtml(bot.name) + '">'
                     : '<div class="bot-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8.01" y2="16"/><line x1="16" y1="16" x2="16.01" y2="16"/></svg></div>';
 
                 const verText = bot.currentVersion
@@ -1666,7 +1692,7 @@ export function renderDashboardHtml(): string {
                         ratingText +
                     '</span></td>' +
                     '<td>' +
-                        '<select class="lifecycle-select" onchange="changeLifecycle(\\'' + bot.id + '\\', this.value)">' +
+                        '<select class="lifecycle-select" data-action="change-lifecycle" data-bot-id="' + escapeHtml(bot.id) + '">' +
                             '<option value="DRAFT"' + (status === 'draft' ? ' selected' : '') + '>DRAFT</option>' +
                             '<option value="REVIEW"' + (status === 'review' ? ' selected' : '') + '>REVIEW</option>' +
                             '<option value="PUBLISHED"' + (status === 'published' ? ' selected' : '') + '>PUBLISHED</option>' +
@@ -1675,21 +1701,21 @@ export function renderDashboardHtml(): string {
                         '</select>' +
                     '</td>' +
                     '<td>' +
-                        '<button class="btn btn-secondary btn-sm" onclick="openCredentialModal(\\'' + bot.id + '\\')">' +
+                        '<button class="btn btn-secondary btn-sm" data-action="open-credentials" data-bot-id="' + escapeHtml(bot.id) + '">' +
                             '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2l-2 2m-1.5 1.5L14 9l-1.5-1.5-3 3 1.5 1.5L9 14l-1.5-1.5L6 14a6 6 0 1 1 8.49-8.49L21 2z"/></svg>' +
                             credCount + ' Fields' +
                         '</button>' +
                     '</td>' +
                     '<td style="text-align: right;">' +
                         '<div class="actions-cell" style="justify-content: flex-end;">' +
-                            '<button class="btn btn-secondary btn-sm" onclick="openVersionModal(\\'' + bot.id + '\\')" title="Manage releases and packages">' +
+                            '<button class="btn btn-secondary btn-sm" data-action="open-versions" data-bot-id="' + escapeHtml(bot.id) + '" title="Manage releases and packages">' +
                                 '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>' +
                                 'Releases' +
                             '</button>' +
-                            '<button class="btn btn-secondary btn-sm" onclick="openEditBotModal(\\'' + bot.id + '\\')" title="Edit bot metadata">' +
+                            '<button class="btn btn-secondary btn-sm" data-action="edit-bot" data-bot-id="' + escapeHtml(bot.id) + '" title="Edit bot metadata">' +
                                 '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>' +
                             '</button>' +
-                            '<button class="btn btn-danger btn-sm" onclick="confirmDeleteBot(\\'' + bot.id + '\\', \\'' + escapeHtml(bot.name) + '\\')" title="Delete bot">' +
+                            '<button class="btn btn-danger btn-sm" data-action="delete-bot" data-bot-id="' + escapeHtml(bot.id) + '" data-bot-name="' + escapeHtml(bot.name) + '" title="Delete bot">' +
                                 '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>' +
                             '</button>' +
                         '</div>' +
@@ -1754,8 +1780,9 @@ export function renderDashboardHtml(): string {
             document.getElementById('bot-form-runtime').value = bot.runtime || 'native_art';
             document.getElementById('bot-form-status').value = bot.status || 'draft';
 
-            if (bot.iconUrl) {
-                document.getElementById('icon-preview-img').src = bot.iconUrl;
+            const safeIconPreview = sanitizeImageUrl(bot.iconUrl);
+            if (safeIconPreview) {
+                document.getElementById('icon-preview-img').src = safeIconPreview;
                 document.getElementById('icon-preview-wrap').style.display = 'flex';
             } else {
                 document.getElementById('icon-preview-wrap').style.display = 'none';
@@ -1904,8 +1931,8 @@ export function renderDashboardHtml(): string {
                         : '<span class="badge badge-unpublished">Unpublished</span>';
 
                     const actionBtn = isPub
-                        ? '<button class="btn btn-secondary btn-sm" onclick="toggleVersionPublish(\\'' + botId + '\\', \\'' + v.version + '\\', false)">Unpublish</button>'
-                        : '<button class="btn btn-success btn-sm" onclick="toggleVersionPublish(\\'' + botId + '\\', \\'' + v.version + '\\', true)">Publish</button>';
+                        ? '<button class="btn btn-secondary btn-sm" data-action="toggle-version-publish" data-bot-id="' + escapeHtml(botId) + '" data-version="' + escapeHtml(v.version) + '" data-publish="false">Unpublish</button>'
+                        : '<button class="btn btn-success btn-sm" data-action="toggle-version-publish" data-bot-id="' + escapeHtml(botId) + '" data-version="' + escapeHtml(v.version) + '" data-publish="true">Publish</button>';
 
                     return '<tr>' +
                         '<td class="mono" style="font-weight: 600; color: var(--accent-indigo);">v' + escapeHtml(v.version) + '</td>' +
@@ -2055,7 +2082,7 @@ export function renderDashboardHtml(): string {
                         '<td>' + (c.secret ? '<span style="color: var(--accent-indigo); font-weight: 600;">🔒 Secret</span>' : '<span style="color: var(--text-dim);">Public</span>') + '</td>' +
                         '<td><span class="badge-tag">' + escapeHtml(c.inputType) + '</span></td>' +
                         '<td style="text-align: right;">' +
-                            '<button class="btn btn-danger btn-sm" onclick="deleteCredential(\\'' + botId + '\\', \\'' + escapeHtml(c.key) + '\\')">Delete</button>' +
+                            '<button class="btn btn-danger btn-sm" data-action="delete-credential" data-bot-id="' + escapeHtml(botId) + '" data-cred-key="' + escapeHtml(c.key) + '">Delete</button>' +
                         '</td>' +
                     '</tr>';
                 }).join('');
@@ -2154,9 +2181,83 @@ export function renderDashboardHtml(): string {
         }
 
         // -----------------------------------------------------------------
-        // Initialization
+        // Initialization & CSP-Safe Event Binding
         // -----------------------------------------------------------------
+        function bindEventListeners() {
+            document.getElementById('btn-refresh-dashboard').addEventListener('click', loadDashboardData);
+            document.getElementById('btn-toggle-audit').addEventListener('click', toggleAuditDrawer);
+            document.getElementById('btn-close-audit').addEventListener('click', toggleAuditDrawer);
+            document.getElementById('btn-logout').addEventListener('click', handleLogout);
+            document.getElementById('btn-create-bot').addEventListener('click', openCreateBotModal);
+            document.getElementById('btn-auth-submit').addEventListener('click', handleAuthSubmit);
+            document.getElementById('btn-save-bot').addEventListener('click', saveBotForm);
+            document.getElementById('btn-submit-version').addEventListener('click', submitNewVersion);
+            document.getElementById('btn-add-credential').addEventListener('click', addCredentialSubmit);
+            document.getElementById('search-input').addEventListener('input', handleSearch);
+            document.getElementById('bot-form-name').addEventListener('input', handleNameSlugAutoFill);
+
+            document.getElementById('btn-upload-icon').addEventListener('click', () => {
+                document.getElementById('icon-file-input').click();
+            });
+            document.getElementById('icon-file-input').addEventListener('change', (e) => {
+                handleIconFileUpload(e.target);
+            });
+
+            document.getElementById('pkg-dropzone').addEventListener('click', (e) => {
+                if (e.target.id !== 'pkg-file-input') {
+                    document.getElementById('pkg-file-input').click();
+                }
+            });
+            document.getElementById('pkg-file-input').addEventListener('change', (e) => {
+                handlePackageFileSelect(e.target);
+            });
+
+            document.querySelectorAll('.filter-tab').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    setFilter(tab.getAttribute('data-filter'), tab);
+                });
+            });
+
+            document.addEventListener('click', (e) => {
+                const closeTarget = e.target.closest('[data-close-modal]');
+                if (closeTarget) {
+                    closeModal(closeTarget.getAttribute('data-close-modal'));
+                    return;
+                }
+
+                const actionTarget = e.target.closest('[data-action]');
+                if (!actionTarget) return;
+
+                const action = actionTarget.getAttribute('data-action');
+                const botId = actionTarget.getAttribute('data-bot-id');
+
+                if (action === 'open-credentials') {
+                    openCredentialModal(botId);
+                } else if (action === 'open-versions') {
+                    openVersionModal(botId);
+                } else if (action === 'edit-bot') {
+                    openEditBotModal(botId);
+                } else if (action === 'delete-bot') {
+                    confirmDeleteBot(botId, actionTarget.getAttribute('data-bot-name') || '');
+                } else if (action === 'toggle-version-publish') {
+                    const version = actionTarget.getAttribute('data-version');
+                    const publish = actionTarget.getAttribute('data-publish') === 'true';
+                    toggleVersionPublish(botId, version, publish);
+                } else if (action === 'delete-credential') {
+                    const credKey = actionTarget.getAttribute('data-cred-key');
+                    deleteCredential(botId, credKey);
+                }
+            });
+
+            document.addEventListener('change', (e) => {
+                const selectTarget = e.target.closest('[data-action="change-lifecycle"]');
+                if (!selectTarget) return;
+                changeLifecycle(selectTarget.getAttribute('data-bot-id'), selectTarget.value);
+            });
+        }
+
         window.addEventListener('DOMContentLoaded', () => {
+            bindEventListeners();
             if (checkAuthOrPrompt()) {
                 loadDashboardData();
             }

@@ -65,13 +65,20 @@ class AppPreferencesRepository(
         updatePreferences { AppPreferences() }
     }
 
-    fun effectiveCatalogUrl(defaultUrl: String = CloudflareCatalogApi.DEFAULT_BASE_URL): String {
+    fun effectiveCatalogUrl(
+        defaultUrl: String = CloudflareCatalogApi.DEFAULT_BASE_URL,
+        allowLocalhostHttp: Boolean = false
+    ): String {
         val custom = _preferences.value.customCatalogUrl.trim().trimEnd('/')
-        return if (custom.startsWith("http://") || custom.startsWith("https://")) {
-            custom
-        } else {
-            defaultUrl
-        }
+        if (custom.isBlank()) return defaultUrl
+        val urlValidation = UrlSecurityValidator.validateUrlSyntax(
+            custom,
+            UrlSecurityValidator.ValidationOptions(
+                requireHttps = true,
+                allowLoopbackHosts = allowLocalhostHttp
+            )
+        )
+        return if (urlValidation.isSuccess) custom else defaultUrl
     }
 
     private fun loadFromDisk() {

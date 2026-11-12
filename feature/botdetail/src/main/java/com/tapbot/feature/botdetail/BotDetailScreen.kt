@@ -2,11 +2,13 @@ package com.tapbot.feature.botdetail
 
 import android.app.Activity
 import android.content.ClipData
+import android.content.ClipDescription
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
+import android.os.PersistableBundle
 import android.provider.Settings
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.RepeatMode
@@ -301,7 +303,8 @@ fun BotDetailScreen(
                         onStopBot = viewModel::stopBot,
                         onClearLogs = viewModel::clearLogs,
                         onRequestDozeWhitelist = { requestDozeWhitelist(context) },
-                        onOpenTelegramBot = { username -> openTelegramBot(context, username) }
+                        onOpenTelegramBot = { username -> openTelegramBot(context, username) },
+                        onGeneratePairingCode = viewModel::generateCommanderPairingCode
                     )
                 }
             }
@@ -448,7 +451,8 @@ internal fun BotDetailContent(
     onStopBot: () -> Unit,
     onClearLogs: () -> Unit,
     onRequestDozeWhitelist: () -> Unit,
-    onOpenTelegramBot: (String) -> Unit
+    onOpenTelegramBot: (String) -> Unit,
+    onGeneratePairingCode: () -> Unit = {}
 ) {
     val scrollState = rememberScrollState()
     val coroutineScope = rememberCoroutineScope()
@@ -579,6 +583,14 @@ internal fun BotDetailContent(
                         onConfigureToggle = onConfigureToggle,
                         isSaving = state.isSavingCredentials,
                         saveSuccess = state.credentialSaveSuccess
+                    )
+                }
+
+                if (state.bot.id == "bot_commander") {
+                    CommanderPairingCard(
+                        hasOwnerConfigured = !state.credentials["owner_id"].isNullOrBlank(),
+                        activeCode = state.activePairingCode,
+                        onGenerateCode = onGeneratePairingCode
                     )
                 }
 
@@ -1877,10 +1889,109 @@ private fun isTelegramTokenKey(key: String): Boolean {
         key.equals("telegram_bot_token", ignoreCase = true)
 }
 
-private fun copyText(context: Context, label: String, text: String) {
+@Composable
+private fun CommanderPairingCard(
+    hasOwnerConfigured: Boolean,
+    activeCode: String?,
+    onGenerateCode: () -> Unit
+) {
+    val context = LocalContext.current
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(TapBotColors.RadiusLg))
+            .background(TapBotColors.SurfacePrimary)
+            .premiumCardBorder(
+                borderColorTop = if (hasOwnerConfigured) TapBotColors.SuccessBorder else TapBotColors.BrandCyanBorder
+            )
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Shield,
+                contentDescription = null,
+                tint = if (hasOwnerConfigured) TapBotColors.SuccessText else TapBotColors.BrandCyan,
+                modifier = Modifier.size(18.dp)
+            )
+            Text(
+                text = if (hasOwnerConfigured) "Owner Pairing Bound" else "Fail-Closed Owner Pairing",
+                color = TapBotColors.TextPrimary,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+
+        Text(
+            text = if (hasOwnerConfigured) {
+                "Commander only accepts admin commands from your configured owner_id. Generate a one-time /pair code below if you need to re-bind from a private DM."
+            } else {
+                "Commander refuses admin and store commands until paired. Generate a one-time code and send /pair <code> in a private Telegram DM with your bot."
+            },
+            color = TapBotColors.TextSecondary,
+            fontSize = 12.sp,
+            lineHeight = 17.sp
+        )
+
+        if (!activeCode.isNullOrBlank()) {
+            val pairCommand = "/pair $activeCode"
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(TapBotColors.RadiusMd))
+                    .background(TapBotColors.SurfaceElevated)
+                    .border(1.dp, TapBotColors.BrandCyanBorder, RoundedCornerShape(TapBotColors.RadiusMd))
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = pairCommand,
+                        color = TapBotColors.BrandCyan,
+                        style = TabularMonoStyle.copy(fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                    )
+                    Text(
+                        text = "Single-use • Expires in 10 minutes • Private DM only",
+                        color = TapBotColors.TextMuted,
+                        fontSize = 10.sp
+                    )
+                }
+                IconButton(
+                    onClick = { copyText(context, "Commander Pair Command", pairCommand, isSensitive = true) },
+                    modifier = Modifier.size(48.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.ContentCopy,
+                        contentDescription = "Copy pairing command",
+                        tint = TapBotColors.BrandCyan,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
+        }
+
+        SecondaryButton(
+            text = if (activeCode == null) "Generate One-Time /pair Code" else "Rotate /pair Code",
+            onClick = onGenerateCode
+        )
+    }
+}
+
+private fun copyText(context: Context, label: String, text: String, isSensitive: Boolean = false) {
     try {
         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
-        clipboard?.setPrimaryClip(ClipData.newPlainText(label, text))
+        val clip = ClipData.newPlainText(label, text).apply {
+            if (isSensitive && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                description.extras = PersistableBundle().apply {
+                    putBoolean(ClipDescription.EXTRA_IS_SENSITIVE, true)
+                }
+            }
+        }
+        clipboard?.setPrimaryClip(clip)
     } catch (_: Exception) {}
 }
 

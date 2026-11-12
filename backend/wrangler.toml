@@ -15,5 +15,5 @@ bucket_name = "tapbot-packages"
 preview_bucket_name = "tapbot-packages-preview"
 
 [vars]
-ADMIN_API_KEY = "dev-admin-secret-key-change-in-prod"
+# ADMIN_API_KEY must be provisioned via `wrangler secret put ADMIN_API_KEY` (or local `.dev.vars`)
 ENVIRONMENT = "development"

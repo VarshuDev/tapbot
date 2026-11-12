@@ -1,9 +1,11 @@
 package com.tapbot.feature.catalog
 
+import android.app.Activity
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -72,6 +74,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -83,6 +86,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tapbot.core.model.CustomHttpMethod
+import com.tapbot.core.security.SecurityWindowManager
 import com.tapbot.core.ui.components.MonospaceBadge
 import com.tapbot.core.ui.components.PrimaryButton
 import com.tapbot.core.ui.motion.TapBotMotion
@@ -147,6 +151,16 @@ internal fun CustomBotBuilderContent(
     onSaveClick: () -> Unit
 ) {
     val context = LocalContext.current
+    val isPreview = LocalInspectionMode.current
+    if (!isPreview) {
+        DisposableEffect(Unit) {
+            val activity = context as? Activity
+            SecurityWindowManager.setSecureFlag(activity, true)
+            onDispose {
+                SecurityWindowManager.setSecureFlag(activity, false)
+            }
+        }
+    }
     var showToken by remember { mutableStateOf(false) }
     var activeTarget by remember(state.editingBotId) {
         mutableStateOf(

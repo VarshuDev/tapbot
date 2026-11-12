@@ -7,8 +7,11 @@ import com.tapbot.core.model.PromoteChatMemberPayload
 import com.tapbot.core.model.SendAudioPayload
 import com.tapbot.core.model.SendMessagePayload
 import com.tapbot.core.model.TelegramApiResponse
+import com.tapbot.core.model.TelegramChatMember
 import com.tapbot.core.model.TelegramUpdate
 import com.tapbot.core.model.TelegramUser
+import com.tapbot.core.security.SecretRedactor
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
@@ -37,10 +40,26 @@ open class TelegramApiClient(
 
     private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
 
+    private suspend inline fun <T> safeTelegramCall(crossinline block: suspend () -> T): Result<T> {
+        return try {
+            Result.success(block())
+        } catch (c: CancellationException) {
+            throw c
+        } catch (t: Throwable) {
+            val safeMsg = SecretRedactor.redact(t.message ?: "Telegram API error")
+            val wrapped = when (t) {
+                is SecurityException -> SecurityException(safeMsg)
+                is IllegalArgumentException -> IllegalArgumentException(safeMsg)
+                else -> IOException(safeMsg)
+            }
+            Result.failure(wrapped)
+        }
+    }
+
     /**
      * Verifies the bot token and returns information about the bot.
      */
-    open suspend fun getMe(token: String): Result<TelegramUser> = runCatching {
+    open suspend fun getMe(token: String): Result<TelegramUser> = safeTelegramCall {
         withContext(Dispatchers.IO) {
             val url = "$BASE_URL/bot$token/getMe"
             val request = Request.Builder().url(url).get().build()
@@ -64,7 +83,7 @@ open class TelegramApiClient(
         token: String,
         offset: Long? = null,
         timeoutSeconds: Int = 30
-    ): Result<List<TelegramUpdate>> = runCatching {
+    ): Result<List<TelegramUpdate>> = safeTelegramCall {
         withContext(Dispatchers.IO) {
             val offsetParam = if (offset != null) "&offset=$offset" else ""
             val url = "$BASE_URL/bot$token/getUpdates?timeout=$timeoutSeconds$offsetParam"
@@ -90,7 +109,7 @@ open class TelegramApiClient(
         chatId: Long,
         text: String,
         parseMode: String?
-    ): Result<Boolean> = runCatching {
+    ): Result<Boolean> = safeTelegramCall {
         withContext(Dispatchers.IO) {
             val url = "$BASE_URL/bot$token/sendMessage"
             val payload = SendMessagePayload(
@@ -127,7 +146,7 @@ open class TelegramApiClient(
         if (replyToMessageId == null) {
             return sendMessage(token, chatId, text, parseMode)
         }
-        return runCatching {
+        return safeTelegramCall {
             withContext(Dispatchers.IO) {
                 val url = "$BASE_URL/bot$token/sendMessage"
                 val payload = SendMessagePayload(
@@ -166,7 +185,7 @@ open class TelegramApiClient(
         if (replyMarkup == null) {
             return sendMessage(token, chatId, text, parseMode, replyToMessageId)
         }
-        return runCatching {
+        return safeTelegramCall {
             withContext(Dispatchers.IO) {
                 val url = "$BASE_URL/bot$token/sendMessage"
                 val payload = SendMessagePayload(
@@ -200,7 +219,7 @@ open class TelegramApiClient(
         callbackQueryId: String,
         text: String? = null,
         showAlert: Boolean = false
-    ): Result<Boolean> = runCatching {
+    ): Result<Boolean> = safeTelegramCall {
         withContext(Dispatchers.IO) {
             val url = "$BASE_URL/bot$token/answerCallbackQuery"
             val payload = AnswerCallbackQueryPayload(
@@ -233,7 +252,7 @@ open class TelegramApiClient(
         text: String,
         parseMode: String? = null,
         replyMarkup: InlineKeyboardMarkup? = null
-    ): Result<Boolean> = runCatching {
+    ): Result<Boolean> = safeTelegramCall {
         withContext(Dispatchers.IO) {
             val url = "$BASE_URL/bot$token/editMessageText"
             val payload = EditMessageTextPayload(
@@ -265,7 +284,7 @@ open class TelegramApiClient(
         token: String,
         chatId: Long,
         userId: Long
-    ): Result<Boolean> = runCatching {
+    ): Result<Boolean> = safeTelegramCall {
         withContext(Dispatchers.IO) {
             val url = "$BASE_URL/bot$token/banChatMember"
             val payload = com.tapbot.core.model.BanChatMemberPayload(chatId, userId)
@@ -296,7 +315,7 @@ open class TelegramApiClient(
         if (untilDate == null) {
             return banChatMember(token, chatId, userId)
         }
-        return runCatching {
+        return safeTelegramCall {
             withContext(Dispatchers.IO) {
                 val url = "$BASE_URL/bot$token/banChatMember"
                 val payload = com.tapbot.core.model.BanChatMemberPayload(chatId, userId, untilDate)
@@ -323,7 +342,7 @@ open class TelegramApiClient(
         token: String,
         chatId: Long,
         userId: Long
-    ): Result<Boolean> = runCatching {
+    ): Result<Boolean> = safeTelegramCall {
         withContext(Dispatchers.IO) {
             val url = "$BASE_URL/bot$token/unbanChatMember"
             val payload = com.tapbot.core.model.UnbanChatMemberPayload(chatId, userId)
@@ -350,7 +369,7 @@ open class TelegramApiClient(
         chatId: Long,
         userId: Long,
         permissions: com.tapbot.core.model.RestrictChatPermissions
-    ): Result<Boolean> = runCatching {
+    ): Result<Boolean> = safeTelegramCall {
         withContext(Dispatchers.IO) {
             val url = "$BASE_URL/bot$token/restrictChatMember"
             val payload = com.tapbot.core.model.RestrictChatMemberPayload(chatId, userId, permissions)
@@ -382,7 +401,7 @@ open class TelegramApiClient(
         if (untilDate == null) {
             return restrictChatMember(token, chatId, userId, permissions)
         }
-        return runCatching {
+        return safeTelegramCall {
             withContext(Dispatchers.IO) {
                 val url = "$BASE_URL/bot$token/restrictChatMember"
                 val payload = com.tapbot.core.model.RestrictChatMemberPayload(chatId, userId, permissions, untilDate)
@@ -408,7 +427,7 @@ open class TelegramApiClient(
     open suspend fun promoteChatMember(
         token: String,
         payload: PromoteChatMemberPayload
-    ): Result<Boolean> = runCatching {
+    ): Result<Boolean> = safeTelegramCall {
         withContext(Dispatchers.IO) {
             val url = "$BASE_URL/bot$token/promoteChatMember"
             val requestBody = json.encodeToString(payload).toRequestBody(jsonMediaType)
@@ -433,7 +452,7 @@ open class TelegramApiClient(
         token: String,
         chatId: Long,
         messageId: Long
-    ): Result<Boolean> = runCatching {
+    ): Result<Boolean> = safeTelegramCall {
         withContext(Dispatchers.IO) {
             val url = "$BASE_URL/bot$token/pinChatMessage"
             val payload = com.tapbot.core.model.PinChatMessagePayload(chatId, messageId)
@@ -459,7 +478,7 @@ open class TelegramApiClient(
         token: String,
         chatId: Long,
         messageId: Long? = null
-    ): Result<Boolean> = runCatching {
+    ): Result<Boolean> = safeTelegramCall {
         withContext(Dispatchers.IO) {
             val url = "$BASE_URL/bot$token/unpinChatMessage"
             val payload = com.tapbot.core.model.UnpinChatMessagePayload(chatId, messageId)
@@ -485,7 +504,7 @@ open class TelegramApiClient(
         token: String,
         chatId: Long,
         messageId: Long
-    ): Result<Boolean> = runCatching {
+    ): Result<Boolean> = safeTelegramCall {
         withContext(Dispatchers.IO) {
             val url = "$BASE_URL/bot$token/deleteMessage"
             val payload = com.tapbot.core.model.DeleteMessagePayload(chatId, messageId)
@@ -510,7 +529,7 @@ open class TelegramApiClient(
     open suspend fun exportChatInviteLink(
         token: String,
         chatId: Long
-    ): Result<String> = runCatching {
+    ): Result<String> = safeTelegramCall {
         withContext(Dispatchers.IO) {
             val url = "$BASE_URL/bot$token/exportChatInviteLink"
             val payload = mapOf("chat_id" to chatId.toString())
@@ -535,19 +554,43 @@ open class TelegramApiClient(
     open suspend fun getChatAdministrators(
         token: String,
         chatId: Long
-    ): Result<List<com.tapbot.core.model.TelegramChatMember>> = runCatching {
+    ): Result<List<TelegramChatMember>> = safeTelegramCall {
         withContext(Dispatchers.IO) {
             val url = "$BASE_URL/bot$token/getChatAdministrators?chat_id=$chatId"
             val request = Request.Builder().url(url).get().build()
 
             val body = client.newCall(request).execute().use { response ->
-                response.body?.string().orEmpty()
+                UrlSecurityValidator.readResponseBodyCapped(response.body, MAX_TELEGRAM_JSON_BYTES)
             }
-            val apiResponse = json.decodeFromString<TelegramApiResponse<List<com.tapbot.core.model.TelegramChatMember>>>(body)
+            val apiResponse = json.decodeFromString<TelegramApiResponse<List<TelegramChatMember>>>(body)
             if (apiResponse.ok) {
                 apiResponse.result.orEmpty()
             } else {
                 throw IOException(apiResponse.description ?: "getChatAdministrators error")
+            }
+        }
+    }
+
+    /**
+     * Retrieves membership status and admin permissions of a single user in a chat.
+     */
+    open suspend fun getChatMember(
+        token: String,
+        chatId: Long,
+        userId: Long
+    ): Result<TelegramChatMember> = safeTelegramCall {
+        withContext(Dispatchers.IO) {
+            val url = "$BASE_URL/bot$token/getChatMember?chat_id=$chatId&user_id=$userId"
+            val request = Request.Builder().url(url).get().build()
+
+            val body = client.newCall(request).execute().use { response ->
+                UrlSecurityValidator.readResponseBodyCapped(response.body, MAX_TELEGRAM_JSON_BYTES)
+            }
+            val apiResponse = json.decodeFromString<TelegramApiResponse<TelegramChatMember>>(body)
+            if (apiResponse.ok) {
+                apiResponse.result ?: throw IOException("Empty chat member response")
+            } else {
+                throw IOException(apiResponse.description ?: "getChatMember error")
             }
         }
     }
@@ -561,7 +604,7 @@ open class TelegramApiClient(
         file: File,
         caption: String? = null,
         parseMode: String? = null
-    ): Result<Boolean> = runCatching {
+    ): Result<Boolean> = safeTelegramCall {
         withContext(Dispatchers.IO) {
             val url = "$BASE_URL/bot$token/sendDocument"
             val mediaType = "application/octet-stream".toMediaType()
@@ -609,7 +652,7 @@ open class TelegramApiClient(
         caption: String? = null,
         parseMode: String? = null,
         replyToMessageId: Long? = null
-    ): Result<Boolean> = runCatching {
+    ): Result<Boolean> = safeTelegramCall {
         withContext(Dispatchers.IO) {
             val url = "$BASE_URL/bot$token/sendAudio"
             val payload = SendAudioPayload(
@@ -649,7 +692,7 @@ open class TelegramApiClient(
         duration: Int? = null,
         caption: String? = null,
         parseMode: String? = null
-    ): Result<Boolean> = runCatching {
+    ): Result<Boolean> = safeTelegramCall {
         withContext(Dispatchers.IO) {
             val url = "$BASE_URL/bot$token/sendAudio"
             val mediaType = "audio/mpeg".toMediaType()
@@ -690,7 +733,7 @@ open class TelegramApiClient(
         token: String,
         chatId: Long,
         action: String = "typing"
-    ): Result<Boolean> = runCatching {
+    ): Result<Boolean> = safeTelegramCall {
         withContext(Dispatchers.IO) {
             val url = "$BASE_URL/bot$token/sendChatAction"
             val payload = mapOf("chat_id" to chatId.toString(), "action" to action)
@@ -711,6 +754,7 @@ open class TelegramApiClient(
 
     companion object {
         private const val BASE_URL = "https://api.telegram.org"
+        private const val MAX_TELEGRAM_JSON_BYTES = 5L * 1024 * 1024
 
         val sharedClient: OkHttpClient by lazy {
             OkHttpClient.Builder()

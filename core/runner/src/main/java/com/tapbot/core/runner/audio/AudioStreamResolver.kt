@@ -1,5 +1,6 @@
 package com.tapbot.core.runner.audio
 
+import com.tapbot.core.network.UrlSecurityValidator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -12,7 +13,6 @@ import java.io.File
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.util.Locale
-import java.util.concurrent.TimeUnit
 
 enum class AudioSourceType {
     DIRECT_URL,
@@ -153,7 +153,17 @@ class AudioStreamResolver(
         }
 
         // 1. Direct audio stream or file link
-        if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+        if (trimmed.startsWith("http://", ignoreCase = true) || trimmed.startsWith("https://", ignoreCase = true)) {
+            val directValidation = UrlSecurityValidator.validateUrlSyntax(
+                trimmed,
+                UrlSecurityValidator.ValidationOptions(requireHttps = true)
+            )
+            if (directValidation.isFailure) {
+                return@withContext Result.failure(
+                    directValidation.exceptionOrNull()
+                        ?: SecurityException("Blocked or non-HTTPS audio stream URL")
+                )
+            }
             if (isDirectAudioUrl(trimmed)) {
                 val filename = trimmed.substringAfterLast("/").substringBefore("?")
                 val title = filename.replace("_", " ").replace("-", " ").substringBeforeLast(".")
@@ -178,25 +188,35 @@ class AudioStreamResolver(
 
         // 3. Custom yt-dlp API endpoint (if provided by user in credentials)
         if (!customResolverUrl.isNullOrBlank()) {
-            try {
-                val encodedQ = URLEncoder.encode(trimmed, StandardCharsets.UTF_8.name())
-                val resolverEndpoint = if (customResolverUrl.contains("?")) {
-                    "$customResolverUrl&q=$encodedQ"
-                } else {
-                    "$customResolverUrl?q=$encodedQ"
-                }
-
-                val req = Request.Builder().url(resolverEndpoint).get().build()
-                val response = client.newCall(req).execute()
-                if (response.isSuccessful) {
-                    val bodyStr = response.body?.string().orEmpty()
-                    val track = parseYtDlpResponse(bodyStr)
-                    if (track != null) {
-                        return@withContext Result.success(track)
+            val customCheck = UrlSecurityValidator.validateUrlSyntax(
+                customResolverUrl,
+                UrlSecurityValidator.ValidationOptions(requireHttps = true)
+            )
+            if (customCheck.isSuccess) {
+                try {
+                    val encodedQ = URLEncoder.encode(trimmed, StandardCharsets.UTF_8.name())
+                    val resolverEndpoint = if (customResolverUrl.contains("?")) {
+                        "$customResolverUrl&q=$encodedQ"
+                    } else {
+                        "$customResolverUrl?q=$encodedQ"
                     }
+
+                    val req = Request.Builder().url(resolverEndpoint).get().build()
+                    client.newCall(req).execute().use { response ->
+                        if (response.isSuccessful) {
+                            val bodyStr = UrlSecurityValidator.readResponseBodyCapped(
+                                response.body,
+                                MAX_RESOLVER_BODY_BYTES
+                            )
+                            val track = parseYtDlpResponse(bodyStr)
+                            if (track != null) {
+                                return@withContext Result.success(track)
+                            }
+                        }
+                    }
+                } catch (_: Exception) {
+                    // Fall through to public resolver
                 }
-            } catch (_: Exception) {
-                // Fall through to public resolver
             }
         }
 
@@ -205,40 +225,43 @@ class AudioStreamResolver(
             val encodedQ = URLEncoder.encode(trimmed, StandardCharsets.UTF_8.name())
             val searchUrl = "https://pipedapi.kavin.rocks/search?q=$encodedQ&filter=music_songs"
             val req = Request.Builder().url(searchUrl).get().build()
-            val response = client.newCall(req).execute()
+            client.newCall(req).execute().use { response ->
+                if (response.isSuccessful) {
+                    val bodyStr = UrlSecurityValidator.readResponseBodyCapped(
+                        response.body,
+                        MAX_RESOLVER_BODY_BYTES
+                    )
+                    val parsed = json.parseToJsonElement(bodyStr)
+                    val items = parsed.jsonObject["items"]?.jsonArray
+                    val firstItem = items?.firstOrNull()?.jsonObject
 
-            if (response.isSuccessful) {
-                val bodyStr = response.body?.string().orEmpty()
-                val parsed = json.parseToJsonElement(bodyStr)
-                val items = parsed.jsonObject["items"]?.jsonArray
-                val firstItem = items?.firstOrNull()?.jsonObject
+                    if (firstItem != null) {
+                        val title = firstItem["title"]?.jsonPrimitive?.content ?: trimmed
+                        val uploader = firstItem["uploaderName"]?.jsonPrimitive?.content ?: "YouTube Music"
+                        val duration = firstItem["duration"]?.jsonPrimitive?.content?.toIntOrNull() ?: 180
+                        val urlPath = firstItem["url"]?.jsonPrimitive?.content ?: ""
+                        val videoId = urlPath.substringAfter("watch?v=")
+                        val thumb = firstItem["thumbnail"]?.jsonPrimitive?.content
 
-                if (firstItem != null) {
-                    val title = firstItem["title"]?.jsonPrimitive?.content ?: trimmed
-                    val uploader = firstItem["uploaderName"]?.jsonPrimitive?.content ?: "YouTube Music"
-                    val duration = firstItem["duration"]?.jsonPrimitive?.content?.toIntOrNull() ?: 180
-                    val urlPath = firstItem["url"]?.jsonPrimitive?.content ?: ""
-                    val videoId = urlPath.substringAfter("watch?v=")
-                    val thumb = firstItem["thumbnail"]?.jsonPrimitive?.content
-
-                    if (videoId.isNotBlank()) {
-                        // High quality audio stream endpoint
-                        val streamUrl = "https://pipedapi.kavin.rocks/streams/$videoId"
-                        return@withContext Result.success(
-                            AudioTrack(
-                                id = "yt_$videoId",
-                                title = title,
-                                artist = uploader,
-                                streamUrl = streamUrl,
-                                durationSeconds = duration,
-                                thumbnailUrl = thumb,
-                                source = AudioSourceType.STREAM_RESOLVER
-                            )
-                        )
+                        if (videoId.isNotBlank()) {
+                            // High quality audio stream endpoint
+                            val streamUrl = "https://pipedapi.kavin.rocks/streams/$videoId"
+                                return@withContext Result.success(
+                                    AudioTrack(
+                                        id = "yt_$videoId",
+                                        title = title,
+                                        artist = uploader,
+                                        streamUrl = streamUrl,
+                                        durationSeconds = duration,
+                                        thumbnailUrl = thumb,
+                                        source = AudioSourceType.STREAM_RESOLVER
+                                    )
+                                )
+                            }
+                        }
                     }
                 }
-            }
-        } catch (_: Exception) {
+            } catch (_: Exception) {
             // Fall through to radio station fallback
         }
 
@@ -270,6 +293,13 @@ class AudioStreamResolver(
             val streamUrl = element["url"]?.jsonPrimitive?.content
                 ?: element["stream_url"]?.jsonPrimitive?.content
                 ?: return null
+            if (UrlSecurityValidator.validateUrlSyntax(
+                    streamUrl,
+                    UrlSecurityValidator.ValidationOptions(requireHttps = true)
+                ).isFailure
+            ) {
+                return null
+            }
             val duration = element["duration"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0
             val thumb = element["thumbnail"]?.jsonPrimitive?.content
 
@@ -288,9 +318,13 @@ class AudioStreamResolver(
     }
 
     companion object {
-        private val defaultHttpClient = OkHttpClient.Builder()
-            .connectTimeout(4, TimeUnit.SECONDS)
-            .readTimeout(6, TimeUnit.SECONDS)
-            .build()
+        private const val MAX_RESOLVER_BODY_BYTES = 1L * 1024L * 1024L
+
+        private val defaultHttpClient = UrlSecurityValidator.createSafeHttpClient(
+            options = UrlSecurityValidator.ValidationOptions(requireHttps = true),
+            connectTimeoutSeconds = 4,
+            readTimeoutSeconds = 6,
+            followRedirects = false
+        )
     }
 }

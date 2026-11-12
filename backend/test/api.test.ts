@@ -924,4 +924,110 @@ describe('TapBot Catalog Backend API & Admin Dashboard', () => {
         expect(body.data.botId).toBe('bot_ping_pong');
         expect(body.data.downloadsCount).toBe(initialCount + 1);
     });
+
+    // -------------------------------------------------------------
+    // Security Hardening Verification
+    // -------------------------------------------------------------
+    it('fails closed with 503 on admin routes when ADMIN_API_KEY is unset', async () => {
+        const unconfiguredEnv: Env = { ...env, ADMIN_API_KEY: undefined };
+        const req = new Request('https://api.tapbot.internal/api/v1/admin/stats', {
+            headers: { 'Authorization': 'Bearer dev-admin-secret-key-change-in-prod' }
+        });
+        const res = await worker.fetch(req, unconfiguredEnv);
+        expect(res.status).toBe(503);
+        const body: any = await res.json();
+        expect(body.success).toBe(false);
+        expect(body.error.code).toBe('SERVICE_UNAVAILABLE');
+    });
+
+    it('restricts admin CORS origin while keeping public catalog open', async () => {
+        const adminEnv: Env = { ...env, ADMIN_ALLOWED_ORIGIN: 'https://admin.tapbot.internal' };
+        const evilAdminReq = new Request('https://api.tapbot.internal/api/v1/admin/stats', {
+            headers: {
+                'Authorization': `Bearer ${ADMIN_KEY}`,
+                'Origin': 'https://evil.example'
+            }
+        });
+        const evilRes = await worker.fetch(evilAdminReq, adminEnv);
+        expect(evilRes.headers.get('Access-Control-Allow-Origin')).toBeNull();
+        expect(evilRes.headers.get('Vary')).toBe('Origin');
+
+        const allowedAdminReq = new Request('https://api.tapbot.internal/api/v1/admin/stats', {
+            headers: {
+                'Authorization': `Bearer ${ADMIN_KEY}`,
+                'Origin': 'https://admin.tapbot.internal'
+            }
+        });
+        const allowedRes = await worker.fetch(allowedAdminReq, adminEnv);
+        expect(allowedRes.headers.get('Access-Control-Allow-Origin')).toBe('https://admin.tapbot.internal');
+
+        const publicReq = new Request('https://api.tapbot.internal/api/v1/bots');
+        const publicRes = await worker.fetch(publicReq, adminEnv);
+        expect(publicRes.headers.get('Access-Control-Allow-Origin')).toBe('*');
+    });
+
+    it('enforces per-request CSP nonce and zero inline handlers on /admin', async () => {
+        const res = await worker.fetch(new Request('https://api.tapbot.internal/admin'), env);
+        expect(res.status).toBe(200);
+        const csp = res.headers.get('Content-Security-Policy') || '';
+        const match = csp.match(/script-src 'self' 'nonce-([^']+)'/);
+        expect(match).not.toBeNull();
+        expect(csp).not.toContain("script-src 'self' 'unsafe-inline'");
+
+        const html = await res.text();
+        expect(html).toContain(`<script nonce="${match![1]}">`);
+        expect(html).not.toMatch(/\son(click|change|input|submit)=/i);
+        expect(html).toContain(".replace(/'/g, '&#39;')");
+    });
+
+    it('rejects unsafe iconUrl and traversal X-Package-Key on admin endpoints', async () => {
+        const badIconReq = new Request('https://api.tapbot.internal/api/v1/admin/bots', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${ADMIN_KEY}`
+            },
+            body: JSON.stringify({
+                name: 'Evil Icon Bot',
+                slug: 'evil-icon-bot',
+                description: 'desc',
+                category: 'utilities',
+                iconUrl: 'javascript:alert(1)'
+            })
+        });
+        const badIconRes = await worker.fetch(badIconReq, env);
+        expect(badIconRes.status).toBe(400);
+
+        const badKeyReq = new Request('https://api.tapbot.internal/api/v1/admin/upload/package', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/octet-stream',
+                'X-Filename': 'bot.botpkg',
+                'X-Package-Key': '../outside/secret.botpkg',
+                'Authorization': `Bearer ${ADMIN_KEY}`
+            },
+            body: new TextEncoder().encode('PK_DATA')
+        });
+        const badKeyRes = await worker.fetch(badKeyReq, env);
+        expect(badKeyRes.status).toBe(400);
+    });
+
+    it('sanitizes package Content-Disposition filename and ignores spoofed x-forwarded-proto', async () => {
+        await mockR2.put('packages/bad"name;test.botpkg', new TextEncoder().encode('ZIP'));
+        const pkgRes = await worker.fetch(
+            new Request('https://api.tapbot.internal/api/v1/packages/packages/bad%22name%3Btest.botpkg'),
+            env
+        );
+        expect(pkgRes.status).toBe(200);
+        const cd = pkgRes.headers.get('Content-Disposition') || '';
+        expect(cd).toContain('filename="bad_name_test.botpkg"');
+
+        const httpReq = new Request('http://localhost:8787/api/v1/bots/bot_ping_pong', {
+            headers: { 'X-Forwarded-Proto': 'https' }
+        });
+        const httpRes = await worker.fetch(httpReq, env);
+        expect(httpRes.status).toBe(200);
+        const body: any = await httpRes.json();
+        expect(body.data.currentVersionInfo.downloadUrl).toMatch(/^http:\/\/localhost:8787\//);
+    });
 });

@@ -10,7 +10,9 @@ import com.tapbot.core.model.TelegramMessage
 import com.tapbot.core.model.TelegramUser
 import com.tapbot.core.runner.ServiceLocator
 import com.tapbot.core.runner.moderation.ExonModerationStore
+import com.tapbot.core.runner.security.RuntimeAccessAuthorizer
 import com.tapbot.core.runner.util.AdaptiveBackoff
+import com.tapbot.core.security.SecretRedactor
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -438,7 +440,8 @@ class ExonBotRuntime(
             }
             "exon:rules:refresh" -> {
                 ctx.telegramApi.answerCallbackQuery(token, callback.id, "Rules Refreshed")
-                val rules = store.getRules(chatId) ?: "ᴛʜᴇ ɢʀᴏᴜᴘ ᴀᴅᴍɪɴs ʜᴀᴠᴇɴ'ᴛ sᴇᴛ ᴀɴʏ ʀᴜʟᴇs ғᴏʀ ᴛʜɪs ᴄʜᴀᴛ ʏᴇᴛ."
+                val rules = store.getRules(chatId)?.let { escapeHtml(it) }
+                    ?: "ᴛʜᴇ ɢʀᴏᴜᴘ ᴀᴅᴍɪɴs ʜᴀᴠᴇɴ'ᴛ sᴇᴛ ᴀɴʏ ʀᴜʟᴇs ғᴏʀ ᴛʜɪs ᴄʜᴀᴛ ʏᴇᴛ."
                 val textMsg = "📜 <b>ᴄʜᴀᴛ ʀᴜʟᴇs:</b>\n\n$rules"
                 ctx.telegramApi.editMessageText(token, chatId, messageId, textMsg, "HTML", buildRulesKeyboard())
             }
@@ -552,7 +555,7 @@ class ExonBotRuntime(
                 val targetId = target?.id ?: senderId
                 val targetFirst = escapeHtml(target?.firstName ?: "User")
                 val targetLast = escapeHtml(target?.lastName ?: "")
-                val targetUser = target?.username
+                val targetUser = target?.username?.let { escapeHtml(it) }
 
                 val infoMsg = "╒═══「 <b>ᴜsᴇʀ ɪɴғᴏʀᴍᴀᴛɪᴏɴ:</b> 」\n" +
                     "<b>\nɪᴅ:</b> <code>$targetId</code>\n" +
@@ -565,6 +568,7 @@ class ExonBotRuntime(
             }
 
             "promote" -> {
+                if (!authorizeModeration(ctx, token, chatId, isGroup, fromUser, message.messageId, ExonPermission.PROMOTE_MEMBERS)) return
                 val reply = message.replyToMessage
                 val targetUser = reply?.from
                 val targetId = targetUser?.id ?: args.firstOrNull()?.toLongOrNull()
@@ -576,16 +580,23 @@ class ExonBotRuntime(
                     ctx.telegramApi.sendMessage(token, chatId, "ɪ ᴄᴀɴ'ᴛ ᴘʀᴏᴍᴏᴛᴇ ᴍʏsᴇʟғ!", parseMode = "HTML", replyToMessageId = message.messageId)
                     return
                 }
+                if (targetId == senderId) {
+                    ctx.telegramApi.sendMessage(token, chatId, "⚠️ ʏᴏᴜ ᴄᴀɴɴᴏᴛ ᴘʀᴏᴍᴏᴛᴇ ʏᴏᴜʀsᴇʟғ.", parseMode = "HTML", replyToMessageId = message.messageId)
+                    return
+                }
+                if (isProtectedTarget(ctx, token, chatId, targetId, message.messageId)) return
                 val res = ctx.telegramApi.promoteChatMember(token, PromoteChatMemberPayload.promote(chatId, targetId))
                 if (res.isSuccess) {
                     val name = escapeHtml(targetUser?.firstName ?: targetId.toString())
                     ctx.telegramApi.sendMessage(token, chatId, "👮 <b>ᴘʀᴏᴍᴏᴛᴇᴅ $name</b> ᴛᴏ ᴀᴅᴍɪɴɪsᴛʀᴀᴛᴏʀ!", parseMode = "HTML", replyToMessageId = message.messageId)
                 } else {
-                    ctx.telegramApi.sendMessage(token, chatId, "⚠️ <b>ғᴀɪʟᴇᴅ ᴛᴏ ᴘʀᴏᴍᴏᴛᴇ:</b> ${escapeHtml(res.exceptionOrNull()?.message ?: "unknown")}", parseMode = "HTML", replyToMessageId = message.messageId)
+                    val errText = escapeHtml(SecretRedactor.redactThrowable(res.exceptionOrNull(), "unknown"))
+                    ctx.telegramApi.sendMessage(token, chatId, "⚠️ <b>ғᴀɪʟᴇᴅ ᴛᴏ ᴘʀᴏᴍᴏᴛᴇ:</b> $errText", parseMode = "HTML", replyToMessageId = message.messageId)
                 }
             }
 
             "demote" -> {
+                if (!authorizeModeration(ctx, token, chatId, isGroup, fromUser, message.messageId, ExonPermission.PROMOTE_MEMBERS)) return
                 val reply = message.replyToMessage
                 val targetUser = reply?.from
                 val targetId = targetUser?.id ?: args.firstOrNull()?.toLongOrNull()
@@ -597,12 +608,18 @@ class ExonBotRuntime(
                     ctx.telegramApi.sendMessage(token, chatId, "ɪ ᴄᴀɴ'ᴛ ᴅᴇᴍᴏᴛᴇ ᴍʏsᴇʟғ!", parseMode = "HTML", replyToMessageId = message.messageId)
                     return
                 }
+                if (targetId == senderId) {
+                    ctx.telegramApi.sendMessage(token, chatId, "⚠️ ʏᴏᴜ ᴄᴀɴɴᴏᴛ ᴅᴇᴍᴏᴛᴇ ʏᴏᴜʀsᴇʟғ.", parseMode = "HTML", replyToMessageId = message.messageId)
+                    return
+                }
+                if (isProtectedTarget(ctx, token, chatId, targetId, message.messageId)) return
                 val res = ctx.telegramApi.promoteChatMember(token, PromoteChatMemberPayload.demote(chatId, targetId))
                 if (res.isSuccess) {
                     val name = escapeHtml(targetUser?.firstName ?: targetId.toString())
                     ctx.telegramApi.sendMessage(token, chatId, "⬇️ <b>ᴅᴇᴍᴏᴛᴇᴅ $name</b>.", parseMode = "HTML", replyToMessageId = message.messageId)
                 } else {
-                    ctx.telegramApi.sendMessage(token, chatId, "⚠️ <b>ғᴀɪʟᴇᴅ ᴛᴏ ᴅᴇᴍᴏᴛᴇ:</b> ${escapeHtml(res.exceptionOrNull()?.message ?: "unknown")}", parseMode = "HTML", replyToMessageId = message.messageId)
+                    val errText = escapeHtml(SecretRedactor.redactThrowable(res.exceptionOrNull(), "unknown"))
+                    ctx.telegramApi.sendMessage(token, chatId, "⚠️ <b>ғᴀɪʟᴇᴅ ᴛᴏ ᴅᴇᴍᴏᴛᴇ:</b> $errText", parseMode = "HTML", replyToMessageId = message.messageId)
                 }
             }
 
@@ -614,7 +631,7 @@ class ExonBotRuntime(
                     for (admin in admins) {
                         val icon = if (admin.status == "creator") "👑" else "⭐"
                         val title = admin.customTitle?.let { " (${escapeHtml(it)})" } ?: ""
-                        val adminName = admin.user.username?.let { "@$it" } ?: escapeHtml(admin.user.firstName)
+                        val adminName = admin.user.username?.let { "@${escapeHtml(it)}" } ?: escapeHtml(admin.user.firstName)
                         sb.append("$icon $adminName$title\n")
                     }
                     ctx.telegramApi.sendMessage(token, chatId, sb.toString(), parseMode = "HTML", replyToMessageId = message.messageId)
@@ -624,13 +641,15 @@ class ExonBotRuntime(
             }
 
             "pin" -> {
+                if (!authorizeModeration(ctx, token, chatId, isGroup, fromUser, message.messageId, ExonPermission.PIN_MESSAGES)) return
                 val reply = message.replyToMessage
                 if (reply != null) {
                     val res = ctx.telegramApi.pinChatMessage(token, chatId, reply.messageId)
                     if (res.isSuccess) {
                         ctx.telegramApi.sendMessage(token, chatId, "📌 <b>ᴍᴇssᴀɢᴇ ᴘɪɴɴᴇᴅ sᴜᴄᴄᴇssғᴜʟʟʏ!</b>", parseMode = "HTML", replyToMessageId = message.messageId)
                     } else {
-                        ctx.telegramApi.sendMessage(token, chatId, "⚠️ <b>ғᴀɪʟᴇᴅ ᴛᴏ ᴘɪɴ ᴍᴇssᴀɢᴇ:</b> ${res.exceptionOrNull()?.message}", parseMode = "HTML", replyToMessageId = message.messageId)
+                        val errText = escapeHtml(SecretRedactor.redactThrowable(res.exceptionOrNull(), "unknown"))
+                        ctx.telegramApi.sendMessage(token, chatId, "⚠️ <b>ғᴀɪʟᴇᴅ ᴛᴏ ᴘɪɴ ᴍᴇssᴀɢᴇ:</b> $errText", parseMode = "HTML", replyToMessageId = message.messageId)
                     }
                 } else {
                     ctx.telegramApi.sendMessage(token, chatId, "ᴘʟᴇᴀsᴇ ʀᴇᴘʟʏ ᴛᴏ ᴀ ᴍᴇssᴀɢᴇ ᴛᴏ ᴘɪɴ ɪᴛ!", parseMode = "HTML", replyToMessageId = message.messageId)
@@ -638,25 +657,29 @@ class ExonBotRuntime(
             }
 
             "unpin" -> {
+                if (!authorizeModeration(ctx, token, chatId, isGroup, fromUser, message.messageId, ExonPermission.PIN_MESSAGES)) return
                 val reply = message.replyToMessage
                 val res = ctx.telegramApi.unpinChatMessage(token, chatId, reply?.messageId)
                 if (res.isSuccess) {
                     ctx.telegramApi.sendMessage(token, chatId, "📌 <b>ᴍᴇssᴀɢᴇ ᴜɴᴘɪɴɴᴇᴅ.</b>", parseMode = "HTML", replyToMessageId = message.messageId)
                 } else {
-                    ctx.telegramApi.sendMessage(token, chatId, "⚠️ <b>ғᴀɪʟᴇᴅ ᴛᴏ ᴜɴᴘɪɴ:</b> ${res.exceptionOrNull()?.message}", parseMode = "HTML", replyToMessageId = message.messageId)
+                    val errText = escapeHtml(SecretRedactor.redactThrowable(res.exceptionOrNull(), "unknown"))
+                    ctx.telegramApi.sendMessage(token, chatId, "⚠️ <b>ғᴀɪʟᴇᴅ ᴛᴏ ᴜɴᴘɪɴ:</b> $errText", parseMode = "HTML", replyToMessageId = message.messageId)
                 }
             }
 
             "invitelink" -> {
+                if (!authorizeModeration(ctx, token, chatId, isGroup, fromUser, message.messageId, ExonPermission.INVITE_USERS)) return
                 val res = ctx.telegramApi.exportChatInviteLink(token, chatId)
                 if (res.isSuccess) {
-                    ctx.telegramApi.sendMessage(token, chatId, "🔗 <b>ɢʀᴏᴜᴘ ɪɴᴠɪᴛᴇ ʟɪɴᴋ:</b>\n${res.getOrThrow()}", parseMode = "HTML", replyToMessageId = message.messageId)
+                    ctx.telegramApi.sendMessage(token, chatId, "🔗 <b>ɢʀᴏᴜᴘ ɪɴᴠɪᴛᴇ ʟɪɴᴋ:</b>\n${escapeHtml(res.getOrThrow())}", parseMode = "HTML", replyToMessageId = message.messageId)
                 } else {
                     ctx.telegramApi.sendMessage(token, chatId, "⚠️ <b>ғᴀɪʟᴇᴅ ᴛᴏ ɢᴇɴᴇʀᴀᴛᴇ ɪɴᴠɪᴛᴇ ʟɪɴᴋ.</b>", parseMode = "HTML", replyToMessageId = message.messageId)
                 }
             }
 
             "ban", "sban" -> {
+                if (!authorizeModeration(ctx, token, chatId, isGroup, fromUser, message.messageId, ExonPermission.RESTRICT_MEMBERS)) return
                 val reply = message.replyToMessage
                 val targetUser = reply?.from
                 val targetId = targetUser?.id ?: args.firstOrNull()?.toLongOrNull()
@@ -670,6 +693,7 @@ class ExonBotRuntime(
                     ctx.telegramApi.sendMessage(token, chatId, "ᴏʜ ʏᴇᴀʜ, ʙᴀɴ ᴍʏsᴇʟғ, ɴᴏᴏʙ!", parseMode = "HTML", replyToMessageId = message.messageId)
                     return
                 }
+                if (isProtectedTarget(ctx, token, chatId, targetId, message.messageId)) return
 
                 val res = ctx.telegramApi.banChatMember(token, chatId, targetId)
                 if (res.isSuccess) {
@@ -680,11 +704,13 @@ class ExonBotRuntime(
                     ctx.telegramApi.sendMessage(token, chatId, "🔨 <b>ʙᴀɴɴᴇᴅ $name!</b>", parseMode = "HTML", replyToMessageId = message.messageId)
                     ctx.log(LogLevel.INFO, TAG, "Banned user $targetId in chat $chatId")
                 } else {
-                    ctx.telegramApi.sendMessage(token, chatId, "⚠️ <b>ғᴀɪʟᴇᴅ ᴛᴏ ʙᴀɴ ᴜsᴇʀ:</b> ${res.exceptionOrNull()?.message}", parseMode = "HTML", replyToMessageId = message.messageId)
+                    val errText = escapeHtml(SecretRedactor.redactThrowable(res.exceptionOrNull(), "unknown"))
+                    ctx.telegramApi.sendMessage(token, chatId, "⚠️ <b>ғᴀɪʟᴇᴅ ᴛᴏ ʙᴀɴ ᴜsᴇʀ:</b> $errText", parseMode = "HTML", replyToMessageId = message.messageId)
                 }
             }
 
             "tban" -> {
+                if (!authorizeModeration(ctx, token, chatId, isGroup, fromUser, message.messageId, ExonPermission.RESTRICT_MEMBERS)) return
                 val (targetId, targetName, durationArg) = resolveTargetAndDuration(message, args)
                 val durationSec = parseDurationSeconds(durationArg)
                 if (targetId == null || durationSec == null) {
@@ -695,18 +721,21 @@ class ExonBotRuntime(
                     ctx.telegramApi.sendMessage(token, chatId, "ᴏʜ ʏᴇᴀʜ, ʙᴀɴ ᴍʏsᴇʟғ, ɴᴏᴏʙ!", parseMode = "HTML", replyToMessageId = message.messageId)
                     return
                 }
+                if (isProtectedTarget(ctx, token, chatId, targetId, message.messageId)) return
                 val untilDate = (System.currentTimeMillis() / 1000L) + durationSec
                 val res = ctx.telegramApi.banChatMember(token, chatId, targetId, untilDate = untilDate)
                 if (res.isSuccess) {
-                    val label = durationArg ?: "${durationSec}s"
+                    val label = escapeHtml(durationArg ?: "${durationSec}s")
                     ctx.telegramApi.sendMessage(token, chatId, "⏳🔨 <b>ᴛᴇᴍᴘ-ʙᴀɴɴᴇᴅ $targetName</b> ғᴏʀ <code>$label</code>!", parseMode = "HTML", replyToMessageId = message.messageId)
                     ctx.log(LogLevel.INFO, TAG, "Temp-banned user $targetId for ${durationSec}s in chat $chatId")
                 } else {
-                    ctx.telegramApi.sendMessage(token, chatId, "⚠️ <b>ғᴀɪʟᴇᴅ ᴛᴏ ᴛᴇᴍᴘ-ʙᴀɴ:</b> ${res.exceptionOrNull()?.message}", parseMode = "HTML", replyToMessageId = message.messageId)
+                    val errText = escapeHtml(SecretRedactor.redactThrowable(res.exceptionOrNull(), "unknown"))
+                    ctx.telegramApi.sendMessage(token, chatId, "⚠️ <b>ғᴀɪʟᴇᴅ ᴛᴏ ᴛᴇᴍᴘ-ʙᴀɴ:</b> $errText", parseMode = "HTML", replyToMessageId = message.messageId)
                 }
             }
 
             "unban" -> {
+                if (!authorizeModeration(ctx, token, chatId, isGroup, fromUser, message.messageId, ExonPermission.RESTRICT_MEMBERS)) return
                 val reply = message.replyToMessage
                 val targetId = reply?.from?.id ?: args.firstOrNull()?.toLongOrNull()
                 if (targetId == null) {
@@ -718,11 +747,13 @@ class ExonBotRuntime(
                 if (res.isSuccess) {
                     ctx.telegramApi.sendMessage(token, chatId, "🕊️ <b>ᴜɴʙᴀɴɴᴇᴅ ᴜsᴇʀ <code>$targetId</code>!</b>", parseMode = "HTML", replyToMessageId = message.messageId)
                 } else {
-                    ctx.telegramApi.sendMessage(token, chatId, "⚠️ <b>ғᴀɪʟᴇᴅ ᴛᴏ ᴜɴʙᴀɴ:</b> ${res.exceptionOrNull()?.message}", parseMode = "HTML", replyToMessageId = message.messageId)
+                    val errText = escapeHtml(SecretRedactor.redactThrowable(res.exceptionOrNull(), "unknown"))
+                    ctx.telegramApi.sendMessage(token, chatId, "⚠️ <b>ғᴀɪʟᴇᴅ ᴛᴏ ᴜɴʙᴀɴ:</b> $errText", parseMode = "HTML", replyToMessageId = message.messageId)
                 }
             }
 
             "kick" -> {
+                if (!authorizeModeration(ctx, token, chatId, isGroup, fromUser, message.messageId, ExonPermission.RESTRICT_MEMBERS)) return
                 val reply = message.replyToMessage
                 val targetUser = reply?.from
                 val targetId = targetUser?.id ?: args.firstOrNull()?.toLongOrNull()
@@ -731,6 +762,11 @@ class ExonBotRuntime(
                     ctx.telegramApi.sendMessage(token, chatId, "ᴘʟᴇᴀsᴇ ʀᴇᴘʟʏ ᴛᴏ ᴀ ᴜsᴇʀ ᴏʀ sᴘᴇᴄɪғʏ ᴛʜᴇɪʀ ID ᴛᴏ ᴋɪᴄᴋ ᴛʜᴇᴍ.", parseMode = "HTML", replyToMessageId = message.messageId)
                     return
                 }
+                if (targetId == botUser.id) {
+                    ctx.telegramApi.sendMessage(token, chatId, "ɪ ᴄᴀɴ'ᴛ ᴋɪᴄᴋ ᴍʏsᴇʟғ!", parseMode = "HTML", replyToMessageId = message.messageId)
+                    return
+                }
+                if (isProtectedTarget(ctx, token, chatId, targetId, message.messageId)) return
 
                 val res = ctx.telegramApi.banChatMember(token, chatId, targetId)
                 if (res.isSuccess) {
@@ -743,6 +779,7 @@ class ExonBotRuntime(
             }
 
             "mute", "tmute" -> {
+                if (!authorizeModeration(ctx, token, chatId, isGroup, fromUser, message.messageId, ExonPermission.RESTRICT_MEMBERS)) return
                 val (targetId, targetName, durationArg) = resolveTargetAndDuration(message, args)
                 val durationSec = parseDurationSeconds(durationArg)
 
@@ -756,6 +793,11 @@ class ExonBotRuntime(
                     ctx.telegramApi.sendMessage(token, chatId, "ᴘʟᴇᴀsᴇ ʀᴇᴘʟʏ ᴛᴏ ᴀ ᴜsᴇʀ ᴛᴏ ᴍᴜᴛᴇ ᴛʜᴇᴍ.", parseMode = "HTML", replyToMessageId = message.messageId)
                     return
                 }
+                if (fallbackTargetId == botUser.id) {
+                    ctx.telegramApi.sendMessage(token, chatId, "ɪ ᴄᴀɴ'ᴛ ᴍᴜᴛᴇ ᴍʏsᴇʟғ!", parseMode = "HTML", replyToMessageId = message.messageId)
+                    return
+                }
+                if (isProtectedTarget(ctx, token, chatId, fallbackTargetId, message.messageId)) return
 
                 val perms = RestrictChatPermissions(canSendMessages = false)
                 val res = if (durationSec != null) {
@@ -768,17 +810,19 @@ class ExonBotRuntime(
                 if (res.isSuccess) {
                     val displayName = if (targetId != null) targetName else fallbackTargetId.toString()
                     val msg = if (durationSec != null) {
-                        "⏳🔇 <b>ᴛᴇᴍᴘ-ᴍᴜᴛᴇᴅ $displayName</b> ғᴏʀ <code>${durationArg}</code>!"
+                        "⏳🔇 <b>ᴛᴇᴍᴘ-ᴍᴜᴛᴇᴅ $displayName</b> ғᴏʀ <code>${escapeHtml(durationArg.orEmpty())}</code>!"
                     } else {
                         "🔇 <b>ᴍᴜᴛᴇᴅ $displayName</b> ᴡɪᴛʜ ɴᴏ ᴇxᴘɪʀᴀᴛɪᴏɴ ᴅᴀᴛᴇ!"
                     }
                     ctx.telegramApi.sendMessage(token, chatId, msg, parseMode = "HTML", replyToMessageId = message.messageId)
                 } else {
-                    ctx.telegramApi.sendMessage(token, chatId, "⚠️ <b>ғᴀɪʟᴇᴅ ᴛᴏ ᴍᴜᴛᴇ:</b> ${res.exceptionOrNull()?.message}", parseMode = "HTML", replyToMessageId = message.messageId)
+                    val errText = escapeHtml(SecretRedactor.redactThrowable(res.exceptionOrNull(), "unknown"))
+                    ctx.telegramApi.sendMessage(token, chatId, "⚠️ <b>ғᴀɪʟᴇᴅ ᴛᴏ ᴍᴜᴛᴇ:</b> $errText", parseMode = "HTML", replyToMessageId = message.messageId)
                 }
             }
 
             "unmute" -> {
+                if (!authorizeModeration(ctx, token, chatId, isGroup, fromUser, message.messageId, ExonPermission.RESTRICT_MEMBERS)) return
                 val reply = message.replyToMessage
                 val targetUser = reply?.from
                 val targetId = targetUser?.id ?: args.firstOrNull()?.toLongOrNull()
@@ -805,6 +849,7 @@ class ExonBotRuntime(
             }
 
             "warn" -> {
+                if (!authorizeModeration(ctx, token, chatId, isGroup, fromUser, message.messageId, ExonPermission.MANAGE_CHAT)) return
                 val reply = message.replyToMessage
                 val targetUser = reply?.from
                 val targetId = targetUser?.id ?: args.firstOrNull()?.toLongOrNull()
@@ -813,6 +858,11 @@ class ExonBotRuntime(
                     ctx.telegramApi.sendMessage(token, chatId, "ᴘʟᴇᴀsᴇ ʀᴇᴘʟʏ ᴛᴏ ᴀ ᴜsᴇʀ ᴛᴏ ᴡᴀʀɴ ᴛʜᴇᴍ.", parseMode = "HTML", replyToMessageId = message.messageId)
                     return
                 }
+                if (targetId == botUser.id) {
+                    ctx.telegramApi.sendMessage(token, chatId, "ɪ ᴄᴀɴ'ᴛ ᴡᴀʀɴ ᴍʏsᴇʟғ!", parseMode = "HTML", replyToMessageId = message.messageId)
+                    return
+                }
+                if (isProtectedTarget(ctx, token, chatId, targetId, message.messageId)) return
 
                 val currentWarns = store.incrementWarn(chatId, targetId)
                 val name = escapeHtml(targetUser?.firstName ?: targetId.toString())
@@ -835,6 +885,7 @@ class ExonBotRuntime(
             }
 
             "resetwarn" -> {
+                if (!authorizeModeration(ctx, token, chatId, isGroup, fromUser, message.messageId, ExonPermission.MANAGE_CHAT)) return
                 val reply = message.replyToMessage
                 val targetId = reply?.from?.id ?: args.firstOrNull()?.toLongOrNull() ?: senderId
                 store.resetWarns(chatId, targetId)
@@ -842,7 +893,8 @@ class ExonBotRuntime(
             }
 
             "rules" -> {
-                val rules = store.getRules(chatId) ?: "ᴛʜᴇ ɢʀᴏᴜᴘ ᴀᴅᴍɪɴs ʜᴀᴠᴇɴ'ᴛ sᴇᴛ ᴀɴʏ ʀᴜʟᴇs ғᴏʀ ᴛʜɪs ᴄʜᴀᴛ ʏᴇᴛ."
+                val rules = store.getRules(chatId)?.let { escapeHtml(it) }
+                    ?: "ᴛʜᴇ ɢʀᴏᴜᴘ ᴀᴅᴍɪɴs ʜᴀᴠᴇɴ'ᴛ sᴇᴛ ᴀɴʏ ʀᴜʟᴇs ғᴏʀ ᴛʜɪs ᴄʜᴀᴛ ʏᴇᴛ."
                 val textMsg = "📜 <b>ᴄʜᴀᴛ ʀᴜʟᴇs:</b>\n\n$rules"
                 ctx.telegramApi.sendMessage(
                     token = token,
@@ -855,6 +907,7 @@ class ExonBotRuntime(
             }
 
             "setrules" -> {
+                if (!authorizeModeration(ctx, token, chatId, isGroup, fromUser, message.messageId, ExonPermission.MANAGE_CHAT)) return
                 val newRules = args.joinToString(" ")
                 if (newRules.isBlank()) {
                     ctx.telegramApi.sendMessage(token, chatId, "ᴘʟᴇᴀsᴇ sᴘᴇᴄɪғʏ ᴛʜᴇ ʀᴜʟᴇs ᴛᴇxᴛ: /setrules &lt;text&gt;", parseMode = "HTML", replyToMessageId = message.messageId)
@@ -865,17 +918,20 @@ class ExonBotRuntime(
             }
 
             "clearrules" -> {
+                if (!authorizeModeration(ctx, token, chatId, isGroup, fromUser, message.messageId, ExonPermission.MANAGE_CHAT)) return
                 store.clearRules(chatId)
                 ctx.telegramApi.sendMessage(token, chatId, "🗑️ <b>ᴄʜᴀᴛ ʀᴜʟᴇs ᴄʟᴇᴀʀᴇᴅ.</b>", parseMode = "HTML", replyToMessageId = message.messageId)
             }
 
             "lock" -> {
+                if (!authorizeModeration(ctx, token, chatId, isGroup, fromUser, message.messageId, ExonPermission.MANAGE_CHAT)) return
                 val lockType = args.firstOrNull()?.lowercase() ?: "all"
                 store.addLock(chatId, lockType)
                 ctx.telegramApi.sendMessage(token, chatId, "🔒 <b>ʟᴏᴄᴋᴇᴅ <code>${escapeHtml(lockType)}</code> ғᴏʀ ᴛʜɪs ᴄʜᴀᴛ.</b>", parseMode = "HTML", replyToMessageId = message.messageId)
             }
 
             "unlock" -> {
+                if (!authorizeModeration(ctx, token, chatId, isGroup, fromUser, message.messageId, ExonPermission.MANAGE_CHAT)) return
                 val lockType = args.firstOrNull()?.lowercase() ?: "all"
                 store.removeLock(chatId, lockType)
                 ctx.telegramApi.sendMessage(token, chatId, "🔓 <b>ᴜɴʟᴏᴄᴋᴇᴅ <code>${escapeHtml(lockType)}</code>.</b>", parseMode = "HTML", replyToMessageId = message.messageId)
@@ -886,12 +942,13 @@ class ExonBotRuntime(
                 val locksText = if (currentLocks.isEmpty()) {
                     "ɴᴏ ʟᴏᴄᴋs ᴀʀᴇ ᴄᴜʀʀᴇɴᴛʟʏ ᴀᴄᴛɪᴠᴇ ɪɴ ᴛʜɪs ᴄʜᴀᴛ."
                 } else {
-                    currentLocks.sorted().joinToString(", ") { "<code>$it</code>" }
+                    currentLocks.sorted().joinToString(", ") { "<code>${escapeHtml(it)}</code>" }
                 }
                 ctx.telegramApi.sendMessage(token, chatId, "🔒 <b>ᴀᴄᴛɪᴠᴇ ʟᴏᴄᴋs:</b>\n$locksText", parseMode = "HTML", replyToMessageId = message.messageId)
             }
 
             "setwelcome" -> {
+                if (!authorizeModeration(ctx, token, chatId, isGroup, fromUser, message.messageId, ExonPermission.MANAGE_CHAT)) return
                 val welcomeMsg = args.joinToString(" ").trim()
                 if (welcomeMsg.isBlank()) {
                     ctx.telegramApi.sendMessage(
@@ -908,6 +965,7 @@ class ExonBotRuntime(
             }
 
             "welcome" -> {
+                if (!authorizeModeration(ctx, token, chatId, isGroup, fromUser, message.messageId, ExonPermission.MANAGE_CHAT)) return
                 val arg = args.firstOrNull()?.lowercase()
                 when (arg) {
                     "on", "enable", "true" -> {
@@ -934,11 +992,13 @@ class ExonBotRuntime(
             }
 
             "clearwelcome" -> {
+                if (!authorizeModeration(ctx, token, chatId, isGroup, fromUser, message.messageId, ExonPermission.MANAGE_CHAT)) return
                 store.clearWelcome(chatId)
                 ctx.telegramApi.sendMessage(token, chatId, "🗑️ <b>ᴡᴇʟᴄᴏᴍᴇ ᴍᴇssᴀɢᴇ ᴄʟᴇᴀʀᴇᴅ & ᴅɪsᴀʙʟᴇᴅ.</b>", parseMode = "HTML", replyToMessageId = message.messageId)
             }
 
             "antiflood" -> {
+                if (!authorizeModeration(ctx, token, chatId, isGroup, fromUser, message.messageId, ExonPermission.MANAGE_CHAT)) return
                 val arg = args.firstOrNull()?.lowercase()
                 when {
                     arg == null -> {
@@ -988,6 +1048,97 @@ class ExonBotRuntime(
         return Triple(null, "User", args.firstOrNull())
     }
 
+    private enum class ExonPermission {
+        MANAGE_CHAT,
+        PROMOTE_MEMBERS,
+        RESTRICT_MEMBERS,
+        PIN_MESSAGES,
+        INVITE_USERS
+    }
+
+    private suspend fun authorizeModeration(
+        ctx: RuntimeContext,
+        token: String,
+        chatId: Long,
+        isGroup: Boolean,
+        fromUser: TelegramUser?,
+        replyToMessageId: Long,
+        permission: ExonPermission
+    ): Boolean {
+        val senderId = fromUser?.id
+        if (!RuntimeAccessAuthorizer.isChatAllowed(ctx, chatId)) {
+            return false
+        }
+        if (RuntimeAccessAuthorizer.isConfiguredOwner(ctx, senderId)) {
+            return true
+        }
+        if (!isGroup) {
+            ctx.telegramApi.sendMessage(
+                token,
+                chatId,
+                "⚠️ <b>ᴛʜɪs ᴄᴏᴍᴍᴀɴᴅ ᴄᴀɴ ᴏɴʟʏ ʙᴇ ᴜsᴇᴅ ɪɴ ɢʀᴏᴜᴘs ʙʏ ᴀᴅᴍɪɴs.</b>",
+                parseMode = "HTML",
+                replyToMessageId = replyToMessageId
+            )
+            return false
+        }
+        val member = RuntimeAccessAuthorizer.getVerifiedGroupAdmin(ctx, token, chatId, senderId)
+        if (member == null) {
+            ctx.telegramApi.sendMessage(
+                token,
+                chatId,
+                "⛔ <b>ᴀᴄᴄᴇss ᴅᴇɴɪᴇᴅ:</b> ᴏɴʟʏ ɢʀᴏᴜᴘ ᴀᴅᴍɪɴɪsᴛʀᴀᴛᴏʀs ᴄᴀɴ ᴜsᴇ ᴛʜɪs ᴄᴏᴍᴍᴀɴᴅ.",
+                parseMode = "HTML",
+                replyToMessageId = replyToMessageId
+            )
+            return false
+        }
+        if (member.status == "creator") return true
+        val hasPerm = when (permission) {
+            ExonPermission.MANAGE_CHAT -> {
+                member.canManageChat || member.canChangeInfo || member.canRestrictMembers ||
+                    member.canDeleteMessages || member.canPromoteMembers ||
+                    member.canPinMessages || member.canInviteUsers
+            }
+            ExonPermission.PROMOTE_MEMBERS -> member.canPromoteMembers
+            ExonPermission.RESTRICT_MEMBERS -> member.canRestrictMembers
+            ExonPermission.PIN_MESSAGES -> member.canPinMessages
+            ExonPermission.INVITE_USERS -> member.canInviteUsers
+        }
+        if (!hasPerm) {
+            ctx.telegramApi.sendMessage(
+                token,
+                chatId,
+                "⛔ <b>ɪɴsᴜғғɪᴄɪᴇɴᴛ ᴀᴅᴍɪɴ ʀɪɢʜᴛs</b> ғᴏʀ ᴛʜɪs ᴀᴄᴛɪᴏɴ.",
+                parseMode = "HTML",
+                replyToMessageId = replyToMessageId
+            )
+            return false
+        }
+        return true
+    }
+
+    private suspend fun isProtectedTarget(
+        ctx: RuntimeContext,
+        token: String,
+        chatId: Long,
+        targetId: Long,
+        replyToMessageId: Long
+    ): Boolean {
+        val targetMember = ctx.telegramApi.getChatMember(token, chatId, targetId).getOrNull()
+        if (targetMember?.status == "creator") {
+            ctx.telegramApi.sendMessage(
+                token,
+                chatId,
+                "👑 <b>ᴄᴀɴɴᴏᴛ ᴍᴏᴅᴇʀᴀᴛᴇ ᴛʜᴇ ɢʀᴏᴜᴘ ᴄʀᴇᴀᴛᴏʀ.</b>",
+                parseMode = "HTML",
+                replyToMessageId = replyToMessageId
+            )
+            return true
+        }
+        return false
+    }
+
     private fun formatWelcomeTemplate(template: String, user: TelegramUser, chatTitle: String): String {
         val first = escapeHtml(user.firstName)
         val full = escapeHtml(listOfNotNull(user.firstName, user.lastName?.takeIf { it.isNotBlank() }).joinToString(" "))
@@ -999,7 +1150,7 @@ class ExonBotRuntime(
             .replace("{fullname}", full)
             .replace("{username}", uname)
             .replace("{mention}", mention)
-            .replace("{chat}", chatTitle)
+            .replace("{chat}", escapeHtml(chatTitle))
     }
 
     private fun buildHelpOverviewText(): String {

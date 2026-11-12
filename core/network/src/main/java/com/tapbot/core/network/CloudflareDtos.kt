@@ -61,16 +61,17 @@ internal data class CloudflareBotDto(
             } else {
                 listOf(BotCredentialSpec.TELEGRAM_BOT_TOKEN)
             },
-            packageInfo = BotPackageInfo(
-                packageUrl = (currentVersionInfo?.downloadUrl ?: "").let { url ->
-                    if (url.startsWith("http://") && (url.contains("trycloudflare.com") || url.contains("workers.dev"))) {
-                        url.replaceFirst("http://", "https://")
-                    } else url
-                },
-                sha256Checksum = currentVersionInfo?.sha256 ?: "",
-                runtimeType = runtime,
-                packageSizeBytes = currentVersionInfo?.packageSize ?: 0L
-            ),
+                packageInfo = BotPackageInfo(
+                    packageUrl = (currentVersionInfo?.downloadUrl ?: "").let { url ->
+                        if (url.startsWith("http://") && (url.contains("trycloudflare.com") || url.contains("workers.dev"))) {
+                            url.replaceFirst("http://", "https://")
+                        } else url
+                    },
+                    sha256Checksum = currentVersionInfo?.sha256 ?: "",
+                    runtimeType = runtime,
+                    packageSizeBytes = currentVersionInfo?.packageSize ?: 0L,
+                    signature = currentVersionInfo?.signature
+                ),
             permissionsRequired = listOf("INTERNET", "FOREGROUND_SERVICE", "NOTIFICATIONS"),
             releaseNotes = currentVersionInfo?.releaseNotes,
             minimumAppVersion = currentVersionInfo?.minimumAppVersion ?: 1,
@@ -112,7 +113,8 @@ internal data class CloudflareVersionDto(
     val releaseNotes: String? = null,
     val minimumAppVersion: Int = 1,
     val publishedAt: String,
-    val downloadUrl: String? = null
+    val downloadUrl: String? = null,
+    val signature: String? = null
 ) {
     fun toDomainModel(botId: String): BotVersion {
         return BotVersion(
@@ -130,7 +132,8 @@ internal data class CloudflareVersionDto(
             minimumAppVersion = minimumAppVersion,
             minimumRuntimeVersion = "1.0.0",
             isPublished = true,
-            publishedAt = publishedAt
+            publishedAt = publishedAt,
+            signature = signature
         )
     }
 }

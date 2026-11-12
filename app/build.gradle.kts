@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -20,19 +22,36 @@ android {
 
     signingConfigs {
         create("release") {
+            val localProps = Properties().apply {
+                val localPropsFile = rootProject.file("local.properties")
+                if (localPropsFile.exists()) {
+                    localPropsFile.inputStream().use { load(it) }
+                }
+            }
             val keystoreFile = rootProject.file("keystore/release.keystore")
-            if (keystoreFile.exists()) {
+            val ksPassword = System.getenv("TAPBOT_KEYSTORE_PASSWORD")
+                ?: localProps.getProperty("TAPBOT_KEYSTORE_PASSWORD")
+            val ksAlias = System.getenv("TAPBOT_KEY_ALIAS")
+                ?: localProps.getProperty("TAPBOT_KEY_ALIAS")
+            val ksKeyPassword = System.getenv("TAPBOT_KEY_PASSWORD")
+                ?: localProps.getProperty("TAPBOT_KEY_PASSWORD")
+            if (keystoreFile.exists() &&
+                !ksPassword.isNullOrBlank() &&
+                !ksAlias.isNullOrBlank() &&
+                !ksKeyPassword.isNullOrBlank()
+            ) {
                 storeFile = keystoreFile
-                storePassword = System.getenv("TAPBOT_KEYSTORE_PASSWORD") ?: "tapbot_release_2026"
-                keyAlias = System.getenv("TAPBOT_KEY_ALIAS") ?: "tapbot"
-                keyPassword = System.getenv("TAPBOT_KEY_PASSWORD") ?: "tapbot_release_2026"
+                storePassword = ksPassword
+                keyAlias = ksAlias
+                keyPassword = ksKeyPassword
             }
         }
     }
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             val releaseConfig = signingConfigs.getByName("release")
             if (releaseConfig.storeFile?.exists() == true) {
                 signingConfig = releaseConfig
@@ -46,6 +65,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     compileOptions {

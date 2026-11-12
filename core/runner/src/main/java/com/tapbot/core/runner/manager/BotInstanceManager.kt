@@ -184,8 +184,8 @@ class DefaultBotInstanceManager(
             val installationId = "inst_${bot.id}"
             val targetPackage = if (installDir != null) {
                 installDir.mkdirs()
-                val dest = File(installDir, "${bot.id}_${bot.version}.botpkg")
-                if (packageFile.absolutePath != dest.absolutePath) {
+                val dest = resolveSafePackageFile(installDir, bot.id, bot.version)
+                if (packageFile.canonicalPath != dest.canonicalPath) {
                     packageFile.copyTo(dest, overwrite = true)
                 }
                 dest
@@ -419,9 +419,9 @@ class DefaultBotInstanceManager(
             // Place new package
             val finalTargetPackage = if (installDir != null) {
                 installDir.mkdirs()
-                val dest = File(installDir, "${botId}_${newVersion}.botpkg")
+                val dest = resolveSafePackageFile(installDir, botId, newVersion)
                 downloadedFile.copyTo(dest, overwrite = true)
-                if (downloadedFile != localPackageFile && downloadedFile.exists() && downloadedFile.absolutePath != dest.absolutePath) {
+                if (downloadedFile != localPackageFile && downloadedFile.exists() && downloadedFile.canonicalPath != dest.canonicalPath) {
                     downloadedFile.delete()
                 }
                 dest
@@ -652,6 +652,26 @@ class DefaultBotInstanceManager(
         } else {
             ctx.startService(intent)
         }
+    }
+
+    private fun resolveSafePackageFile(installDir: File, rawBotId: String, rawVersion: String): File {
+        val safeId = sanitizeFilenameSegment(rawBotId, "bot")
+        val safeVersion = sanitizeFilenameSegment(rawVersion, "1.0.0")
+        val dirCanonical = installDir.canonicalFile
+        val candidate = File(dirCanonical, "${safeId}_${safeVersion}.botpkg").canonicalFile
+        val dirPrefix = dirCanonical.path.trimEnd(File.separatorChar) + File.separatorChar
+        if (!candidate.path.startsWith(dirPrefix)) {
+            throw SecurityException("Package destination escapes install directory")
+        }
+        return candidate
+    }
+
+    private fun sanitizeFilenameSegment(raw: String, fallback: String): String {
+        val cleaned = raw.trim().replace(Regex("[^A-Za-z0-9._-]"), "_")
+        if (cleaned.isEmpty() || cleaned == "." || cleaned == ".." || cleaned.contains("..")) {
+            return fallback
+        }
+        return cleaned
     }
 
     private fun loadFromDisk() {

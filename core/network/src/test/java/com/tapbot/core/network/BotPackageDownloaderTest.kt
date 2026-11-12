@@ -136,4 +136,30 @@ class BotPackageDownloaderTest {
 
         tempDir.deleteRecursively()
     }
+
+    @Test
+    fun downloadPackage_rejectsBlankChecksumAndInsecureHttp() = runTest {
+        val tempDir = File.createTempFile("pkg_sec_test", "").apply { delete(); mkdirs() }
+        val targetFile = File(tempDir, "bad_bot.botpkg")
+        val downloader = OkHttpBotPackageDownloader(cacheDir = tempDir)
+
+        val blankShaRes = downloader.downloadPackage(
+            packageUrl = "https://mock.cdn/test.botpkg",
+            expectedSha256 = "",
+            targetFile = targetFile
+        )
+        assertTrue(blankShaRes.isFailure)
+        assertTrue(blankShaRes.exceptionOrNull() is SecurityException)
+
+        val validSha = sha256Of("HELLO".toByteArray())
+        val insecureHttpRes = downloader.downloadPackage(
+            packageUrl = "http://insecure.cdn/test.botpkg",
+            expectedSha256 = validSha,
+            targetFile = targetFile
+        )
+        assertTrue(insecureHttpRes.isFailure)
+        assertTrue(insecureHttpRes.exceptionOrNull() is SecurityException)
+
+        tempDir.deleteRecursively()
+    }
 }

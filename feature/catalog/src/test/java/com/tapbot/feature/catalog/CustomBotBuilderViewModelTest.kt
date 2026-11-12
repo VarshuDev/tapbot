@@ -187,4 +187,23 @@ class CustomBotBuilderViewModelTest {
         assertEquals(3, updatedDef.rules.size)
         assertEquals("Webhook Relay Pro", cache.getCachedBot(createdId)?.name)
     }
+
+    @Test
+    fun `rejects plain http and SSRF metadata webhook URLs`() = runTest(testDispatcher) {
+        val customRepo = CustomBotRepository(storageFile = null)
+        val vm = CustomBotBuilderViewModel(customBotRepository = customRepo)
+
+        vm.updateBotName("Webhook Guard Bot")
+        vm.updateTelegramToken("12345678:ValidTokenString123")
+
+        vm.updateRule("rule_1") { it.copy(webhookUrl = "http://hooks.example.com/notify") }
+        vm.saveCustomBot()
+        assertTrue(vm.uiState.value.errorMessage?.contains("blocked") == true)
+        assertNull(vm.uiState.value.savedBotId)
+
+        vm.updateRule("rule_1") { it.copy(webhookUrl = "https://169.254.169.254/latest/meta-data/") }
+        vm.saveCustomBot()
+        assertTrue(vm.uiState.value.errorMessage?.contains("blocked") == true)
+        assertNull(vm.uiState.value.savedBotId)
+    }
 }

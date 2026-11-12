@@ -43,9 +43,11 @@ import com.tapbot.core.runner.delivery.ApkDeliveryService
 import com.tapbot.core.runner.device.DeviceActionController
 import com.tapbot.core.runner.device.DeviceActionResult
 import com.tapbot.core.runner.fleet.FleetCommandRouter
+import com.tapbot.core.runner.security.CommanderPairingManager
 import com.tapbot.core.runner.telemetry.DeviceTelemetryProvider
 import com.tapbot.core.runner.watchdog.DeviceWatchdog
 import com.tapbot.core.runner.util.AdaptiveBackoff
+import com.tapbot.core.security.SecretRedactor
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -93,6 +95,9 @@ class CommanderBotRuntime(
     // Autonomous watchdog
     private val watchdog = DeviceWatchdog()
 
+    @Volatile
+    private var pairedOwnerId: String? = null
+
     private var actionController: DeviceActionController? = null
 
     private data class ScheduledTask(
@@ -115,10 +120,12 @@ class CommanderBotRuntime(
 
     override suspend fun initialize(context: RuntimeContext) {
         this.context = context
+        this.pairedOwnerId = context.credentials["owner_id"]?.trim()?.takeIf { it.isNotBlank() }
     }
 
     override suspend fun start() {
         val ctx = context ?: throw IllegalStateException("Runtime not initialized")
+        pairedOwnerId = ctx.credentials["owner_id"]?.trim()?.takeIf { it.isNotBlank() }
         val token = ctx.token
 
         if (token.isBlank()) {
@@ -260,7 +267,8 @@ class CommanderBotRuntime(
 
     private fun getOwnerId(ctx: RuntimeContext): String? {
         val credOwner = ctx.credentials["owner_id"]?.trim()
-        return if (!credOwner.isNullOrBlank()) credOwner else null
+        if (!credOwner.isNullOrBlank()) return credOwner
+        return pairedOwnerId?.takeIf { it.isNotBlank() }
     }
 
     private fun isOwner(ctx: RuntimeContext, fromUser: TelegramUser?): Boolean {
@@ -294,6 +302,8 @@ class CommanderBotRuntime(
             "/start" -> sendStartMessage(ctx, token, chatId, senderName, isAuthorized)
             "/help" -> sendHelpMessage(ctx, token, chatId, isAuthorized)
             "/about" -> sendAboutMessage(ctx, token, chatId)
+            "/myid" -> handleMyId(ctx, token, chatId, fromUser)
+            "/pair" -> handlePairCommand(ctx, token, chatId, message, fromUser, args.firstOrNull())
 
             // 📱 Device Telemetry
             "/status", "/sys", "/sysinfo" -> {
@@ -408,17 +418,32 @@ class CommanderBotRuntime(
             }
 
             // 📦 APK Delivery & Release Info
-            "/apk", "/download" -> sendApkDocument(ctx, token, chatId)
-            "/version", "/release" -> sendVersionInfo(ctx, token, chatId)
+            "/apk", "/download" -> {
+                if (!checkAuth(ctx, token, chatId, isAuthorized, senderId)) return
+                sendApkDocument(ctx, token, chatId)
+            }
+            "/version", "/release" -> {
+                if (!checkAuth(ctx, token, chatId, isAuthorized, senderId)) return
+                sendVersionInfo(ctx, token, chatId)
+            }
 
             // 🛠 Setup & Guides
             "/setup" -> sendSetupGuide(ctx, token, chatId)
             "/batteryguide", "/doze" -> sendBatteryOptimizationGuide(ctx, token, chatId)
-            "/diagnose", "/troubleshoot" -> sendDiagnostics(ctx, token, chatId)
+            "/diagnose", "/troubleshoot" -> {
+                if (!checkAuth(ctx, token, chatId, isAuthorized, senderId)) return
+                sendDiagnostics(ctx, token, chatId)
+            }
 
             // 🛍 Cloudflare Bot Store
-            "/store", "/catalog" -> sendStoreCatalog(ctx, token, chatId)
-            "/search" -> handleSearchCatalog(ctx, token, chatId, args.joinToString(" "))
+            "/store", "/catalog" -> {
+                if (!checkAuth(ctx, token, chatId, isAuthorized, senderId)) return
+                sendStoreCatalog(ctx, token, chatId)
+            }
+            "/search" -> {
+                if (!checkAuth(ctx, token, chatId, isAuthorized, senderId)) return
+                handleSearchCatalog(ctx, token, chatId, args.joinToString(" "))
+            }
 
             else -> {
                 // If direct message or mention, send friendly unknown message
@@ -442,17 +467,109 @@ class CommanderBotRuntime(
         senderId: Long
     ): Boolean {
         if (!isAuthorized) {
-            val msg = """
-                ⛔ *Access Denied*
-                This command is restricted to the host device owner.
-                Your Telegram User ID: `${senderId}`
-                
-                To authorize your account, set your numeric Telegram ID in TapBot credentials under *Owner User ID*.
-            """.trimIndent()
+            val msg = if (getOwnerId(ctx) == null) {
+                """
+                    ⛔ *Pairing Required (Fail-Closed)*
+                    No Owner ID is configured yet. Your Telegram User ID: `${senderId}`
+
+                    To authorize your account:
+                    • Set *Owner User ID* in TapBot app credentials, OR
+                    • Generate a one-time pairing code in TapBot app and send `/pair <code>` here in DM.
+                """.trimIndent()
+            } else {
+                """
+                    ⛔ *Access Denied*
+                    This command is restricted to the host device owner.
+                    Your Telegram User ID: `${senderId}`
+
+                    To authorize your account, set your numeric Telegram ID in TapBot credentials under *Owner User ID*.
+                """.trimIndent()
+            }
             ctx.telegramApi.sendMessage(token, chatId, msg, "Markdown")
             return false
         }
         return true
+    }
+
+    private suspend fun handleMyId(
+        ctx: RuntimeContext,
+        token: String,
+        chatId: Long,
+        fromUser: TelegramUser?
+    ) {
+        val uid = fromUser?.id ?: 0L
+        val ownerStatus = if (getOwnerId(ctx) != null) "Configured" else "Not Paired"
+        ctx.telegramApi.sendMessage(
+            token = token,
+            chatId = chatId,
+            text = "🪪 *Your Telegram ID:* `$uid`\n*Chat ID:* `$chatId`\n*Commander Owner:* $ownerStatus",
+            parseMode = "Markdown"
+        )
+    }
+
+    private suspend fun handlePairCommand(
+        ctx: RuntimeContext,
+        token: String,
+        chatId: Long,
+        message: TelegramMessage,
+        fromUser: TelegramUser?,
+        codeArg: String?
+    ) {
+        if (message.chat.type != "private") {
+            ctx.telegramApi.sendMessage(
+                token = token,
+                chatId = chatId,
+                text = "🔒 `/pair` can only be used in a private direct message with this bot.",
+                parseMode = "Markdown"
+            )
+            return
+        }
+
+        if (getOwnerId(ctx) != null) {
+            ctx.telegramApi.sendMessage(
+                token = token,
+                chatId = chatId,
+                text = "🔒 An owner ID is already configured on this Commander instance. Remove it in TapBot Credentials first to re-pair.",
+                parseMode = "Markdown"
+            )
+            return
+        }
+
+        val senderId = fromUser?.id ?: 0L
+        if (senderId <= 0L) {
+            ctx.telegramApi.sendMessage(token, chatId, "❌ Unable to identify sender Telegram ID.", "Markdown")
+            return
+        }
+
+        val supplied = codeArg?.trim().orEmpty()
+        if (supplied.isBlank()) {
+            ctx.telegramApi.sendMessage(
+                token = token,
+                chatId = chatId,
+                text = "🔑 Usage: `/pair <code>`\nGenerate a one-time pairing code inside TapBot app -> Commander -> Credentials.",
+                parseMode = "Markdown"
+            )
+            return
+        }
+
+        val reply = when (val res = CommanderPairingManager.verifyAndConsume(botId, supplied)) {
+            is CommanderPairingManager.PairingVerificationResult.Success -> {
+                val idStr = senderId.toString()
+                pairedOwnerId = idStr
+                runCatching { ServiceLocator.credentialStore?.saveCredential(botId, "owner_id", idStr) }
+                ctx.log(LogLevel.INFO, TAG, "Commander paired via /pair to owner_id=$idStr")
+                "✅ *Commander Paired Successfully!*\nOwner User ID locked to `$idStr`."
+            }
+            is CommanderPairingManager.PairingVerificationResult.NoActiveChallenge ->
+                "🔒 No active pairing code exists. Generate one inside the TapBot app first."
+            is CommanderPairingManager.PairingVerificationResult.Expired ->
+                "⌛ That pairing code has expired (10-minute TTL). Generate a new one in the TapBot app."
+            is CommanderPairingManager.PairingVerificationResult.LockedOut ->
+                "🚫 Too many invalid pairing attempts. Generate a fresh code in the TapBot app."
+            is CommanderPairingManager.PairingVerificationResult.InvalidCode ->
+                "❌ Invalid pairing code. ${res.remainingAttempts} attempt(s) remaining."
+        }
+        ctx.telegramApi.sendMessage(token, chatId, reply, "Markdown")
     }
 
     // =========================================================================
@@ -467,9 +584,9 @@ class CommanderBotRuntime(
         isAuthorized: Boolean
     ) {
         val ownerNotice = if (getOwnerId(ctx) == null) {
-            "⚠️ *Note:* No Owner ID is configured. Anyone in this chat can execute commands. Set `owner_id` in TapBot credentials for security."
+            "🔐 *Pairing Required:* Commander is locked (fail-closed) until `owner_id` is set in TapBot credentials or paired via `/pair <code>` in private DM."
         } else if (!isAuthorized) {
-            "🔒 *Guest Mode:* You have access to public commands (/help, /about, /apk, /setup, /store)."
+            "🔒 *Guest Mode:* Privileged commands are locked to the host owner. Public info: /help, /about, /myid, /setup."
         } else {
             "🛡️ *Host Commander Mode Active:* You have full root-level control of this Android phone and bot fleet."
         }
@@ -871,28 +988,35 @@ class CommanderBotRuntime(
         }
 
         val timeFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.US)
-        val logFile = File(cacheDir, "tapbot_${targetId}_logs.txt")
-        logFile.bufferedWriter().use { writer ->
-            writer.write("=== TapBot On-Device Runtime Logs for $targetId ===\n")
-            writer.write("Exported: ${timeFormat.format(Date())}\n\n")
-            for (e in entries) {
-                writer.write("[${timeFormat.format(Date(e.timestamp))}] [${e.level.name}] [${e.tag}] ${e.message}\n")
+        val safeTarget = targetId.replace(Regex("[^a-zA-Z0-9._-]"), "_")
+        val logFile = File.createTempFile("tapbot_${safeTarget}_logs_", ".txt", cacheDir)
+        try {
+            logFile.bufferedWriter().use { writer ->
+                writer.write("=== TapBot On-Device Runtime Logs for $targetId ===\n")
+                writer.write("Exported: ${timeFormat.format(Date())}\n\n")
+                for (e in entries) {
+                    val safeTag = SecretRedactor.redact(e.tag)
+                    val safeMsg = SecretRedactor.redact(e.message)
+                    writer.write("[${timeFormat.format(Date(e.timestamp))}] [${e.level.name}] [$safeTag] $safeMsg\n")
+                }
             }
-        }
 
-        ctx.telegramApi.sendChatAction(token, chatId, "upload_document")
-        val sendResult = ctx.telegramApi.sendDocument(
-            token = token,
-            chatId = chatId,
-            file = logFile,
-            caption = "📄 *Complete logs export for `${escapeMarkdown(targetId)}`*",
-            parseMode = "Markdown"
-        )
+            ctx.telegramApi.sendChatAction(token, chatId, "upload_document")
+            val sendResult = ctx.telegramApi.sendDocument(
+                token = token,
+                chatId = chatId,
+                file = logFile,
+                caption = "📄 *Complete logs export for `${escapeMarkdown(targetId)}`*",
+                parseMode = "Markdown"
+            )
 
-        if (sendResult.isFailure) {
-            ctx.telegramApi.sendMessage(token, chatId, "❌ Failed to send log document: ${sendResult.exceptionOrNull()?.message}", "Markdown")
+            if (sendResult.isFailure) {
+                val safeErr = escapeMarkdown(SecretRedactor.redactThrowable(sendResult.exceptionOrNull()))
+                ctx.telegramApi.sendMessage(token, chatId, "❌ Failed to send log document: $safeErr", "Markdown")
+            }
+        } finally {
+            logFile.delete()
         }
-        logFile.delete()
     }
 
     // =========================================================================

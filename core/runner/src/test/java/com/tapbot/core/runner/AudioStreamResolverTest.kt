@@ -88,7 +88,7 @@ class AudioStreamResolverTest {
                     {
                         "title": "Never Gonna Give You Up",
                         "uploader": "Rick Astley",
-                        "url": "https://googlevideo.internal/videoplayback?id=rickroll",
+                        "url": "https://googlevideo.example.com/videoplayback?id=rickroll",
                         "duration": 213,
                         "thumbnail": "https://i.ytimg.com/vi/dQw4w9WgXcQ/default.jpg"
                     }
@@ -102,17 +102,32 @@ class AudioStreamResolverTest {
 
         val result = customResolver.resolveTrack(
             query = "rick astley never gonna give you up",
-            customResolverUrl = "https://my-ytdlp.internal/api/stream"
+            customResolverUrl = "https://my-ytdlp.example.com/api/stream"
         )
 
         assertTrue(result.isSuccess)
         val track = result.getOrThrow()
         assertEquals("Never Gonna Give You Up", track.title)
         assertEquals("Rick Astley", track.artist)
-        assertEquals("https://googlevideo.internal/videoplayback?id=rickroll", track.streamUrl)
+        assertEquals("https://googlevideo.example.com/videoplayback?id=rickroll", track.streamUrl)
         assertEquals(213, track.durationSeconds)
         assertEquals("03:33", track.durationFormatted)
         assertEquals(AudioSourceType.YTDLP_API, track.source)
+    }
+
+    @Test
+    fun `resolveTrack blocks private metadata or cleartext audio URLs`() = runBlocking {
+        val metaResult = resolver.resolveTrack("https://169.254.169.254/latest/meta-data/audio.mp3")
+        assertFalse(metaResult.isSuccess)
+        assertTrue(metaResult.exceptionOrNull() is SecurityException)
+
+        val httpResult = resolver.resolveTrack("http://cdn.example.com/music/test.mp3")
+        assertFalse(httpResult.isSuccess)
+        assertTrue(httpResult.exceptionOrNull() is SecurityException)
+
+        val internalResult = resolver.resolveTrack("https://metadata.google.internal/stream.mp3")
+        assertFalse(internalResult.isSuccess)
+        assertTrue(internalResult.exceptionOrNull() is SecurityException)
     }
 
     @Test

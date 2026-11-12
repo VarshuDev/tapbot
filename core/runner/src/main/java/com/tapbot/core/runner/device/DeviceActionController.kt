@@ -66,7 +66,7 @@ class DeviceActionController(
      */
     fun isOwnerAuthorized(configuredOwnerId: String?, senderUserId: Long?): Boolean {
         val trimmed = configuredOwnerId?.trim()
-        if (trimmed.isNullOrBlank()) return true // Unconfigured owner allows initial setup
+        if (trimmed.isNullOrBlank()) return false
         if (senderUserId == null) return false
         return senderUserId.toString() == trimmed
     }

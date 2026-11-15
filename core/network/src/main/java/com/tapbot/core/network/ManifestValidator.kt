@@ -162,7 +162,10 @@ class ManifestValidator(
             "bot_commander_flagship" to setOf("tapbot-commander", "bot_commander"),
             "tapbot-commander" to setOf("bot_commander", "bot_commander_flagship"),
             "bot_music_streamer" to setOf("tapstream-music"),
-            "tapstream-music" to setOf("bot_music_streamer")
+            "tapstream-music" to setOf("bot_music_streamer"),
+            "bot_exon" to setOf("bot_1790084493920_n4l8lj"),
+            "bot_rss" to setOf("bot_rss_notifier"),
+            "bot_gemini" to setOf("bot_ai_assistant")
         )
         return canonicalAliases[expectedBotId]?.contains(manifestId) == true
     }

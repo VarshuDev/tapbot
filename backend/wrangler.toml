@@ -6,14 +6,15 @@ compatibility_flags = ["nodejs_compat"]
 [[d1_databases]]
 binding = "DB"
 database_name = "tapbot_catalog"
-database_id = "224755cd-4178-4395-b8b7-255049197ca5"
+database_id = "63ef024a-819d-4a4e-a5f6-0343fe5ae92a"
 migrations_dir = "migrations"
 
-[[r2_buckets]]
-binding = "BUCKET"
-bucket_name = "tapbot-packages"
-preview_bucket_name = "tapbot-packages-preview"
+# Optional R2 binding (Worker automatically falls back to D1 storage_objects when R2 is not bound)
+# [[r2_buckets]]
+# binding = "BUCKET"
+# bucket_name = "tapbot-packages"
+# preview_bucket_name = "tapbot-packages-preview"
 
 [vars]
 # ADMIN_API_KEY must be provisioned via `wrangler secret put ADMIN_API_KEY` (or local `.dev.vars`)
-ENVIRONMENT = "development"
+ENVIRONMENT = "production"

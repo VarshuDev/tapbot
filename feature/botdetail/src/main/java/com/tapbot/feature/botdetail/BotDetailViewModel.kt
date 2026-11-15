@@ -119,7 +119,7 @@ class BotDetailViewModel(
                         ?.trim()
                         ?.removePrefix("@")
                         ?.takeIf { it.isNotBlank() }
-                    val activePairing = if (botId == "bot_commander") {
+                    val activePairing = if (isCommanderBotId(botId)) {
                         CommanderPairingManager.getActiveCode(botId)
                     } else null
 
@@ -529,7 +529,7 @@ class BotDetailViewModel(
         viewModelScope.launch {
             credentialStore.deleteCredentials(botId)
             oldSecrets.forEach { SecretRedactor.unregisterSecret(it) }
-            if (botId == "bot_commander") {
+            if (isCommanderBotId(botId)) {
                 CommanderPairingManager.revoke(botId)
             }
             _uiState.update { st ->
@@ -552,7 +552,7 @@ class BotDetailViewModel(
     }
 
     fun generateCommanderPairingCode() {
-        if (botId != "bot_commander") return
+        if (!isCommanderBotId(botId)) return
         val challenge = CommanderPairingManager.issuePairingCode(botId)
         _uiState.update { st ->
             if (st is BotDetailUiState.Success) {
@@ -563,6 +563,9 @@ class BotDetailViewModel(
             } else st
         }
     }
+
+    private fun isCommanderBotId(id: String): Boolean =
+        id == "bot_commander" || id == "bot_commander_flagship" || id == "tapbot-commander" || id.startsWith("bot_commander_")
 
     fun setConfiguring(configuring: Boolean) {
         _uiState.update {

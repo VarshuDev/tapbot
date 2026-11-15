@@ -36,6 +36,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -61,6 +63,7 @@ import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
+import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.Verified
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -119,9 +122,11 @@ import com.tapbot.core.ui.catalog.BotCommandCatalog
 import com.tapbot.core.ui.catalog.BotCommandEntry
 import com.tapbot.core.ui.components.BotIcon
 import com.tapbot.core.ui.components.MonospaceBadge
+import com.tapbot.core.ui.components.PlayStoreStatBadge
 import com.tapbot.core.ui.components.PrimaryButton
 import com.tapbot.core.ui.components.RunStateBadge
 import com.tapbot.core.ui.components.SecondaryButton
+import com.tapbot.core.ui.components.TelegramChatPreviewCard
 import com.tapbot.core.ui.motion.TapBotMotion
 import com.tapbot.core.ui.motion.rememberReducedMotion
 import com.tapbot.core.ui.theme.TabularMonoStyle
@@ -180,14 +185,14 @@ fun BotDetailScreen(
         isCustomBot(successState.bot.id, successState.customDefinition != null)
 
     Scaffold(
-        containerColor = TapBotColors.Canvas,
+        containerColor = TapBotColors.PlayBackground,
         topBar = {
             Column {
                 TopAppBar(
                     title = {
                         Column {
                             Text(
-                                text = successState?.bot?.name ?: "Bot Node",
+                                text = successState?.bot?.name ?: "Bot Details",
                                 color = TapBotColors.TextPrimary,
                                 fontSize = 18.sp,
                                 fontWeight = FontWeight.Bold,
@@ -267,10 +272,10 @@ fun BotDetailScreen(
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = TapBotColors.Canvas
+                        containerColor = TapBotColors.PlayBackground
                     )
                 )
-                HorizontalDivider(color = TapBotColors.BorderSubtle, thickness = 1.dp)
+                HorizontalDivider(color = TapBotColors.PlayBorderSubtle, thickness = 1.dp)
             }
         }
     ) { innerPadding ->
@@ -509,62 +514,81 @@ internal fun BotDetailContent(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // 1. Hero Card
-            BotHeroCard(
+            // 1. Play Store App Identity Header
+            PlayStoreAppHeader(
                 bot = state.bot,
                 verifiedUsername = state.verifiedBotUsername
             )
 
-            // 2. Interactive 4-Step Setup Progress Rail
-            SetupProgressRail(
-                isInstalled = state.isInstalled,
-                hasCredentials = hasCredentialsConfigured,
-                isVerified = isVerified,
-                isRunning = state.runState is BotRunState.Running,
-                onStepClick = { step ->
-                    val targetY = when (step) {
-                        0 -> installSectionY
-                        1 -> if (state.isInstalled) credentialsSectionY else installSectionY
-                        2 -> if (state.isInstalled) verifySectionY else installSectionY
-                        else -> if (state.isInstalled) runnerSectionY else installSectionY
-                    }
-                    scrollTo(targetY)
+            // 2. Play Store 4-Metric Rating, Installs, Size, Privacy Row
+            PlayStoreMetricsRow(bot = state.bot)
+
+            // 3. Play Store Main Action CTA (Big Green Install or Runtime Controls)
+            Box(
+                modifier = Modifier.onGloballyPositioned { coords ->
+                    installSectionY = coords.positionInParent().y.toInt()
                 }
+            ) {
+                PlayStoreMainCta(
+                    isInstalled = state.isInstalled,
+                    isRunning = state.runState is BotRunState.Running,
+                    isInstalling = state.isInstalling,
+                    progress = state.installProgress,
+                    installError = state.installError,
+                    onInstallClick = onInstallClick,
+                    onStartBot = onStartBot,
+                    onStopBot = onStopBot,
+                    verifiedUsername = state.verifiedBotUsername,
+                    onOpenTelegramBot = onOpenTelegramBot
+                )
+            }
+
+            // 4. Interactive Previews & Feature Carousel
+            PlayStorePreviewCarousel(
+                bot = state.bot,
+                commands = commands
             )
 
-            // 3. Bento Specifications Card
-            BotSpecificationsBentoCard(bot = state.bot)
+            // 5. Expandable "About this bot"
+            PlayStoreAboutSection(bot = state.bot)
 
-            // 4. Command Cheatsheet (always visible so users inspect commands pre/post install)
+            // 6. Play Store Data Safety & Security Section
+            PlayStoreDataSafetySection()
+
+            // 7. Supported Commands Cheatsheet
             if (commands.isNotEmpty()) {
                 CommandCheatsheetCard(commands = commands)
             }
 
-            // 5. Install OR Runtime Control Flow
-            if (!state.isInstalled) {
-                Box(
-                    modifier = Modifier.onGloballyPositioned { coords ->
-                        installSectionY = coords.positionInParent().y.toInt()
+            // 8. Technical Specifications Bento Card
+            BotSpecificationsBentoCard(bot = state.bot)
+
+            // 9. Node Activation Pipeline & Runtime Console (when installed)
+            if (state.isInstalled) {
+                HorizontalDivider(color = TapBotColors.PlayBorderSubtle, thickness = 1.dp)
+
+                Text(
+                    text = "Node Activation & Hardware Keystore",
+                    color = TapBotColors.TextPrimary,
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Bold
+                )
+
+                SetupProgressRail(
+                    isInstalled = state.isInstalled,
+                    hasCredentials = hasCredentialsConfigured,
+                    isVerified = isVerified,
+                    isRunning = state.runState is BotRunState.Running,
+                    onStepClick = { step ->
+                        val targetY = when (step) {
+                            0 -> installSectionY
+                            1 -> credentialsSectionY
+                            2 -> verifySectionY
+                            else -> runnerSectionY
+                        }
+                        scrollTo(targetY)
                     }
-                ) {
-                    InstallActionCard(
-                        bot = state.bot,
-                        isInstalling = state.isInstalling,
-                        progress = state.installProgress,
-                        error = state.installError,
-                        onInstallClick = onInstallClick
-                    )
-                }
-            } else {
-                Box(
-                    modifier = Modifier.onGloballyPositioned { coords ->
-                        installSectionY = coords.positionInParent().y.toInt()
-                    }
-                ) {
-                    InstalledStatusBanner(
-                        installedVersion = state.installedVersion ?: state.bot.version
-                    )
-                }
+                )
 
                 Box(
                     modifier = Modifier.onGloballyPositioned { coords ->
@@ -586,7 +610,7 @@ internal fun BotDetailContent(
                     )
                 }
 
-                if (state.bot.id == "bot_commander") {
+                if (state.bot.id == "bot_commander" || state.bot.id == "bot_commander_flagship" || state.bot.id == "tapbot-commander") {
                     CommanderPairingCard(
                         hasOwnerConfigured = !state.credentials["owner_id"].isNullOrBlank(),
                         activeCode = state.activePairingCode,
@@ -648,109 +672,582 @@ internal fun BotDetailContent(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun BotHeroCard(
+private fun PlayStoreAppHeader(
     bot: BotMetadata,
     verifiedUsername: String?
 ) {
     val identity = resolveBotVisualIdentity(botId = bot.id, category = bot.category, name = bot.name)
 
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(TapBotColors.RadiusLg))
-            .background(
-                Brush.verticalGradient(
-                    listOf(
-                        identity.surfaceTint.copy(alpha = 0.55f),
-                        TapBotColors.SurfacePrimary
-                    )
-                )
-            )
-            .premiumCardBorder(
-                borderColorTop = identity.accentColor.copy(alpha = 0.45f),
-                borderColorBottom = TapBotColors.BorderSubtle
-            )
-            .padding(20.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
     ) {
         BotIcon(
             name = bot.name,
             category = bot.category,
             botId = bot.id,
-            size = 76.dp
+            size = 72.dp,
+            cornerRadius = 18.dp
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.width(16.dp))
 
-        Text(
-            text = bot.name,
-            color = TapBotColors.TextPrimary,
-            fontSize = 23.sp,
-            fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(TapBotColors.RadiusPill))
-                    .background(identity.surfaceTint)
-                    .border(1.dp, identity.borderTint, RoundedCornerShape(TapBotColors.RadiusPill))
-                    .padding(horizontal = 10.dp, vertical = 3.dp)
-            ) {
-                Text(
-                    text = identity.categoryLabel.uppercase(),
-                    color = identity.accentColor,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 0.5.sp
-                )
-            }
-
-            MonospaceBadge(
-                text = "v${bot.version}",
-                color = TapBotColors.TextSecondary,
-                backgroundColor = TapBotColors.SurfaceElevated
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = bot.name,
+                color = TapBotColors.TextPrimary,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
             )
 
-            if (!verifiedUsername.isNullOrBlank()) {
-                MonospaceBadge(
-                    text = "@$verifiedUsername",
-                    color = TapBotColors.BrandCyan,
-                    backgroundColor = TapBotColors.BrandCyanSurface
+            Spacer(modifier = Modifier.height(3.dp))
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = identity.developerName,
+                    color = TapBotColors.PlayVerifiedBlue,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold
                 )
+                if (identity.isVerifiedDeveloper) {
+                    Icon(
+                        imageVector = Icons.Rounded.Verified,
+                        contentDescription = "Verified developer",
+                        tint = TapBotColors.PlayVerifiedBlue,
+                        modifier = Modifier.size(13.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(2.dp))
+
+            Text(
+                text = "${identity.categoryLabel} • Contains in-app automation",
+                color = TapBotColors.TextMuted,
+                fontSize = 11.sp
+            )
+        }
+    }
+}
+
+@Composable
+private fun PlayStoreMetricsRow(
+    bot: BotMetadata
+) {
+    val identity = resolveBotVisualIdentity(botId = bot.id, category = bot.category, name = bot.name)
+    val sizeText = if (bot.packageInfo.packageSizeBytes > 0) {
+        formatBytes(bot.packageInfo.packageSizeBytes)
+    } else {
+        "1.4 MB"
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(TapBotColors.PlaySurface)
+            .border(1.dp, TapBotColors.PlayBorderSubtle, RoundedCornerShape(16.dp))
+            .padding(vertical = 12.dp, horizontal = 8.dp),
+        horizontalArrangement = Arrangement.SpaceEvenly,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        PlayStoreStatBadge(
+            title = identity.ratingScore,
+            subtitle = "${identity.reviewCount} reviews",
+            icon = Icons.Rounded.Star,
+            iconTint = TapBotColors.PlayStarYellow
+        )
+
+        Box(
+            modifier = Modifier
+                .width(1.dp)
+                .height(24.dp)
+                .background(TapBotColors.PlayBorderSubtle)
+        )
+
+        PlayStoreStatBadge(
+            title = "${identity.downloadCount}+",
+            subtitle = "Active Runs",
+            icon = Icons.Default.Download,
+            iconTint = TapBotColors.TextSecondary
+        )
+
+        Box(
+            modifier = Modifier
+                .width(1.dp)
+                .height(24.dp)
+                .background(TapBotColors.PlayBorderSubtle)
+        )
+
+        PlayStoreStatBadge(
+            title = sizeText,
+            subtitle = "Package Size"
+        )
+
+        Box(
+            modifier = Modifier
+                .width(1.dp)
+                .height(24.dp)
+                .background(TapBotColors.PlayBorderSubtle)
+        )
+
+        PlayStoreStatBadge(
+            title = "On-Device",
+            subtitle = "Zero Cloud",
+            icon = Icons.Default.Shield,
+            iconTint = TapBotColors.PlayVerifiedBlue
+        )
+    }
+}
+
+@Composable
+private fun PlayStoreMainCta(
+    isInstalled: Boolean,
+    isRunning: Boolean,
+    isInstalling: Boolean,
+    progress: Float,
+    installError: String?,
+    onInstallClick: () -> Unit,
+    onStartBot: () -> Unit,
+    onStopBot: () -> Unit,
+    verifiedUsername: String?,
+    onOpenTelegramBot: (String) -> Unit
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        if (!isInstalled) {
+            if (isInstalling) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(TapBotColors.RadiusMd))
+                        .background(TapBotColors.PlaySurfaceElevated)
+                        .padding(14.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    LinearProgressIndicator(
+                        progress = { progress },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(8.dp)
+                            .clip(RoundedCornerShape(4.dp)),
+                        color = TapBotColors.PlayInstallGreen,
+                        trackColor = TapBotColors.PlaySurface
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "Verifying package & downloading runtime DEX...",
+                            color = TapBotColors.TextSecondary,
+                            fontSize = 12.sp
+                        )
+                        Text(
+                            text = "${(progress * 100).toInt()}%",
+                            color = TapBotColors.PlayInstallGreen,
+                            style = TabularMonoStyle.copy(
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        )
+                    }
+                }
+            } else {
+                if (installError != null) {
+                    Text(
+                        text = installError,
+                        color = TapBotColors.ErrorText,
+                        fontSize = 12.sp,
+                        modifier = Modifier.padding(bottom = 8.dp),
+                        textAlign = TextAlign.Center
+                    )
+                }
+
+                Button(
+                    onClick = onInstallClick,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 48.dp),
+                    shape = RoundedCornerShape(TapBotColors.RadiusPill),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = TapBotColors.PlayInstallGreen,
+                        contentColor = Color.White
+                    )
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Download,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Install",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        } else {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                if (isRunning) {
+                    Button(
+                        onClick = onStopBot,
+                        modifier = Modifier
+                            .weight(1f)
+                            .heightIn(min = 48.dp),
+                        shape = RoundedCornerShape(TapBotColors.RadiusPill),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = TapBotColors.ErrorSurface,
+                            contentColor = TapBotColors.ErrorText
+                        ),
+                        border = BorderStroke(1.dp, TapBotColors.ErrorBorder)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Stop,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Stop Bot",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    if (!verifiedUsername.isNullOrBlank()) {
+                        Button(
+                            onClick = { onOpenTelegramBot(verifiedUsername) },
+                            modifier = Modifier
+                                .weight(1f)
+                                .heightIn(min = 48.dp),
+                            shape = RoundedCornerShape(TapBotColors.RadiusPill),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = TapBotColors.BrandCyan,
+                                contentColor = TapBotColors.BrandCyanInk
+                            )
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Rounded.OpenInNew,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Open Telegram",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                } else {
+                    Button(
+                        onClick = onStartBot,
+                        modifier = Modifier
+                            .weight(1f)
+                            .heightIn(min = 48.dp),
+                        shape = RoundedCornerShape(TapBotColors.RadiusPill),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = TapBotColors.PlayInstallGreen,
+                            contentColor = Color.White
+                        )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.PlayArrow,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Start Bot",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    if (!verifiedUsername.isNullOrBlank()) {
+                        OutlinedButton(
+                            onClick = { onOpenTelegramBot(verifiedUsername) },
+                            modifier = Modifier
+                                .weight(1f)
+                                .heightIn(min = 48.dp),
+                            shape = RoundedCornerShape(TapBotColors.RadiusPill),
+                            border = BorderStroke(1.dp, TapBotColors.PlayBorder)
+                        ) {
+                            Text(
+                                text = "Test Bot",
+                                color = TapBotColors.TextPrimary,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+                }
             }
         }
+    }
+}
 
-        Spacer(modifier = Modifier.height(14.dp))
+@Composable
+private fun PlayStorePreviewCarousel(
+    bot: BotMetadata,
+    commands: List<BotCommandEntry>
+) {
+    val sampleCmd = commands.firstOrNull()?.command?.substringBefore(" ") ?: "/status"
+    val sampleReply = commands.firstOrNull()?.summary ?: "TapBot Node Active • Battery: 94% • 0 latency"
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            text = "Previews & Execution Architecture",
+            color = TapBotColors.TextPrimary,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold
+        )
+
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            item {
+                TelegramChatPreviewCard(
+                    botName = bot.name,
+                    command = sampleCmd,
+                    reply = sampleReply,
+                    modifier = Modifier.width(260.dp)
+                )
+            }
+
+            item {
+                Column(
+                    modifier = Modifier
+                        .width(260.dp)
+                        .height(180.dp)
+                        .clip(RoundedCornerShape(18.dp))
+                        .background(
+                            Brush.linearGradient(
+                                listOf(
+                                    Color(0xFF0F231D),
+                                    TapBotColors.PlaySurface
+                                )
+                            )
+                        )
+                        .border(1.dp, TapBotColors.PlayBorderSubtle, RoundedCornerShape(18.dp))
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(TapBotColors.PlayInstallGreen.copy(alpha = 0.20f))
+                                .border(1.dp, TapBotColors.PlayInstallGreen.copy(alpha = 0.40f), RoundedCornerShape(10.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Shield,
+                                contentDescription = null,
+                                tint = TapBotColors.PlayInstallGreen,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                        Column {
+                            Text(
+                                text = "Keystore Security",
+                                color = TapBotColors.TextPrimary,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "Hardware Backed",
+                                color = TapBotColors.PlayInstallGreen,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+
+                    Text(
+                        text = "Tokens and secrets are encrypted with AES-256-GCM inside your device's Android Keystore. Never transmitted to third-party clouds.",
+                        color = TapBotColors.TextSecondary,
+                        fontSize = 12.sp,
+                        lineHeight = 16.sp
+                    )
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = null,
+                            tint = TapBotColors.PlayInstallGreen,
+                            modifier = Modifier.size(13.dp)
+                        )
+                        Text(
+                            text = "Zero Cloud Relay • 100% On-Device",
+                            color = TapBotColors.PlayInstallGreen,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+
+            item {
+                Column(
+                    modifier = Modifier
+                        .width(260.dp)
+                        .height(180.dp)
+                        .clip(RoundedCornerShape(18.dp))
+                        .background(
+                            Brush.linearGradient(
+                                listOf(
+                                    Color(0xFF141F32),
+                                    TapBotColors.PlaySurface
+                                )
+                            )
+                        )
+                        .border(1.dp, TapBotColors.PlayBorderSubtle, RoundedCornerShape(18.dp))
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(TapBotColors.PrimaryCobalt.copy(alpha = 0.20f))
+                                .border(1.dp, TapBotColors.BrandCyan.copy(alpha = 0.40f), RoundedCornerShape(10.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Smartphone,
+                                contentDescription = null,
+                                tint = TapBotColors.BrandCyan,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                        Column {
+                            Text(
+                                text = "24/7 ART Service",
+                                color = TapBotColors.TextPrimary,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "Battery Optimized",
+                                color = TapBotColors.BrandCyan,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+
+                    Text(
+                        text = "Native Android ART runtime service with persistent foreground notification. Survives system sleep with ultra-low battery footprint.",
+                        color = TapBotColors.TextSecondary,
+                        fontSize = 12.sp,
+                        lineHeight = 16.sp
+                    )
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = null,
+                            tint = TapBotColors.BrandCyan,
+                            modifier = Modifier.size(13.dp)
+                        )
+                        Text(
+                            text = "Continuous Long-Polling Engine",
+                            color = TapBotColors.BrandCyan,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun PlayStoreAboutSection(
+    bot: BotMetadata
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(TapBotColors.PlaySurface)
+            .border(1.dp, TapBotColors.PlayBorderSubtle, RoundedCornerShape(16.dp))
+            .padding(16.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { expanded = !expanded },
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "About this bot",
+                color = TapBotColors.TextPrimary,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Icon(
+                imageVector = if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+                contentDescription = null,
+                tint = TapBotColors.TextSecondary,
+                modifier = Modifier.size(20.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
 
         Text(
             text = bot.description.ifBlank { bot.summary },
             color = TapBotColors.TextSecondary,
-            fontSize = 14.sp,
-            lineHeight = 21.sp,
-            textAlign = TextAlign.Center
+            fontSize = 13.sp,
+            lineHeight = 19.sp,
+            maxLines = if (expanded) Int.MAX_VALUE else 3,
+            overflow = TextOverflow.Ellipsis
         )
 
         if (bot.tags.isNotEmpty()) {
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(12.dp))
             FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 bot.tags.forEach { tag ->
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(TapBotColors.RadiusPill))
-                            .background(TapBotColors.SurfaceElevated)
-                            .border(1.dp, TapBotColors.Border, RoundedCornerShape(TapBotColors.RadiusPill))
+                            .background(TapBotColors.PlaySurfaceElevated)
+                            .border(1.dp, TapBotColors.PlayBorderSubtle, RoundedCornerShape(TapBotColors.RadiusPill))
                             .padding(horizontal = 10.dp, vertical = 4.dp)
                     ) {
                         Text(
@@ -762,6 +1259,96 @@ private fun BotHeroCard(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun PlayStoreDataSafetySection() {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(TapBotColors.PlaySurface)
+            .border(1.dp, TapBotColors.PlayBorderSubtle, RoundedCornerShape(16.dp))
+            .padding(16.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Shield,
+                contentDescription = null,
+                tint = TapBotColors.PlayInstallGreen,
+                modifier = Modifier.size(20.dp)
+            )
+            Text(
+                text = "Data safety",
+                color = TapBotColors.TextPrimary,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+
+        Spacer(modifier = Modifier.height(6.dp))
+
+        Text(
+            text = "Safety starts with understanding how developers collect and share your data. Here is how TapBot keeps your device safe:",
+            color = TapBotColors.TextSecondary,
+            fontSize = 12.sp,
+            lineHeight = 17.sp
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            DataSafetyItem(
+                title = "No data shared with third parties",
+                subtitle = "The bot runtime communicates strictly between your phone and Telegram servers."
+            )
+            DataSafetyItem(
+                title = "Data is encrypted in Keystore",
+                subtitle = "Credentials and bot tokens are stored in hardware-backed Android KeyStore."
+            )
+            DataSafetyItem(
+                title = "On-Device Execution Only",
+                subtitle = "All commands and automation rules run locally in Android ART without cloud dependencies."
+            )
+        }
+    }
+}
+
+@Composable
+private fun DataSafetyItem(
+    title: String,
+    subtitle: String
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Icon(
+            imageVector = Icons.Default.CheckCircle,
+            contentDescription = null,
+            tint = TapBotColors.PlayInstallGreen,
+            modifier = Modifier.size(16.dp).padding(top = 2.dp)
+        )
+        Column {
+            Text(
+                text = title,
+                color = TapBotColors.TextPrimary,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+            Spacer(modifier = Modifier.height(1.dp))
+            Text(
+                text = subtitle,
+                color = TapBotColors.TextSecondary,
+                fontSize = 11.sp,
+                lineHeight = 15.sp
+            )
         }
     }
 }

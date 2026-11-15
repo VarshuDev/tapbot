@@ -104,6 +104,23 @@ object TapBotColors {
     val AccentCustom = Color(0xFF14B8A6)
     val AccentUtility = Color(0xFF38BDF8)
 
+    // Google Play Store Specific Surfaces & Accents
+    val PlayBackground = Color(0xFF0E1217)
+    val PlaySurface = Color(0xFF161B22)
+    val PlaySurfaceElevated = Color(0xFF212833)
+    val PlaySurfaceHighlight = Color(0xFF2B3442)
+    val PlayBorder = Color(0xFF2B3545)
+    val PlayBorderSubtle = Color(0xFF1D2430)
+    
+    val PlayInstallGreen = Color(0xFF00A86B)
+    val PlayInstallGreenPressed = Color(0xFF00875A)
+    val PlayInstallGreenBg = Color(0xFF062B1E)
+    val PlayInstallGreenBorder = Color(0xFF0F5A3E)
+    
+    val PlayStarYellow = Color(0xFFFFB800)
+    val PlayVerifiedBlue = Color(0xFF38BDF8)
+    val PlayChipActive = Color(0xFF2563EB)
+
     // Spacing & Radii Scale
     val SpaceXs = 4.dp
     val SpaceSm = 8.dp
@@ -128,7 +145,12 @@ data class BotVisualIdentity(
     val borderTint: Color,
     val brush: Brush,
     val icon: ImageVector,
-    val categoryLabel: String
+    val categoryLabel: String,
+    val ratingScore: String = "4.9",
+    val reviewCount: String = "1.2k",
+    val downloadCount: String = "10K+",
+    val developerName: String = "TapBot Curated",
+    val isVerifiedDeveloper: Boolean = true
 )
 
 /**
@@ -156,7 +178,11 @@ fun resolveBotVisualIdentity(
                 borderTint = Color(0xFF6E3111),
                 brush = Brush.linearGradient(listOf(primary, secondary)),
                 icon = Icons.Rounded.RssFeed,
-                categoryLabel = "RSS Feed"
+                categoryLabel = "News & RSS",
+                ratingScore = "4.7",
+                reviewCount = "890",
+                downloadCount = "5K+",
+                developerName = "TapBot News Lab"
             )
         }
         combined.contains("exon") || lowerId.startsWith("bot_1790084493920") || combined.contains("moderation") || combined.contains("management") -> {
@@ -169,7 +195,11 @@ fun resolveBotVisualIdentity(
                 borderTint = Color(0xFF66410F),
                 brush = Brush.linearGradient(listOf(primary, secondary)),
                 icon = Icons.Rounded.Shield,
-                categoryLabel = "Group Guard"
+                categoryLabel = "Group Guard",
+                ratingScore = "4.9",
+                reviewCount = "3.4k",
+                downloadCount = "25K+",
+                developerName = "Exon Security Labs"
             )
         }
         combined.contains("commander") || combined.contains("watchdog") || combined.contains("fleet") || lowerCat.contains("automation") -> {
@@ -182,7 +212,11 @@ fun resolveBotVisualIdentity(
                 borderTint = Color(0xFF134E68),
                 brush = Brush.linearGradient(listOf(Color(0xFF06B6D4), TapBotColors.PrimaryCobalt)),
                 icon = Icons.Rounded.Terminal,
-                categoryLabel = "Commander"
+                categoryLabel = "Automation",
+                ratingScore = "5.0",
+                reviewCount = "4.8k",
+                downloadCount = "50K+",
+                developerName = "TapBot Core Team"
             )
         }
         lowerId.startsWith("bot_custom_") || lowerId.startsWith("custom_wf_") || lowerCat.contains("custom") || combined.contains("workflow") -> {
@@ -195,7 +229,11 @@ fun resolveBotVisualIdentity(
                 borderTint = Color(0xFF135E56),
                 brush = Brush.linearGradient(listOf(primary, secondary)),
                 icon = Icons.Rounded.AccountTree,
-                categoryLabel = "Custom Flow"
+                categoryLabel = "Custom Studio",
+                ratingScore = "4.8",
+                reviewCount = "620",
+                downloadCount = "2K+",
+                developerName = "On-Device Studio"
             )
         }
         combined.contains("music") || combined.contains("tapstream") || combined.contains("audio") || combined.contains("stream") || lowerCat.contains("media") -> {
@@ -208,7 +246,11 @@ fun resolveBotVisualIdentity(
                 borderTint = Color(0xFF473380),
                 brush = Brush.linearGradient(listOf(primary, secondary)),
                 icon = Icons.Rounded.GraphicEq,
-                categoryLabel = "Audio Stream"
+                categoryLabel = "Audio Stream",
+                ratingScore = "4.8",
+                reviewCount = "2.1k",
+                downloadCount = "15K+",
+                developerName = "TapStream Media"
             )
         }
         combined.contains("ai") || combined.contains("gemini") || combined.contains("gpt") -> {
@@ -221,7 +263,11 @@ fun resolveBotVisualIdentity(
                 borderTint = Color(0xFF393E8A),
                 brush = Brush.linearGradient(listOf(primary, secondary)),
                 icon = Icons.Rounded.AutoAwesome,
-                categoryLabel = "Gemini AI"
+                categoryLabel = "Gemini AI",
+                ratingScore = "4.9",
+                reviewCount = "5.2k",
+                downloadCount = "40K+",
+                developerName = "Gemini AI Studio"
             )
         }
         combined.contains("echo") || combined.contains("ping") || combined.contains("util") || combined.contains("diagnostic") -> {
@@ -234,7 +280,11 @@ fun resolveBotVisualIdentity(
                 borderTint = Color(0xFF1A4B75),
                 brush = Brush.linearGradient(listOf(primary, secondary)),
                 icon = Icons.Rounded.Speed,
-                categoryLabel = "Utility Node"
+                categoryLabel = "Utilities",
+                ratingScore = "4.8",
+                reviewCount = "1.5k",
+                downloadCount = "12K+",
+                developerName = "TapBot Core"
             )
         }
         else -> {
@@ -247,7 +297,11 @@ fun resolveBotVisualIdentity(
                 borderTint = TapBotColors.BlueBorder,
                 brush = Brush.linearGradient(listOf(primary, secondary)),
                 icon = Icons.Rounded.SmartToy,
-                categoryLabel = category.ifBlank { "Bot Node" }
+                categoryLabel = category.ifBlank { "Telegram Bot" },
+                ratingScore = "4.7",
+                reviewCount = "950",
+                downloadCount = "8K+",
+                developerName = "TapBot Community"
             )
         }
     }

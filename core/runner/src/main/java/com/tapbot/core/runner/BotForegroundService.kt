@@ -160,8 +160,9 @@ class BotForegroundService : Service() {
         val botName = instance?.name ?: "Telegram Bot"
 
         // 1. Duplicate Process Check: is this instance or bot already active?
-        if (activeExecutions.containsKey(effectiveInstallationId) ||
-            activeExecutions.values.any { it.botId == botId || it.installationId == effectiveInstallationId }
+        if (activeExecutions.values.any {
+                it.job.isActive && (it.botId == botId || it.installationId == effectiveInstallationId)
+            }
         ) {
             return@withLock
         }
@@ -213,15 +214,22 @@ class BotForegroundService : Service() {
         }
 
         val childJob = serviceScope.launch(crashHandler) {
+            val currentJob = coroutineContext[Job]
+            var hasActivated = false
             runtime.state.collect { st ->
                 when (st) {
+                    is BotRuntimeState.Starting -> {
+                        hasActivated = true
+                    }
                     is BotRuntimeState.Connected -> {
+                        hasActivated = true
                         val uname = st.botUsername.trim().removePrefix("@")
                         if (uname.isNotBlank()) {
                             _botUsernames.update { it + (botId to uname) }
                         }
                     }
                     is BotRuntimeState.Running -> {
+                        hasActivated = true
                         val uname = st.botUsername.trim().removePrefix("@")
                         if (uname.isNotBlank()) {
                             _botUsernames.update { it + (botId to uname) }
@@ -250,11 +258,25 @@ class BotForegroundService : Service() {
                         manager?.recordCrash(effectiveInstallationId, st.message)
                         _botStates.update { it + (botId to BotRunState.Error(st.message)) }
                         _botUsernames.update { it - botId }
+                        activeExecutions[effectiveInstallationId]?.takeIf { it.job == currentJob }?.let {
+                            activeExecutions.remove(effectiveInstallationId, it)
+                        }
+                        updateNotification()
+                        checkOrphanedService()
+                        currentJob?.cancel()
                     }
                     is BotRuntimeState.Stopped -> {
-                        manager?.updateInstanceStatus(effectiveInstallationId, BotInstanceStatus.Stopped)
-                        _botStates.update { it + (botId to BotRunState.Stopped) }
-                        _botUsernames.update { it - botId }
+                        if (hasActivated) {
+                            manager?.updateInstanceStatus(effectiveInstallationId, BotInstanceStatus.Stopped)
+                            _botStates.update { it + (botId to BotRunState.Stopped) }
+                            _botUsernames.update { it - botId }
+                            activeExecutions[effectiveInstallationId]?.takeIf { it.job == currentJob }?.let {
+                                activeExecutions.remove(effectiveInstallationId, it)
+                            }
+                            updateNotification()
+                            checkOrphanedService()
+                            currentJob?.cancel()
+                        }
                     }
                     else -> {}
                 }
@@ -306,6 +328,7 @@ class BotForegroundService : Service() {
         }
 
         updateNotification()
+        checkOrphanedService()
     }
 
     private suspend fun stopBotInstance(installationId: String) = lifecycleMutex.withLock {
@@ -399,7 +422,11 @@ class BotForegroundService : Service() {
     private fun checkOrphanedService() {
         if (activeExecutions.isEmpty()) {
             _runtimeState.value = BotRuntimeState.Stopped
-            _botStates.value = emptyMap()
+            _botStates.update { current ->
+                current.mapValues { (_, state) ->
+                    if (state is BotRunState.Error) state else BotRunState.Stopped
+                }
+            }
             _botUsernames.value = emptyMap()
             stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()

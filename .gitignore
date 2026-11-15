@@ -22,3 +22,7 @@ keystore/
 
 # Website binary release mirrors
 website/releases/*.apk
+
+# AI Agents & scratch
+.agents/
+

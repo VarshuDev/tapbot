@@ -202,7 +202,7 @@ class CloudflareRemoteBotDataSource(
         }
 
     companion object {
-        const val DEFAULT_BASE_URL = "https://tapbot-catalog.workers.dev"
+        const val DEFAULT_BASE_URL = "https://tapbot-catalog-backend.alteron-link.workers.dev"
         private const val MAX_CATALOG_JSON_BYTES = 5L * 1024 * 1024
     }
 }

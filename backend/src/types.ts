@@ -4,7 +4,7 @@
 
 export interface Env {
     DB: D1Database;
-    BUCKET: R2Bucket;
+    BUCKET?: R2Bucket;
     ADMIN_API_KEY?: string;
     ADMIN_ALLOWED_ORIGIN?: string;
     ENVIRONMENT?: string;

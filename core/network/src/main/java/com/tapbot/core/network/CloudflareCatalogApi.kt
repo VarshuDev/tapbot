@@ -174,6 +174,6 @@ class CloudflareCatalogApi(
     companion object {
         // Live hosted public URL via Cloudflare
         const val DEFAULT_LOCAL_URL = "http://10.0.2.2:8787"
-        const val DEFAULT_BASE_URL = "https://bunny-mailing-newman-cod.trycloudflare.com"
+        const val DEFAULT_BASE_URL = "https://tapbot-catalog-backend.alteron-link.workers.dev"
     }
 }

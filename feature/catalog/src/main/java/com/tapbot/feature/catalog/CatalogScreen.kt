@@ -25,11 +25,13 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
@@ -101,6 +103,12 @@ import com.tapbot.core.ui.components.BotCardSkeleton
 import com.tapbot.core.ui.components.CategoryChip
 import com.tapbot.core.ui.components.FeaturedBotCard
 import com.tapbot.core.ui.components.MonospaceBadge
+import com.tapbot.core.ui.components.PlayStoreRankedBotRow
+import com.tapbot.core.ui.components.PlayStoreSearchBar
+import com.tapbot.core.ui.components.PlayStoreShelfCard
+import com.tapbot.core.ui.components.PlayStoreShelfHeader
+import com.tapbot.core.ui.components.PlayStoreSpotlightBanner
+import com.tapbot.core.ui.components.PlayStoreSubTabs
 import com.tapbot.core.ui.components.PrimaryButton
 import com.tapbot.core.ui.components.SearchField
 import com.tapbot.core.ui.components.SectionHeader
@@ -176,23 +184,43 @@ fun CatalogScreen(
             val runningCount = state.installedInstances.count { it.status.isRunning }
 
             Scaffold(
-                containerColor = TapBotColors.Canvas,
+                containerColor = TapBotColors.PlayBackground,
                 topBar = {
-                    TapBotCatalogTopBar(
-                        selectedTab = state.selectedTab,
-                        isOffline = state.isOffline,
-                        isRefreshing = state.isRefreshing,
-                        runningCount = runningCount,
-                        batteryPct = batteryPct,
-                        onTelemetryClick = { viewModel.selectTab(1) },
-                        onBuildCustomBotClick = onBuildCustomBotClick,
-                        onRefreshClick = { viewModel.refresh() }
-                    )
+                    if (state.selectedTab == 0) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(TapBotColors.PlayBackground)
+                                .statusBarsPadding()
+                                .padding(horizontal = 16.dp, vertical = 8.dp)
+                        ) {
+                            PlayStoreSearchBar(
+                                query = state.searchQuery,
+                                onQueryChange = viewModel::updateSearchQuery,
+                                runningCount = runningCount,
+                                batteryPct = batteryPct,
+                                onTelemetryClick = { viewModel.selectTab(1) },
+                                placeholderText = "Search bots, automations & tools..."
+                            )
+                        }
+                    } else {
+                        TapBotCatalogTopBar(
+                            selectedTab = state.selectedTab,
+                            isOffline = state.isOffline,
+                            isRefreshing = state.isRefreshing,
+                            runningCount = runningCount,
+                            batteryPct = batteryPct,
+                            onTelemetryClick = { viewModel.selectTab(1) },
+                            onBuildCustomBotClick = onBuildCustomBotClick,
+                            onRefreshClick = { viewModel.refresh() }
+                        )
+                    }
                 },
                 bottomBar = {
                     TapBotBottomNavigationBar(
                         selectedTab = state.selectedTab,
                         onTabSelected = viewModel::selectTab,
+                        onBuildCustomBotClick = onBuildCustomBotClick,
                         installedCount = state.installedInstances.size,
                         runningCount = runningCount
                     )
@@ -568,10 +596,13 @@ internal fun CatalogStoreContent(
             .toSet()
     }
 
+    var selectedSubTab by rememberSaveable { mutableIntStateOf(0) }
     var onboardingDismissed by rememberSaveable { mutableStateOf(false) }
     val showOnboarding = state.installedInstances.isEmpty() && !onboardingDismissed && state.searchQuery.isBlank()
     val commanderTargetId = remember(state.bots, state.featuredBots) {
-        state.bots.firstOrNull { it.id == "bot_commander" }?.id
+        state.bots.firstOrNull {
+            it.id == "bot_commander" || it.id == "bot_commander_flagship" || it.id == "tapbot-commander" || it.name.equals("TapBot Commander", ignoreCase = true)
+        }?.id
             ?: state.featuredBots.firstOrNull()?.id
             ?: state.bots.firstOrNull()?.id
     }
@@ -579,7 +610,7 @@ internal fun CatalogStoreContent(
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
-            .background(TapBotColors.Canvas),
+            .background(TapBotColors.PlayBackground),
         contentAlignment = Alignment.TopCenter
     ) {
         val isTabletWidth = maxWidth >= 600.dp
@@ -588,9 +619,17 @@ internal fun CatalogStoreContent(
             modifier = Modifier
                 .widthIn(max = 1040.dp)
                 .fillMaxSize(),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // Play Store Sub-Tabs
+            item(key = "store_sub_tabs") {
+                PlayStoreSubTabs(
+                    selectedTab = selectedSubTab,
+                    onTabSelected = { selectedSubTab = it }
+                )
+            }
+
             if (state.isOffline) {
                 item(key = "offline_banner") {
                     Row(
@@ -610,7 +649,7 @@ internal fun CatalogStoreContent(
                             modifier = Modifier.size(18.dp)
                         )
                         Text(
-                            text = "Offline mode — showing verified local catalog cache.",
+                            text = "Offline mode — browsing verified local catalog cache.",
                             color = TapBotColors.WarningText,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Medium
@@ -619,143 +658,357 @@ internal fun CatalogStoreContent(
                 }
             }
 
-            item(key = "first_run_onboarding") {
-                AnimatedVisibility(
-                    visible = showOnboarding,
-                    enter = if (reducedMotion) fadeIn(tween(0)) else fadeIn(tween(TapBotMotion.EnterDurationMs)) + expandVertically(),
-                    exit = if (reducedMotion) fadeOut(tween(0)) else fadeOut(tween(TapBotMotion.ExitDurationMs)) + shrinkVertically()
-                ) {
-                    FirstRunOnboardingCard(
-                        hasStarterBot = commanderTargetId != null,
-                        onSetupStarterClick = {
-                            commanderTargetId?.let(onBotClick)
-                        },
-                        onBuildCustomBotClick = onBuildCustomBotClick,
-                        onDismiss = { onboardingDismissed = true }
+            if (state.searchQuery.isNotBlank()) {
+                // Search Results View
+                item(key = "search_results_header") {
+                    SectionHeader(
+                        title = "Results for \"${state.searchQuery}\" (${state.bots.size})",
+                        actionText = "Clear Search",
+                        onActionClick = { onSearchQueryChanged("") }
                     )
                 }
-            }
 
-            item(key = "search_bar") {
-                SearchField(
-                    query = state.searchQuery,
-                    onQueryChange = onSearchQueryChanged,
-                    placeholderText = "Search bots, commands, tags..."
-                )
-            }
-
-            item(key = "category_chips") {
-                val categories = if (state.categories.contains("All")) {
-                    state.categories
+                if (state.bots.isEmpty()) {
+                    item(key = "search_empty") {
+                        EmptyFilterRecoveryCard(
+                            query = state.searchQuery,
+                            category = state.selectedCategory,
+                            onResetFilters = onResetFilters,
+                            onBuildCustomBotClick = onBuildCustomBotClick
+                        )
+                    }
                 } else {
-                    listOf("All") + state.categories
-                }
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(categories, key = { it }) { category ->
-                        val chipCount = if (state.selectedCategory == category && state.searchQuery.isBlank()) {
-                            state.bots.size
-                        } else {
-                            null
-                        }
-                        CategoryChip(
-                            text = category,
-                            count = chipCount,
-                            isSelected = state.selectedCategory == category,
-                            onClick = { onCategorySelected(category) }
+                    itemsIndexed(state.bots, key = { _, bot -> bot.id }) { index, bot ->
+                        PlayStoreRankedBotRow(
+                            rank = index + 1,
+                            bot = bot,
+                            isInstalled = installedBotIds.contains(bot.id),
+                            isRunning = runningBotIds.contains(bot.id),
+                            hasUpdate = updateBotIds.contains(bot.id),
+                            onClick = { onBotClick(bot.id) },
+                            onActionClick = { onBotClick(bot.id) }
                         )
                     }
                 }
-            }
+            } else {
+                when (selectedSubTab) {
+                    0 -> {
+                        // "For you"
+                        if (showOnboarding) {
+                            item(key = "first_run_onboarding") {
+                                FirstRunOnboardingCard(
+                                    hasStarterBot = commanderTargetId != null,
+                                    onSetupStarterClick = { commanderTargetId?.let(onBotClick) },
+                                    onBuildCustomBotClick = onBuildCustomBotClick,
+                                    onDismiss = { onboardingDismissed = true }
+                                )
+                            }
+                        }
 
-            if (state.searchQuery.isBlank() && state.selectedCategory == "All" && state.featuredBots.isNotEmpty()) {
-                item(key = "featured_carousel") {
-                    FeaturedBotsCarousel(
-                        featuredBots = state.featuredBots,
-                        installedBotIds = installedBotIds,
-                        runningBotIds = runningBotIds,
-                        onBotClick = onBotClick
-                    )
-                }
-            }
+                        // Hero Spotlight Carousel
+                        if (state.featuredBots.isNotEmpty()) {
+                            item(key = "hero_spotlight") {
+                                FeaturedBotsCarousel(
+                                    featuredBots = state.featuredBots,
+                                    installedBotIds = installedBotIds,
+                                    runningBotIds = runningBotIds,
+                                    onBotClick = onBotClick
+                                )
+                            }
+                        }
 
-            item(key = "section_header") {
-                val hasActiveFilter = state.searchQuery.isNotBlank() || state.selectedCategory != "All"
-                val title = when {
-                    state.searchQuery.isNotBlank() -> "Search Results (${state.bots.size})"
-                    state.selectedCategory != "All" -> "${state.selectedCategory} Bots (${state.bots.size})"
-                    else -> "Explore Bots"
-                }
-                SectionHeader(
-                    title = title,
-                    actionText = if (hasActiveFilter) "Reset Filters" else "Create Custom",
-                    onActionClick = if (hasActiveFilter) onResetFilters else onBuildCustomBotClick
-                )
-            }
+                        // Shelf 1: Top Free Telegram Bots (#1, #2, #3)
+                        item(key = "shelf_top_free") {
+                            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                PlayStoreShelfHeader(
+                                    title = "Top Free Telegram Bots",
+                                    subtitle = "Most popular on-device runtimes",
+                                    actionText = "Top charts",
+                                    onActionClick = { selectedSubTab = 1 }
+                                )
+                                state.bots.take(3).forEachIndexed { index, bot ->
+                                    PlayStoreRankedBotRow(
+                                        rank = index + 1,
+                                        bot = bot,
+                                        isInstalled = installedBotIds.contains(bot.id),
+                                        isRunning = runningBotIds.contains(bot.id),
+                                        hasUpdate = updateBotIds.contains(bot.id),
+                                        onClick = { onBotClick(bot.id) },
+                                        onActionClick = { onBotClick(bot.id) }
+                                    )
+                                }
+                            }
+                        }
 
-            if (state.bots.isEmpty()) {
-                item(key = "empty_filter_state") {
-                    EmptyFilterRecoveryCard(
-                        query = state.searchQuery,
-                        category = state.selectedCategory,
-                        onResetFilters = onResetFilters,
-                        onBuildCustomBotClick = onBuildCustomBotClick
-                    )
-                }
-            } else if (isTabletWidth) {
-                val rows = state.bots.chunked(2)
-                items(
-                    items = rows,
-                    key = { row -> row.joinToString("_") { it.id } }
-                ) { pair ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        for (bot in pair) {
-                            BotCard(
+                        // Shelf 2: Essential Phone Utilities
+                        item(key = "shelf_utilities") {
+                            val utilityBots = state.bots.filter {
+                                it.category.equals("Automation", ignoreCase = true) || it.category.equals("Utilities", ignoreCase = true)
+                            }.ifEmpty { state.bots.take(4) }
+
+                            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                PlayStoreShelfHeader(
+                                    title = "Essential Phone Utilities",
+                                    subtitle = "Diagnostics, battery watchdog & system automation",
+                                    onActionClick = {
+                                        onCategorySelected("Automation")
+                                        selectedSubTab = 1
+                                    }
+                                )
+                                LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    items(utilityBots, key = { it.id }) { bot ->
+                                        PlayStoreShelfCard(
+                                            bot = bot,
+                                            isInstalled = installedBotIds.contains(bot.id),
+                                            isRunning = runningBotIds.contains(bot.id),
+                                            onClick = { onBotClick(bot.id) }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        // Shelf 3: Smart Assistants & AI
+                        item(key = "shelf_ai") {
+                            val aiBots = state.bots.filter {
+                                it.category.equals("AI", ignoreCase = true)
+                            }.ifEmpty { state.bots.takeLast(4) }
+
+                            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                PlayStoreShelfHeader(
+                                    title = "Smart Assistants & AI",
+                                    subtitle = "On-device intelligence & Gemini integration",
+                                    onActionClick = {
+                                        onCategorySelected("AI")
+                                        selectedSubTab = 1
+                                    }
+                                )
+                                LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    items(aiBots, key = { it.id }) { bot ->
+                                        PlayStoreShelfCard(
+                                            bot = bot,
+                                            isInstalled = installedBotIds.contains(bot.id),
+                                            isRunning = runningBotIds.contains(bot.id),
+                                            onClick = { onBotClick(bot.id) }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        // Shelf 4: Audio & Media Streamers
+                        item(key = "shelf_media") {
+                            val mediaBots = state.bots.filter {
+                                it.category.equals("Media", ignoreCase = true)
+                            }.ifEmpty { state.bots.take(4) }
+
+                            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                PlayStoreShelfHeader(
+                                    title = "Audio & Media Streamers",
+                                    subtitle = "Direct speaker playback & 24/7 radio bots",
+                                    onActionClick = {
+                                        onCategorySelected("Media")
+                                        selectedSubTab = 1
+                                    }
+                                )
+                                LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    items(mediaBots, key = { it.id }) { bot ->
+                                        PlayStoreShelfCard(
+                                            bot = bot,
+                                            isInstalled = installedBotIds.contains(bot.id),
+                                            isRunning = runningBotIds.contains(bot.id),
+                                            onClick = { onBotClick(bot.id) }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        // Shelf 5: Group Moderation & Security
+                        item(key = "shelf_moderation") {
+                            val modBots = state.bots.filter {
+                                it.category.equals("Moderation", ignoreCase = true)
+                            }.ifEmpty { state.bots.take(4) }
+
+                            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                PlayStoreShelfHeader(
+                                    title = "Group Moderation & Security",
+                                    subtitle = "Anti-flood, spam guard & group management",
+                                    onActionClick = {
+                                        onCategorySelected("Moderation")
+                                        selectedSubTab = 1
+                                    }
+                                )
+                                LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    items(modBots, key = { it.id }) { bot ->
+                                        PlayStoreShelfCard(
+                                            bot = bot,
+                                            isInstalled = installedBotIds.contains(bot.id),
+                                            isRunning = runningBotIds.contains(bot.id),
+                                            onClick = { onBotClick(bot.id) }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        item(key = "studio_promo") {
+                            CustomBuilderPromoCard(onClick = onBuildCustomBotClick)
+                        }
+                    }
+
+                    1 -> {
+                        // "Top charts"
+                        item(key = "chart_category_chips") {
+                            val categories = if (state.categories.contains("All")) {
+                                state.categories
+                            } else {
+                                listOf("All") + state.categories
+                            }
+                            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                items(categories, key = { it }) { category ->
+                                    CategoryChip(
+                                        text = category,
+                                        count = if (state.selectedCategory == category) state.bots.size else null,
+                                        isSelected = state.selectedCategory == category,
+                                        onClick = { onCategorySelected(category) }
+                                    )
+                                }
+                            }
+                        }
+
+                        item(key = "charts_header") {
+                            PlayStoreShelfHeader(
+                                title = if (state.selectedCategory == "All") "Top Free Charts" else "${state.selectedCategory} Charts",
+                                subtitle = "Ranked by active device deployments & user rating",
+                                actionText = if (state.selectedCategory != "All") "Show All" else null,
+                                onActionClick = { onResetFilters() }
+                            )
+                        }
+
+                        itemsIndexed(state.bots, key = { _, bot -> bot.id }) { index, bot ->
+                            PlayStoreRankedBotRow(
+                                rank = index + 1,
                                 bot = bot,
                                 isInstalled = installedBotIds.contains(bot.id),
                                 isRunning = runningBotIds.contains(bot.id),
                                 hasUpdate = updateBotIds.contains(bot.id),
-                                previewCommands = BotCommandCatalog.getPreviewCommands(
-                                    botId = bot.id,
-                                    category = bot.category,
-                                    name = bot.name,
-                                    limit = 3
-                                ),
                                 onClick = { onBotClick(bot.id) },
-                                onActionClick = { onBotClick(bot.id) },
-                                modifier = Modifier.weight(1f)
+                                onActionClick = { onBotClick(bot.id) }
                             )
                         }
-                        if (pair.size == 1) {
-                            Spacer(modifier = Modifier.weight(1f))
+                    }
+
+                    2 -> {
+                        // "Categories"
+                        item(key = "categories_header") {
+                            PlayStoreShelfHeader(
+                                title = "Browse by Category",
+                                subtitle = "Discover specialized runtimes crafted for your phone",
+                                actionText = null,
+                                onActionClick = null
+                            )
+                        }
+
+                        item(key = "categories_list") {
+                            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                PlayStoreCategoryRow(
+                                    title = "Automation & Utilities",
+                                    description = "Phone telemetry, hardware controls, alarms, APK sender",
+                                    icon = Icons.Rounded.Bolt,
+                                    accentColor = TapBotColors.BrandCyan,
+                                    count = state.bots.count { it.category.equals("Automation", ignoreCase = true) },
+                                    onClick = {
+                                        onCategorySelected("Automation")
+                                        selectedSubTab = 1
+                                    }
+                                )
+                                PlayStoreCategoryRow(
+                                    title = "AI & Smart Assistants",
+                                    description = "Gemini integration, context-aware queries, code assistance",
+                                    icon = Icons.Rounded.Terminal,
+                                    accentColor = TapBotColors.PrimaryCobalt,
+                                    count = state.bots.count { it.category.equals("AI", ignoreCase = true) },
+                                    onClick = {
+                                        onCategorySelected("AI")
+                                        selectedSubTab = 1
+                                    }
+                                )
+                                PlayStoreCategoryRow(
+                                    title = "Audio & Media",
+                                    description = "Bluetooth speaker streaming, 24/7 internet radio, inline players",
+                                    icon = Icons.Default.SmartToy,
+                                    accentColor = Color(0xFFA855F7),
+                                    count = state.bots.count { it.category.equals("Media", ignoreCase = true) },
+                                    onClick = {
+                                        onCategorySelected("Media")
+                                        selectedSubTab = 1
+                                    }
+                                )
+                                PlayStoreCategoryRow(
+                                    title = "Group Moderation",
+                                    description = "Anti-flood, spam shields, lock channels, auto-warns and bans",
+                                    icon = Icons.Rounded.Bolt,
+                                    accentColor = TapBotColors.Success,
+                                    count = state.bots.count { it.category.equals("Moderation", ignoreCase = true) },
+                                    onClick = {
+                                        onCategorySelected("Moderation")
+                                        selectedSubTab = 1
+                                    }
+                                )
+                                PlayStoreCategoryRow(
+                                    title = "Custom & Studio Bots",
+                                    description = "User-authored no-code workflows, webhooks & responders",
+                                    icon = Icons.Rounded.AccountTree,
+                                    accentColor = TapBotColors.AccentCustom,
+                                    count = state.customBotCount,
+                                    onClick = onBuildCustomBotClick
+                                )
+                            }
+                        }
+                    }
+
+                    3 -> {
+                        // "Studio Blueprints"
+                        item(key = "blueprints_header") {
+                            PlayStoreShelfHeader(
+                                title = "TapBot Studio Blueprints",
+                                subtitle = "Pre-architected templates you can fork and deploy in seconds",
+                                actionText = "+ Build Custom",
+                                onActionClick = onBuildCustomBotClick
+                            )
+                        }
+
+                        item(key = "blueprints_content") {
+                            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                BlueprintCard(
+                                    title = "Webhook Alert Relay",
+                                    subtitle = "GitHub • Stripe • Vercel",
+                                    description = "Listen on local/tunnel HTTP port for incoming webhooks and dispatch formatted alerts to Telegram.",
+                                    tag = "WEBHOOK",
+                                    tagColor = TapBotColors.BrandCyan,
+                                    onUseBlueprint = onBuildCustomBotClick
+                                )
+                                BlueprintCard(
+                                    title = "Customer Support Auto-Responder",
+                                    subtitle = "Keyword Triggers • Interactive Buttons",
+                                    description = "Automatically respond to common customer inquiries with pre-configured rich message buttons.",
+                                    tag = "INTERACTIVE",
+                                    tagColor = Color(0xFFA855F7),
+                                    onUseBlueprint = onBuildCustomBotClick
+                                )
+                                BlueprintCard(
+                                    title = "Scheduled System Heartbeat",
+                                    subtitle = "Cron Worker • Telemetry Ping",
+                                    description = "Sends scheduled battery, thermal, and network health reports to your Telegram chat every hour.",
+                                    tag = "SCHEDULED",
+                                    tagColor = TapBotColors.Success,
+                                    onUseBlueprint = onBuildCustomBotClick
+                                )
+                            }
                         }
                     }
                 }
-            } else {
-                items(state.bots, key = { it.id }) { bot ->
-                    BotCard(
-                        bot = bot,
-                        isInstalled = installedBotIds.contains(bot.id),
-                        isRunning = runningBotIds.contains(bot.id),
-                        hasUpdate = updateBotIds.contains(bot.id),
-                        previewCommands = BotCommandCatalog.getPreviewCommands(
-                            botId = bot.id,
-                            category = bot.category,
-                            name = bot.name,
-                            limit = 3
-                        ),
-                        onClick = { onBotClick(bot.id) },
-                        onActionClick = { onBotClick(bot.id) }
-                    )
-                }
-            }
-
-            item(key = "custom_builder_promo") {
-                CustomBuilderPromoCard(onClick = onBuildCustomBotClick)
             }
         }
     }
@@ -913,24 +1166,19 @@ private fun FeaturedBotsCarousel(
 ) {
     val pagerState = rememberPagerState(pageCount = { featuredBots.size })
 
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         HorizontalPager(
             state = pagerState,
             pageSpacing = 12.dp,
             modifier = Modifier.fillMaxWidth()
         ) { page ->
             val bot = featuredBots[page]
-            FeaturedBotCard(
+            PlayStoreSpotlightBanner(
                 bot = bot,
                 isInstalled = installedBotIds.contains(bot.id),
                 isRunning = runningBotIds.contains(bot.id),
-                previewCommands = BotCommandCatalog.getPreviewCommands(
-                    botId = bot.id,
-                    category = bot.category,
-                    name = bot.name,
-                    limit = 4
-                ),
-                onClick = { onBotClick(bot.id) }
+                onBotClick = { onBotClick(bot.id) },
+                onActionClick = { onBotClick(bot.id) }
             )
         }
 
@@ -945,13 +1193,171 @@ private fun FeaturedBotsCarousel(
                     Box(
                         modifier = Modifier
                             .padding(horizontal = 3.dp)
-                            .width(if (selected) 20.dp else 7.dp)
-                            .height(6.dp)
+                            .width(if (selected) 20.dp else 6.dp)
+                            .height(5.dp)
                             .clip(RoundedCornerShape(TapBotColors.RadiusPill))
-                            .background(if (selected) TapBotColors.BrandCyan else TapBotColors.BorderFocus)
+                            .background(if (selected) TapBotColors.BrandCyan else TapBotColors.PlayBorderSubtle)
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun PlayStoreCategoryRow(
+    title: String,
+    description: String,
+    icon: ImageVector,
+    accentColor: Color,
+    count: Int,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(TapBotColors.PlaySurface)
+            .border(1.dp, TapBotColors.PlayBorderSubtle, RoundedCornerShape(16.dp))
+            .clickable(onClick = onClick)
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .background(accentColor.copy(alpha = 0.16f))
+                .border(1.dp, accentColor.copy(alpha = 0.40f), RoundedCornerShape(14.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = accentColor,
+                modifier = Modifier.size(24.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.width(14.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                color = TapBotColors.TextPrimary,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = description,
+                color = TapBotColors.TextSecondary,
+                fontSize = 12.sp,
+                lineHeight = 16.sp
+            )
+        }
+
+        Spacer(modifier = Modifier.width(10.dp))
+
+        if (count > 0) {
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(TapBotColors.RadiusPill))
+                    .background(TapBotColors.PlaySurfaceElevated)
+                    .border(1.dp, TapBotColors.PlayBorderSubtle, RoundedCornerShape(TapBotColors.RadiusPill))
+                    .padding(horizontal = 9.dp, vertical = 4.dp)
+            ) {
+                Text(
+                    text = "$count bots",
+                    color = TapBotColors.TextSecondary,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun BlueprintCard(
+    title: String,
+    subtitle: String,
+    description: String,
+    tag: String,
+    tagColor: Color,
+    onUseBlueprint: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(TapBotColors.PlaySurface)
+            .border(1.dp, TapBotColors.PlayBorderSubtle, RoundedCornerShape(16.dp))
+            .padding(16.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(tagColor.copy(alpha = 0.18f))
+                    .padding(horizontal = 7.dp, vertical = 3.dp)
+            ) {
+                Text(
+                    text = tag,
+                    color = tagColor,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.5.sp
+                )
+            }
+
+            Text(
+                text = subtitle,
+                color = TapBotColors.TextMuted,
+                fontSize = 11.sp
+            )
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        Text(
+            text = title,
+            color = TapBotColors.TextPrimary,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold
+        )
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        Text(
+            text = description,
+            color = TapBotColors.TextSecondary,
+            fontSize = 12.sp,
+            lineHeight = 17.sp
+        )
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        Button(
+            onClick = onUseBlueprint,
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 44.dp),
+            shape = RoundedCornerShape(TapBotColors.RadiusMd),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = TapBotColors.PlayInstallGreen,
+                contentColor = Color.White
+            )
+        ) {
+            Text(
+                text = "Use Blueprint in Studio",
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold
+            )
         }
     }
 }
@@ -967,8 +1373,8 @@ private fun EmptyFilterRecoveryCard(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(TapBotColors.RadiusLg))
-            .background(TapBotColors.SurfacePrimary)
-            .premiumCardBorder()
+            .background(TapBotColors.PlaySurface)
+            .border(1.dp, TapBotColors.PlayBorderSubtle, RoundedCornerShape(TapBotColors.RadiusLg))
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -1004,7 +1410,7 @@ private fun EmptyFilterRecoveryCard(
                     .weight(1f)
                     .heightIn(min = 48.dp),
                 shape = RoundedCornerShape(TapBotColors.RadiusMd),
-                border = BorderStroke(1.dp, TapBotColors.BorderFocus)
+                border = BorderStroke(1.dp, TapBotColors.PlayBorder)
             ) {
                 Text("Reset Filters", color = TapBotColors.TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
             }
@@ -1035,13 +1441,14 @@ private fun CustomBuilderPromoCard(onClick: () -> Unit) {
                 Brush.horizontalGradient(
                     listOf(
                         Color(0xFF072622),
-                        TapBotColors.SurfacePrimary
+                        TapBotColors.PlaySurface
                     )
                 )
             )
-            .premiumCardBorder(
-                borderColorTop = TapBotColors.AccentCustom.copy(alpha = 0.55f),
-                borderColorBottom = TapBotColors.Border
+            .border(
+                1.dp,
+                TapBotColors.AccentCustom.copy(alpha = 0.50f),
+                RoundedCornerShape(TapBotColors.RadiusLg)
             )
             .clickable(role = Role.Button, onClick = onClick)
             .padding(16.dp),
@@ -1083,7 +1490,7 @@ private fun CustomBuilderPromoCard(onClick: () -> Unit) {
         MonospaceBadge(
             text = "+ Build",
             color = TapBotColors.AccentCustom,
-            backgroundColor = TapBotColors.SurfaceElevated
+            backgroundColor = TapBotColors.PlaySurfaceElevated
         )
     }
 }
@@ -1094,12 +1501,13 @@ private fun TapBotBottomNavigationBar(
     onTabSelected: (Int) -> Unit,
     installedCount: Int,
     runningCount: Int,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onBuildCustomBotClick: () -> Unit = {}
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
-        color = TapBotColors.SurfacePrimary,
-        border = BorderStroke(1.dp, TapBotColors.BorderSubtle)
+        color = TapBotColors.PlaySurface,
+        border = BorderStroke(1.dp, TapBotColors.PlayBorderSubtle)
     ) {
         Row(
             modifier = Modifier
@@ -1124,6 +1532,14 @@ private fun TapBotBottomNavigationBar(
                 badgeCount = if (installedCount > 0) installedCount else null,
                 isActiveRunning = runningCount > 0,
                 onClick = { onTabSelected(1) },
+                modifier = Modifier.weight(1f)
+            )
+
+            TapBotNavItem(
+                icon = Icons.Rounded.AccountTree,
+                label = "Studio",
+                isSelected = false,
+                onClick = onBuildCustomBotClick,
                 modifier = Modifier.weight(1f)
             )
 

@@ -21,6 +21,7 @@ import {
     BotVersionDto
 } from '../types';
 import { verifyAdminAuth } from '../middleware/auth';
+import { putStoredObject } from '../storage/objectStorage';
 
 function jsonResponse<T>(data: ApiResponse<T>, status = 200): Response {
     return new Response(JSON.stringify(data), {
@@ -1000,11 +1001,7 @@ export async function handleAdminRoutes(request: Request, env: Env, url: URL): P
             ? customKey.trim()
             : `packages/${generateId('pkg')}_${safeFilename}`;
 
-        await env.BUCKET.put(packageKey, arrayBuffer, {
-            httpMetadata: {
-                contentType: 'application/octet-stream'
-            }
-        });
+        await putStoredObject(env, packageKey, arrayBuffer, 'application/octet-stream');
 
         await recordAuditLog(env, 'upload_package', 'package', packageKey, {
             packageKey,
@@ -1043,11 +1040,7 @@ export async function handleAdminRoutes(request: Request, env: Env, url: URL): P
         const hashArr = Array.from(new Uint8Array(hashBuf));
         const sha256 = hashArr.map((b) => b.toString(16).padStart(2, '0')).join('');
 
-        await env.BUCKET.put(rawKey, arrayBuffer, {
-            httpMetadata: {
-                contentType: 'application/octet-stream'
-            }
-        });
+        await putStoredObject(env, rawKey, arrayBuffer, 'application/octet-stream');
 
         // If a version row exists with this package_key, update package_size & sha256
         await env.DB.prepare(
@@ -1118,11 +1111,7 @@ export async function handleAdminRoutes(request: Request, env: Env, url: URL): P
         const safeFilename = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
         const iconKey = `icons/${generateId('icon')}_${safeFilename}`;
 
-        await env.BUCKET.put(iconKey, arrayBuffer, {
-            httpMetadata: {
-                contentType: mimeType
-            }
-        });
+        await putStoredObject(env, iconKey, arrayBuffer, mimeType);
 
         const iconUrl = `${baseUrl}/api/v1/packages/${encodeURIComponent(iconKey)}`;
 
@@ -1138,42 +1127,6 @@ export async function handleAdminRoutes(request: Request, env: Env, url: URL): P
             data: {
                 iconKey,
                 iconUrl
-            }
-        }, 201);
-    }
-
-    // -----------------------------------------------------------------
-    // 18. Legacy PUT /api/v1/admin/packages/:key - Raw stream upload
-    // -----------------------------------------------------------------
-    const pkgUploadMatch = path.match(/^\/api\/v1\/admin\/packages\/(.+)$/);
-    if (pkgUploadMatch && request.method === 'PUT') {
-        const rawKey = decodeURIComponent(pkgUploadMatch[1]);
-        const bodyStream = request.body;
-
-        if (!bodyStream) {
-            return jsonResponse({
-                success: false,
-                error: { code: 'BAD_REQUEST', message: 'Missing package binary in request body' }
-            }, 400);
-        }
-
-        const uploadResult = await env.BUCKET.put(rawKey, bodyStream, {
-            httpMetadata: {
-                contentType: 'application/octet-stream'
-            }
-        });
-
-        await recordAuditLog(env, 'upload_package', 'package', rawKey, {
-            packageKey: rawKey,
-            size: uploadResult.size
-        });
-
-        return jsonResponse({
-            success: true,
-            data: {
-                key: rawKey,
-                size: uploadResult.size,
-                etag: uploadResult.etag
             }
         }, 201);
     }

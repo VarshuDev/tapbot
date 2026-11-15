@@ -77,6 +77,7 @@ class MockD1 {
     ];
 
     auditLogs: AuditLogRow[] = [];
+    storageObjects: Map<string, { key: string; content_type: string; size: number; data_base64: string; etag: string; created_at: string }> = new Map();
 
     prepare(query: string) {
         return new MockPreparedStatement(this, query);
@@ -237,11 +238,29 @@ class MockPreparedStatement {
             return (found || null) as any;
         }
 
+        if (q.includes('from storage_objects where key = ?')) {
+            const key = this.params[0];
+            return (this.db.storageObjects.get(key) || null) as any;
+        }
+
         return null;
     }
 
     async run(): Promise<{ success: boolean }> {
         const q = this.query.trim().toLowerCase();
+
+        if (q.includes('insert into storage_objects')) {
+            const [key, contentType, size, dataBase64, etag, createdAt] = this.params;
+            this.db.storageObjects.set(key, {
+                key,
+                content_type: contentType,
+                size,
+                data_base64: dataBase64,
+                etag,
+                created_at: createdAt
+            });
+            return { success: true };
+        }
 
         if (q.includes('insert into audit_logs')) {
             const [id, action, entityType, entityId, details, actor, createdAt] = this.params;
@@ -1029,5 +1048,42 @@ describe('TapBot Catalog Backend API & Admin Dashboard', () => {
         expect(httpRes.status).toBe(200);
         const body: any = await httpRes.json();
         expect(body.data.currentVersionInfo.downloadUrl).toMatch(/^http:\/\/localhost:8787\//);
+    });
+
+    it('falls back cleanly to D1 storage_objects when R2 BUCKET is unbound', async () => {
+        const d1OnlyEnv: Env = {
+            DB: mockDb as any,
+            ADMIN_API_KEY: ADMIN_KEY,
+            ENVIRONMENT: 'production'
+        };
+
+        const healthRes = await worker.fetch(new Request('https://api.tapbot.internal/health'), d1OnlyEnv);
+        expect(healthRes.status).toBe(200);
+        const healthBody: any = await healthRes.json();
+        expect(healthBody.data.storage.status).toBe('d1_fallback');
+
+        const payload = new TextEncoder().encode('D1_BOTPKG_ARCHIVE');
+        const uploadRes = await worker.fetch(
+            new Request('https://api.tapbot.internal/api/v1/admin/upload/package', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/octet-stream',
+                    'X-Filename': 'demo.botpkg',
+                    'X-Package-Key': 'packages/demo_1.0.0.botpkg',
+                    'Authorization': `Bearer ${ADMIN_KEY}`
+                },
+                body: payload
+            }),
+            d1OnlyEnv
+        );
+        expect(uploadRes.status).toBe(201);
+
+        const downloadRes = await worker.fetch(
+            new Request('https://api.tapbot.internal/api/v1/packages/packages/demo_1.0.0.botpkg'),
+            d1OnlyEnv
+        );
+        expect(downloadRes.status).toBe(200);
+        const downloaded = new Uint8Array(await downloadRes.arrayBuffer());
+        expect(downloaded).toEqual(payload);
     });
 });

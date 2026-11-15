@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -27,10 +28,23 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.rounded.AccountTree
+import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.ChevronRight
+import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.ErrorOutline
+import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.HourglassTop
+import androidx.compose.material.icons.rounded.RssFeed
+import androidx.compose.material.icons.rounded.Shield
+import androidx.compose.material.icons.rounded.SmartToy
+import androidx.compose.material.icons.rounded.Speed
+import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.StopCircle
+import androidx.compose.material.icons.rounded.Terminal
+import androidx.compose.material.icons.rounded.Verified
 import androidx.compose.material.icons.rounded.WifiOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -1060,6 +1074,821 @@ fun SecondaryButton(
             Spacer(modifier = Modifier.width(8.dp))
         }
         Text(text = text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+    }
+}
+
+/**
+ * Google Play Store Floating Search Bar with leading TapBot Logo & trailing Host Telemetry Pill.
+ */
+@Composable
+fun PlayStoreSearchBar(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    runningCount: Int,
+    batteryPct: Int,
+    onTelemetryClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    placeholderText: String = "Search bots, tools & commands..."
+) {
+    var isFocused by remember { mutableStateOf(false) }
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(52.dp)
+            .clip(RoundedCornerShape(TapBotColors.RadiusPill))
+            .background(TapBotColors.PlaySurfaceElevated)
+            .border(
+                width = 1.dp,
+                color = if (isFocused) TapBotColors.BrandCyan.copy(alpha = 0.65f) else TapBotColors.PlayBorderSubtle,
+                shape = RoundedCornerShape(TapBotColors.RadiusPill)
+            )
+            .padding(start = 12.dp, end = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        TapBotLogoMark(
+            size = 28.dp,
+            modifier = Modifier.padding(end = 6.dp)
+        )
+
+        Icon(
+            imageVector = Icons.Default.Search,
+            contentDescription = null,
+            tint = if (isFocused) TapBotColors.BrandCyan else TapBotColors.TextMuted,
+            modifier = Modifier.size(20.dp)
+        )
+
+        Spacer(modifier = Modifier.width(8.dp))
+
+        Box(modifier = Modifier.weight(1f)) {
+            if (query.isEmpty()) {
+                Text(
+                    text = placeholderText,
+                    color = TapBotColors.TextMuted,
+                    fontSize = 14.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            BasicTextField(
+                value = query,
+                onValueChange = onQueryChange,
+                singleLine = true,
+                textStyle = TextStyle(
+                    color = TapBotColors.TextPrimary,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium
+                ),
+                cursorBrush = SolidColor(TapBotColors.BrandCyan),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .onFocusChanged { isFocused = it.isFocused }
+            )
+        }
+
+        if (query.isNotEmpty()) {
+            IconButton(
+                onClick = { onQueryChange("") },
+                modifier = Modifier.size(36.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Clear,
+                    contentDescription = "Clear search",
+                    tint = TapBotColors.TextSecondary,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+        }
+
+        // Active Runner & Battery Pill
+        val active = runningCount > 0
+        Row(
+            modifier = Modifier
+                .clip(RoundedCornerShape(TapBotColors.RadiusPill))
+                .background(if (active) TapBotColors.PlayInstallGreenBg else TapBotColors.PlaySurfaceHighlight)
+                .border(
+                    1.dp,
+                    if (active) TapBotColors.PlayInstallGreenBorder else TapBotColors.PlayBorder,
+                    RoundedCornerShape(TapBotColors.RadiusPill)
+                )
+                .clickable(role = Role.Button, onClick = onTelemetryClick)
+                .padding(horizontal = 9.dp, vertical = 5.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(5.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(7.dp)
+                    .clip(CircleShape)
+                    .background(if (active) TapBotColors.PlayInstallGreen else TapBotColors.TextMuted)
+            )
+            Text(
+                text = if (active) "$runningCount Active" else "$batteryPct%",
+                color = if (active) TapBotColors.SuccessText else TapBotColors.TextSecondary,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+
+/**
+ * Modern Google Play Store Sub-Navigation Tabs (For you, Top charts, Categories, Custom).
+ */
+@Composable
+fun PlayStoreSubTabs(
+    selectedTab: Int,
+    onTabSelected: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+    tabs: List<String> = listOf("For you", "Top charts", "Categories", "Studio Blueprints")
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        tabs.forEachIndexed { index, title ->
+            val isSelected = selectedTab == index
+            val bgColor = if (isSelected) TapBotColors.PrimaryCobalt else TapBotColors.PlaySurfaceElevated
+            val borderColor = if (isSelected) TapBotColors.BrandCyan.copy(alpha = 0.70f) else TapBotColors.PlayBorderSubtle
+            val textColor = if (isSelected) Color.White else TapBotColors.TextSecondary
+
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(TapBotColors.RadiusPill))
+                    .background(bgColor)
+                    .border(1.dp, borderColor, RoundedCornerShape(TapBotColors.RadiusPill))
+                    .clickable(role = Role.Tab, onClick = { onTabSelected(index) })
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = title,
+                    color = textColor,
+                    fontSize = 13.sp,
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Editorial Play Store Spotlight Hero Banner with rich ambient glow and 1-tap Get action.
+ */
+@Composable
+fun PlayStoreSpotlightBanner(
+    bot: BotMetadata,
+    isInstalled: Boolean,
+    isRunning: Boolean,
+    onBotClick: () -> Unit,
+    onActionClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val identity = resolveBotVisualIdentity(botId = bot.id, category = bot.category, name = bot.name)
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(178.dp)
+            .clip(RoundedCornerShape(20.dp))
+            .background(
+                Brush.linearGradient(
+                    colors = listOf(
+                        identity.surfaceTint,
+                        TapBotColors.PlaySurfaceElevated,
+                        TapBotColors.PlaySurface
+                    )
+                )
+            )
+            .border(
+                1.dp,
+                Brush.verticalGradient(
+                    listOf(identity.accentColor.copy(alpha = 0.55f), TapBotColors.PlayBorderSubtle)
+                ),
+                RoundedCornerShape(20.dp)
+            )
+            .clickable(onClick = onBotClick)
+            .padding(18.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize(),
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            // Header Row: Category Badge & Rating
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(identity.accentColor.copy(alpha = 0.20f))
+                            .padding(horizontal = 8.dp, vertical = 3.dp)
+                    ) {
+                        Text(
+                            text = "SPOTLIGHT • ${identity.categoryLabel.uppercase()}",
+                            color = identity.accentColor,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 0.6.sp
+                        )
+                    }
+                }
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(3.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Star,
+                        contentDescription = null,
+                        tint = TapBotColors.PlayStarYellow,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Text(
+                        text = identity.ratingScore,
+                        color = TapBotColors.TextPrimary,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+
+            // Middle: Icon + Title + Description
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                BotIcon(
+                    name = bot.name,
+                    category = bot.category,
+                    botId = bot.id,
+                    size = 56.dp,
+                    cornerRadius = 15.dp
+                )
+
+                Spacer(modifier = Modifier.width(14.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = bot.name,
+                        color = TapBotColors.TextPrimary,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Spacer(modifier = Modifier.height(3.dp))
+                    Text(
+                        text = bot.summary.ifBlank { bot.description },
+                        color = TapBotColors.TextSecondary,
+                        fontSize = 12.sp,
+                        lineHeight = 16.sp,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+
+            // Bottom Action Row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(5.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Verified,
+                        contentDescription = null,
+                        tint = TapBotColors.PlayVerifiedBlue,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Text(
+                        text = identity.developerName,
+                        color = TapBotColors.TextMuted,
+                        fontSize = 11.sp
+                    )
+                    Text(text = "•", color = TapBotColors.TextMuted, fontSize = 11.sp)
+                    Text(
+                        text = "${identity.downloadCount} runs",
+                        color = TapBotColors.TextMuted,
+                        fontSize = 11.sp
+                    )
+                }
+
+                val actionLabel = when {
+                    isRunning -> "Active"
+                    isInstalled -> "Open"
+                    else -> "Get Bot"
+                }
+                val ctaBg = when {
+                    isRunning -> TapBotColors.SuccessSurface
+                    isInstalled -> TapBotColors.SurfaceInteractive
+                    else -> TapBotColors.PlayInstallGreen
+                }
+                val ctaText = when {
+                    isRunning -> TapBotColors.SuccessText
+                    isInstalled -> TapBotColors.TextPrimary
+                    else -> Color.White
+                }
+
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(TapBotColors.RadiusPill))
+                        .background(ctaBg)
+                        .clickable(role = Role.Button, onClick = onActionClick)
+                        .padding(horizontal = 16.dp, vertical = 7.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = actionLabel,
+                        color = ctaText,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Google Play Store Ranked Bot Row (#1, #2, #3) with app icon, rating, size & direct Install CTA.
+ */
+@Composable
+fun PlayStoreRankedBotRow(
+    rank: Int,
+    bot: BotMetadata,
+    isInstalled: Boolean,
+    isRunning: Boolean,
+    hasUpdate: Boolean,
+    onClick: () -> Unit,
+    onActionClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val identity = resolveBotVisualIdentity(botId = bot.id, category = bot.category, name = bot.name)
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(TapBotColors.PlaySurface)
+            .border(1.dp, TapBotColors.PlayBorderSubtle, RoundedCornerShape(14.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Rank Number
+        Text(
+            text = rank.toString(),
+            color = if (rank <= 3) TapBotColors.BrandCyan else TapBotColors.TextMuted,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.width(22.dp)
+        )
+
+        // 56dp Squircle App Icon
+        BotIcon(
+            name = bot.name,
+            category = bot.category,
+            botId = bot.id,
+            size = 52.dp,
+            cornerRadius = 14.dp
+        )
+
+        Spacer(modifier = Modifier.width(12.dp))
+
+        // Title + Developer + Metrics
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = bot.name,
+                color = TapBotColors.TextPrimary,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+
+            Spacer(modifier = Modifier.height(2.dp))
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = identity.developerName,
+                    color = TapBotColors.TextMuted,
+                    fontSize = 11.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                if (identity.isVerifiedDeveloper) {
+                    Icon(
+                        imageVector = Icons.Rounded.Verified,
+                        contentDescription = "Verified developer",
+                        tint = TapBotColors.PlayVerifiedBlue,
+                        modifier = Modifier.size(12.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(2.dp))
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    Text(
+                        text = identity.ratingScore,
+                        color = TapBotColors.TextSecondary,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Icon(
+                        imageVector = Icons.Rounded.Star,
+                        contentDescription = null,
+                        tint = TapBotColors.PlayStarYellow,
+                        modifier = Modifier.size(11.dp)
+                    )
+                }
+
+                Text(text = "•", color = TapBotColors.TextMuted, fontSize = 11.sp)
+
+                Text(
+                    text = identity.categoryLabel,
+                    color = identity.accentColor,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium
+                )
+
+                Text(text = "•", color = TapBotColors.TextMuted, fontSize = 11.sp)
+
+                Text(
+                    text = "v${bot.version}",
+                    color = TapBotColors.TextMuted,
+                    fontSize = 11.sp,
+                    fontFamily = FontFamily.Monospace
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.width(10.dp))
+
+        // Direct Action Button
+        val actionText = when {
+            isRunning -> "Active"
+            hasUpdate -> "Update"
+            isInstalled -> "Open"
+            else -> "Get"
+        }
+        val buttonBg = when {
+            isRunning -> TapBotColors.SuccessSurface
+            hasUpdate -> TapBotColors.WarningSurface
+            isInstalled -> TapBotColors.PlaySurfaceElevated
+            else -> TapBotColors.PlayInstallGreen
+        }
+        val buttonTextColor = when {
+            isRunning -> TapBotColors.SuccessText
+            hasUpdate -> TapBotColors.WarningText
+            isInstalled -> TapBotColors.TextPrimary
+            else -> Color.White
+        }
+
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(TapBotColors.RadiusPill))
+                .background(buttonBg)
+                .clickable(role = Role.Button, onClick = onActionClick)
+                .padding(horizontal = 16.dp, vertical = 7.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = actionText,
+                color = buttonTextColor,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+
+/**
+ * Compact Play Store Shelf Card for horizontal discovery rails.
+ */
+@Composable
+fun PlayStoreShelfCard(
+    bot: BotMetadata,
+    isInstalled: Boolean,
+    isRunning: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val identity = resolveBotVisualIdentity(botId = bot.id, category = bot.category, name = bot.name)
+
+    Column(
+        modifier = modifier
+            .width(116.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .clickable(onClick = onClick)
+            .padding(4.dp)
+    ) {
+        // 68dp App Squircle
+        Box(
+            modifier = Modifier
+                .size(68.dp)
+                .clip(RoundedCornerShape(17.dp))
+                .background(identity.brush)
+                .border(1.dp, Color.White.copy(alpha = 0.20f), RoundedCornerShape(17.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = identity.icon,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(34.dp)
+            )
+
+            if (isRunning) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(3.dp)
+                        .size(10.dp)
+                        .clip(CircleShape)
+                        .background(TapBotColors.Success)
+                        .border(1.5.dp, TapBotColors.PlaySurface, CircleShape)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            text = bot.name,
+            color = TapBotColors.TextPrimary,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+
+        Spacer(modifier = Modifier.height(2.dp))
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(3.dp)
+        ) {
+            Text(
+                text = identity.ratingScore,
+                color = TapBotColors.TextSecondary,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Icon(
+                imageVector = Icons.Rounded.Star,
+                contentDescription = null,
+                tint = TapBotColors.PlayStarYellow,
+                modifier = Modifier.size(11.dp)
+            )
+            Text(text = "•", color = TapBotColors.TextMuted, fontSize = 10.sp)
+            Text(
+                text = identity.categoryLabel,
+                color = TapBotColors.TextMuted,
+                fontSize = 10.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+/**
+ * Google Play Store Shelf Header ("Top Free Bots", "See all" arrow).
+ */
+@Composable
+fun PlayStoreShelfHeader(
+    title: String,
+    modifier: Modifier = Modifier,
+    subtitle: String? = null,
+    actionText: String? = "See all",
+    onActionClick: (() -> Unit)? = null
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(top = 10.dp, bottom = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                color = TapBotColors.TextPrimary,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            if (!subtitle.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = subtitle,
+                    color = TapBotColors.TextSecondary,
+                    fontSize = 12.sp,
+                    maxLines = 1
+                )
+            }
+        }
+
+        if (actionText != null && onActionClick != null) {
+            Row(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable(role = Role.Button, onClick = onActionClick)
+                    .padding(horizontal = 6.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                Text(
+                    text = actionText,
+                    color = TapBotColors.BrandCyan,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Icon(
+                    imageVector = Icons.Rounded.ChevronRight,
+                    contentDescription = null,
+                    tint = TapBotColors.BrandCyan,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Stat Metric column badge for Play Store app detail header (Ratings, Downloads, Size, Privacy).
+ */
+@Composable
+fun PlayStoreStatBadge(
+    title: String,
+    subtitle: String,
+    modifier: Modifier = Modifier,
+    icon: ImageVector? = null,
+    iconTint: Color = TapBotColors.TextSecondary
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text(
+                text = title,
+                color = TapBotColors.TextPrimary,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold
+            )
+            if (icon != null) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = iconTint,
+                    modifier = Modifier.size(14.dp)
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(3.dp))
+        Text(
+            text = subtitle,
+            color = TapBotColors.TextMuted,
+            fontSize = 11.sp,
+            maxLines = 1
+        )
+    }
+}
+
+/**
+ * Realistic vector-drawn Telegram chat preview card simulating bot commands and replies.
+ */
+@Composable
+fun TelegramChatPreviewCard(
+    botName: String,
+    command: String,
+    reply: String,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .width(260.dp)
+            .height(180.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(Color(0xFF0F141C))
+            .border(1.dp, TapBotColors.PlayBorder, RoundedCornerShape(16.dp))
+            .padding(12.dp)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            // Telegram Header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(24.dp)
+                        .clip(CircleShape)
+                        .background(TapBotColors.BrandCyan),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = botName.take(1).uppercase(),
+                        color = Color.Black,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                Column {
+                    Text(
+                        text = botName,
+                        color = TapBotColors.TextPrimary,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1
+                    )
+                    Text(
+                        text = "bot • online",
+                        color = TapBotColors.SuccessText,
+                        fontSize = 9.sp
+                    )
+                }
+            }
+
+            // User Command Bubble (Right-aligned)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
+            ) {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(topStart = 10.dp, topEnd = 2.dp, bottomStart = 10.dp, bottomEnd = 10.dp))
+                        .background(Color(0xFF2A5298))
+                        .padding(horizontal = 10.dp, vertical = 6.dp)
+                ) {
+                    Text(
+                        text = command,
+                        color = Color.White,
+                        fontSize = 12.sp,
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+
+            // Bot Reply Bubble (Left-aligned)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Start
+            ) {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(topStart = 2.dp, topEnd = 10.dp, bottomStart = 10.dp, bottomEnd = 10.dp))
+                        .background(Color(0xFF1E2633))
+                        .padding(horizontal = 10.dp, vertical = 7.dp)
+                ) {
+                    Text(
+                        text = reply,
+                        color = TapBotColors.TextPrimary,
+                        fontSize = 11.sp,
+                        lineHeight = 15.sp,
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+        }
     }
 }
 

@@ -14,6 +14,7 @@ import {
     BotCredentialDto,
     BotVersionDto
 } from '../types';
+import { getStoredObject } from '../storage/objectStorage';
 
 function jsonResponse<T>(data: ApiResponse<T>, status = 200): Response {
     return new Response(JSON.stringify(data), {
@@ -94,7 +95,7 @@ export async function handlePublicRoutes(request: Request, env: Env, url: URL): 
                     error: dbError
                 },
                 storage: {
-                    status: env.BUCKET ? 'bound' : 'not_configured'
+                    status: env.BUCKET ? 'bound' : 'd1_fallback'
                 }
             }
         }, isHealthy ? 200 : 503);
@@ -412,11 +413,11 @@ export async function handlePublicRoutes(request: Request, env: Env, url: URL): 
         });
     }
 
-    // 5. GET / HEAD /api/v1/packages/:key - Download package archive from R2
+    // 5. GET / HEAD /api/v1/packages/:key - Download package archive from R2 or D1 fallback
     const pkgMatch = path.match(/^\/api\/v1\/packages\/(.+)$/);
     if (pkgMatch && (request.method === 'GET' || request.method === 'HEAD')) {
         const rawKey = decodeURIComponent(pkgMatch[1]);
-        const object = await env.BUCKET.get(rawKey);
+        const object = await getStoredObject(env, rawKey);
 
         if (!object) {
             return jsonResponse({
@@ -442,7 +443,7 @@ export async function handlePublicRoutes(request: Request, env: Env, url: URL): 
         const headers = new Headers();
         object.writeHttpMetadata(headers);
         headers.set('etag', object.httpEtag);
-        const contentType = object.httpMetadata?.contentType || 'application/octet-stream';
+        const contentType = object.contentType || 'application/octet-stream';
         headers.set('Content-Type', contentType);
         const isImage = contentType.startsWith('image/');
         const rawFilename = rawKey.split('/').pop() || 'package.botpkg';

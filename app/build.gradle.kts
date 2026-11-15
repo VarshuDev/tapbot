@@ -31,10 +31,13 @@ android {
             val keystoreFile = rootProject.file("keystore/release.keystore")
             val ksPassword = System.getenv("TAPBOT_KEYSTORE_PASSWORD")
                 ?: localProps.getProperty("TAPBOT_KEYSTORE_PASSWORD")
+                ?: "tapbot_release_2026"
             val ksAlias = System.getenv("TAPBOT_KEY_ALIAS")
                 ?: localProps.getProperty("TAPBOT_KEY_ALIAS")
+                ?: "tapbot"
             val ksKeyPassword = System.getenv("TAPBOT_KEY_PASSWORD")
                 ?: localProps.getProperty("TAPBOT_KEY_PASSWORD")
+                ?: "tapbot_release_2026"
             if (keystoreFile.exists() &&
                 !ksPassword.isNullOrBlank() &&
                 !ksAlias.isNullOrBlank() &&

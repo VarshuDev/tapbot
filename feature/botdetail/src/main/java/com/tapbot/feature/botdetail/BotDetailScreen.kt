@@ -57,7 +57,9 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Smartphone
+import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material.icons.rounded.Bolt
@@ -136,6 +138,7 @@ import com.tapbot.core.ui.theme.TapBotTheme
 import com.tapbot.core.ui.theme.premiumCardBorder
 import com.tapbot.core.ui.theme.resolveBotVisualIdentity
 import com.tapbot.feature.botdetail.components.CredentialInputSection
+import com.tapbot.feature.botdetail.components.InAppBotSimulatorModal
 import com.tapbot.feature.botdetail.components.LiveConsoleLogViewer
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -304,6 +307,8 @@ fun BotDetailScreen(
                         onDeleteCredentials = viewModel::deleteCredentials,
                         onConfigureToggle = viewModel::setConfiguring,
                         onVerifyToken = viewModel::verifyToken,
+                        onSyncCommands = viewModel::syncCommandsToTelegram,
+                        onOpenSimulator = viewModel::openSimulator,
                         onStartBot = viewModel::startBot,
                         onStopBot = viewModel::stopBot,
                         onClearLogs = viewModel::clearLogs,
@@ -311,6 +316,17 @@ fun BotDetailScreen(
                         onOpenTelegramBot = { username -> openTelegramBot(context, username) },
                         onGeneratePairingCode = viewModel::generateCommanderPairingCode
                     )
+
+                    if (state.isSimulatorOpen) {
+                        InAppBotSimulatorModal(
+                            bot = state.bot,
+                            messages = state.simulatorMessages,
+                            isProcessing = state.isSimulatorRunning,
+                            onSendMessage = viewModel::sendSimulatorCommand,
+                            onClearMessages = viewModel::clearSimulatorMessages,
+                            onDismiss = viewModel::closeSimulator
+                        )
+                    }
                 }
             }
         }
@@ -452,6 +468,8 @@ internal fun BotDetailContent(
     onDeleteCredentials: () -> Unit,
     onConfigureToggle: (Boolean) -> Unit,
     onVerifyToken: () -> Unit,
+    onSyncCommands: () -> Unit = {},
+    onOpenSimulator: () -> Unit = {},
     onStartBot: () -> Unit,
     onStopBot: () -> Unit,
     onClearLogs: () -> Unit,
@@ -538,6 +556,7 @@ internal fun BotDetailContent(
                     onInstallClick = onInstallClick,
                     onStartBot = onStartBot,
                     onStopBot = onStopBot,
+                    onOpenSimulator = onOpenSimulator,
                     verifiedUsername = state.verifiedBotUsername,
                     onOpenTelegramBot = onOpenTelegramBot
                 )
@@ -629,7 +648,12 @@ internal fun BotDetailContent(
                             verifiedBotUsername = state.verifiedBotUsername,
                             isVerifying = state.isVerifyingToken,
                             verifyError = state.tokenVerifyError,
+                            isSyncingCommands = state.isSyncingCommands,
+                            commandSyncMessage = state.commandSyncMessage,
+                            commandSyncError = state.commandSyncError,
                             onVerifyClick = onVerifyToken,
+                            onSyncCommands = onSyncCommands,
+                            onOpenSimulator = onOpenSimulator,
                             onOpenTelegramBot = onOpenTelegramBot
                         )
                     }
@@ -816,6 +840,7 @@ private fun PlayStoreMainCta(
     onInstallClick: () -> Unit,
     onStartBot: () -> Unit,
     onStopBot: () -> Unit,
+    onOpenSimulator: () -> Unit = {},
     verifiedUsername: String?,
     onOpenTelegramBot: (String) -> Unit
 ) {
@@ -994,6 +1019,34 @@ private fun PlayStoreMainCta(
                     }
                 }
             }
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        OutlinedButton(
+            onClick = onOpenSimulator,
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 44.dp),
+            shape = RoundedCornerShape(TapBotColors.RadiusPill),
+            border = BorderStroke(1.dp, TapBotColors.BrandCyanBorder),
+            colors = ButtonDefaults.outlinedButtonColors(
+                containerColor = TapBotColors.BrandCyanSurface.copy(alpha = 0.4f),
+                contentColor = TapBotColors.BrandCyan
+            )
+        ) {
+            Icon(
+                imageVector = Icons.Default.SmartToy,
+                contentDescription = null,
+                modifier = Modifier.size(16.dp),
+                tint = TapBotColors.BrandCyan
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = "Interactive Bot Simulator (In-App Sandbox)",
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold
+            )
         }
     }
 }
@@ -2086,7 +2139,12 @@ private fun TelegramConnectionCard(
     verifiedBotUsername: String?,
     isVerifying: Boolean,
     verifyError: String?,
+    isSyncingCommands: Boolean = false,
+    commandSyncMessage: String? = null,
+    commandSyncError: String? = null,
     onVerifyClick: () -> Unit,
+    onSyncCommands: () -> Unit = {},
+    onOpenSimulator: () -> Unit = {},
     onOpenTelegramBot: (String) -> Unit
 ) {
     Column(
@@ -2257,6 +2315,122 @@ private fun TelegramConnectionCard(
                         modifier = Modifier.size(15.dp)
                     )
                 }
+            }
+        }
+
+        if (!commandSyncMessage.isNullOrBlank()) {
+            Spacer(modifier = Modifier.height(10.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(TapBotColors.RadiusSm))
+                    .background(TapBotColors.SuccessSurface)
+                    .border(1.dp, TapBotColors.SuccessBorder, RoundedCornerShape(TapBotColors.RadiusSm))
+                    .padding(10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.CheckCircle,
+                    contentDescription = null,
+                    tint = TapBotColors.SuccessText,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = commandSyncMessage,
+                    color = TapBotColors.SuccessText,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+        }
+
+        if (!commandSyncError.isNullOrBlank()) {
+            Spacer(modifier = Modifier.height(10.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(TapBotColors.RadiusSm))
+                    .background(TapBotColors.ErrorSurface)
+                    .border(1.dp, TapBotColors.ErrorBorder, RoundedCornerShape(TapBotColors.RadiusSm))
+                    .padding(10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Error,
+                    contentDescription = null,
+                    tint = TapBotColors.ErrorText,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = commandSyncError,
+                    color = TapBotColors.ErrorText,
+                    fontSize = 12.sp
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            OutlinedButton(
+                onClick = onSyncCommands,
+                enabled = hasToken && !isSyncingCommands,
+                modifier = Modifier
+                    .weight(1f)
+                    .heightIn(min = 44.dp),
+                shape = RoundedCornerShape(TapBotColors.RadiusMd),
+                border = BorderStroke(1.dp, TapBotColors.Border),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    containerColor = TapBotColors.SurfaceElevated,
+                    contentColor = TapBotColors.TextPrimary
+                )
+            ) {
+                if (isSyncingCommands) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(14.dp),
+                        strokeWidth = 2.dp,
+                        color = TapBotColors.BrandCyan
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Syncing...", fontSize = 12.sp)
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.Sync,
+                        contentDescription = null,
+                        modifier = Modifier.size(15.dp),
+                        tint = TapBotColors.BrandCyan
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Sync Commands", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                }
+            }
+
+            Button(
+                onClick = onOpenSimulator,
+                modifier = Modifier
+                    .weight(1f)
+                    .heightIn(min = 44.dp),
+                shape = RoundedCornerShape(TapBotColors.RadiusMd),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = TapBotColors.BrandCyanSurface,
+                    contentColor = TapBotColors.BrandCyan
+                ),
+                border = BorderStroke(1.dp, TapBotColors.BrandCyanBorder)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.SmartToy,
+                    contentDescription = null,
+                    modifier = Modifier.size(15.dp),
+                    tint = TapBotColors.BrandCyan
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("In-App Simulator", fontSize = 12.sp, fontWeight = FontWeight.Bold)
             }
         }
     }

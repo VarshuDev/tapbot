@@ -427,6 +427,50 @@ private fun CredentialInputField(
             )
         }
 
+        val detectedClipboardToken = remember(context, value) {
+            if (isTelegramToken && value.isBlank()) {
+                val clip = readClipboardText(context)?.trim().orEmpty()
+                val tgRegex = Regex("""^\d{5,16}:[a-zA-Z0-9_-]{6,64}$""")
+                if (tgRegex.matches(clip)) clip else null
+            } else null
+        }
+
+        if (detectedClipboardToken != null) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(TapBotColors.RadiusSm))
+                    .background(TapBotColors.BrandCyanSurface)
+                    .border(1.dp, TapBotColors.BrandCyanBorder, RoundedCornerShape(TapBotColors.RadiusSm))
+                    .clickable { onValueChanged(detectedClipboardToken) }
+                    .padding(horizontal = 10.dp, vertical = 7.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.ContentPaste,
+                        contentDescription = null,
+                        tint = TapBotColors.BrandCyan,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "Clipboard Token Detected: ${detectedClipboardToken.take(12)}... [Tap to Paste]",
+                        color = TapBotColors.BrandCyan,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+
         val placeholderText = spec.placeholder.ifBlank {
             if (spec.isSecret) "Paste secret value..." else "Enter value..."
         }

@@ -117,6 +117,8 @@ class CatalogViewModelTest {
             kotlinx.coroutines.flow.MutableStateFlow(com.tapbot.core.runner.runtime.BotRuntimeState.Stopped)
 
         var updateTargetVersionPassed: com.tapbot.core.model.BotVersion? = null
+        val startedIds = mutableListOf<String>()
+        val stoppedIds = mutableListOf<String>()
 
         fun setInstalledInstances(list: List<com.tapbot.core.model.BotInstance>) {
             _instances.value = list
@@ -133,8 +135,14 @@ class CatalogViewModelTest {
             Result.failure(NotImplementedError())
 
         override suspend fun uninstall(installationId: String): Result<Unit> = Result.success(Unit)
-        override suspend fun start(installationId: String): Result<Unit> = Result.success(Unit)
-        override suspend fun stop(installationId: String): Result<Unit> = Result.success(Unit)
+        override suspend fun start(installationId: String): Result<Unit> {
+            startedIds.add(installationId)
+            return Result.success(Unit)
+        }
+        override suspend fun stop(installationId: String): Result<Unit> {
+            stoppedIds.add(installationId)
+            return Result.success(Unit)
+        }
         override suspend fun restart(installationId: String): Result<Unit> = Result.success(Unit)
 
         override suspend fun update(installationId: String, newVersion: String, packageFile: java.io.File): Result<com.tapbot.core.model.BotInstance> =
@@ -390,5 +398,53 @@ class CatalogViewModelTest {
         assertEquals("All", resetState.selectedCategory)
         assertEquals("", resetState.searchQuery)
         assertEquals(2, resetState.bots.size)
+    }
+
+    @Test
+    fun batchActions_startAllIdleAndStopAllActive_triggerManagerCorrectly() = runTest(testDispatcher) {
+        val repo = FakeCatalogRepository(Result.success(listOf(sampleBot1, sampleBot2)))
+        val fakeManager = FakeBotInstanceManager()
+
+        val runningInstance = com.tapbot.core.model.BotInstance(
+            installationId = "inst_running_1",
+            botId = "bot_1",
+            name = "Active Node",
+            version = "1.0.0",
+            status = com.tapbot.core.model.BotInstanceStatus.Running()
+        )
+        val idleInstance1 = com.tapbot.core.model.BotInstance(
+            installationId = "inst_idle_1",
+            botId = "bot_2",
+            name = "Idle Node 1",
+            version = "1.0.0",
+            status = com.tapbot.core.model.BotInstanceStatus.Stopped
+        )
+        val idleInstance2 = com.tapbot.core.model.BotInstance(
+            installationId = "inst_idle_2",
+            botId = "bot_3",
+            name = "Idle Node 2",
+            version = "1.0.0",
+            status = com.tapbot.core.model.BotInstanceStatus.Crashed("Simulated crash")
+        )
+
+        fakeManager.setInstalledInstances(listOf(runningInstance, idleInstance1, idleInstance2))
+
+        val viewModel = CatalogViewModel(
+            catalogRepository = repo,
+            botInstanceManager = fakeManager
+        )
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // 1. Batch Start all idle
+        viewModel.startAllIdleBots()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(listOf("inst_idle_1", "inst_idle_2"), fakeManager.startedIds)
+
+        // 2. Batch Stop all active
+        viewModel.stopAllActiveBots()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals(listOf("inst_running_1"), fakeManager.stoppedIds)
     }
 }

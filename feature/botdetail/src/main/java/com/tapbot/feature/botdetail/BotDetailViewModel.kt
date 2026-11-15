@@ -20,6 +20,9 @@ import com.tapbot.core.runner.manager.BotInstanceManager
 import com.tapbot.core.runner.security.CommanderPairingManager
 import com.tapbot.core.security.SecretRedactor
 import com.tapbot.core.security.SecureCredentialStore
+import com.tapbot.core.ui.catalog.BotCommandCatalog
+import com.tapbot.feature.botdetail.simulator.BotSimulatorEngine
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -489,6 +492,169 @@ class BotDetailViewModel(
                         } else st
                     }
                 }
+        }
+    }
+
+    /**
+     * Publishes this bot's command catalog directly to Telegram servers via setMyCommands API.
+     */
+    fun syncCommandsToTelegram() {
+        val current = _uiState.value as? BotDetailUiState.Success ?: return
+
+        val apiClient = telegramApiClient
+        if (apiClient == null) {
+            _uiState.update { st ->
+                if (st is BotDetailUiState.Success) {
+                    st.copy(commandSyncError = "Telegram API client is unavailable.")
+                } else st
+            }
+            return
+        }
+
+        val rawCommands = BotCommandCatalog.getCommandsForBot(
+            botId = botId,
+            customDefinition = current.customDefinition,
+            category = current.bot.category,
+            name = current.bot.name
+        )
+        val tgCommands = BotCommandCatalog.toTelegramCommands(rawCommands)
+        if (tgCommands.isEmpty()) {
+            _uiState.update { st ->
+                if (st is BotDetailUiState.Success) {
+                    st.copy(commandSyncError = "No commands defined for this bot.")
+                } else st
+            }
+            return
+        }
+
+        viewModelScope.launch {
+            val token = current.credentials["bot_token"]?.trim()?.takeIf { it.isNotBlank() }
+                ?: current.credentials["telegram_bot_token"]?.trim()?.takeIf { it.isNotBlank() }
+                ?: credentialStore.getCredential(botId, "bot_token")?.trim()?.takeIf { it.isNotBlank() }
+                ?: credentialStore.getCredential(botId, "telegram_bot_token")?.trim().orEmpty()
+
+            if (token.isBlank()) {
+                _uiState.update { st ->
+                    if (st is BotDetailUiState.Success) {
+                        st.copy(commandSyncError = "Bot token is missing or invalid.")
+                    } else st
+                }
+                return@launch
+            }
+
+            _uiState.update { st ->
+                if (st is BotDetailUiState.Success) {
+                    st.copy(isSyncingCommands = true, commandSyncError = null, commandSyncMessage = null)
+                } else st
+            }
+            apiClient.setMyCommands(token, tgCommands)
+                .onSuccess {
+                    _uiState.update { st ->
+                        if (st is BotDetailUiState.Success) {
+                            st.copy(
+                                isSyncingCommands = false,
+                                commandSyncMessage = "Synced ${tgCommands.size} commands to Telegram menu!",
+                                commandSyncError = null
+                            )
+                        } else st
+                    }
+                }
+                .onFailure { err ->
+                    val redacted = SecretRedactor.redact(err.message ?: "Failed to sync commands")
+                    _uiState.update { st ->
+                        if (st is BotDetailUiState.Success) {
+                            st.copy(
+                                isSyncingCommands = false,
+                                commandSyncError = redacted,
+                                commandSyncMessage = null
+                            )
+                        } else st
+                    }
+                }
+        }
+    }
+
+    fun openSimulator() {
+        _uiState.update { st ->
+            if (st is BotDetailUiState.Success) {
+                val initialMessages = if (st.simulatorMessages.isEmpty()) {
+                    listOf(
+                        SimulatorChatMessage(
+                            sender = SimulatorSender.SYSTEM,
+                            text = "Interactive Sandbox Initialized • Ready to receive commands"
+                        ),
+                        SimulatorChatMessage(
+                            sender = SimulatorSender.BOT,
+                            text = BotSimulatorEngine.generateWelcome(st.bot.name)
+                        )
+                    )
+                } else st.simulatorMessages
+                st.copy(isSimulatorOpen = true, simulatorMessages = initialMessages)
+            } else st
+        }
+    }
+
+    fun closeSimulator() {
+        _uiState.update { st ->
+            if (st is BotDetailUiState.Success) st.copy(isSimulatorOpen = false) else st
+        }
+    }
+
+    fun clearSimulatorMessages() {
+        _uiState.update { st ->
+            if (st is BotDetailUiState.Success) {
+                st.copy(
+                    simulatorMessages = listOf(
+                        SimulatorChatMessage(
+                            sender = SimulatorSender.SYSTEM,
+                            text = "Chat history cleared • Local sandbox active"
+                        )
+                    )
+                )
+            } else st
+        }
+    }
+
+    fun sendSimulatorCommand(rawInput: String) {
+        val current = _uiState.value as? BotDetailUiState.Success ?: return
+        val input = rawInput.trim()
+        if (input.isBlank()) return
+
+        val userMsg = SimulatorChatMessage(
+            sender = SimulatorSender.USER,
+            text = input
+        )
+
+        _uiState.update { st ->
+            if (st is BotDetailUiState.Success) {
+                st.copy(
+                    simulatorMessages = st.simulatorMessages + userMsg,
+                    isSimulatorRunning = true
+                )
+            } else st
+        }
+
+        viewModelScope.launch {
+            delay(250L)
+            val responseText = BotSimulatorEngine.dispatchCommand(
+                input = input,
+                botId = current.bot.id,
+                botName = current.bot.name,
+                category = current.bot.category,
+                customDefinition = current.customDefinition
+            )
+            val botMsg = SimulatorChatMessage(
+                sender = SimulatorSender.BOT,
+                text = responseText
+            )
+            _uiState.update { st ->
+                if (st is BotDetailUiState.Success) {
+                    st.copy(
+                        simulatorMessages = st.simulatorMessages + botMsg,
+                        isSimulatorRunning = false
+                    )
+                } else st
+            }
         }
     }
 

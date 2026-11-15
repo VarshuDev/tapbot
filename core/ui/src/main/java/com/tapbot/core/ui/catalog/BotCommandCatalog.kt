@@ -1,6 +1,7 @@
 package com.tapbot.core.ui.catalog
 
 import com.tapbot.core.model.CustomBotDefinition
+import com.tapbot.core.model.TelegramBotCommand
 
 data class BotCommandEntry(
     val command: String,
@@ -478,5 +479,26 @@ object BotCommandCatalog {
         return pool.take(limit).map { entry ->
             entry.command.trim().substringBefore(" ").trim()
         }
+    }
+
+    /**
+     * Converts catalog command entries into Telegram-compliant commands
+     * (1-32 chars, lowercase alphanumeric + underscore, no leading slash).
+     */
+    fun toTelegramCommands(
+        entries: List<BotCommandEntry>,
+        maxCount: Int = 100
+    ): List<TelegramBotCommand> {
+        val seen = mutableSetOf<String>()
+        return entries.mapNotNull { entry ->
+            val raw = entry.command.trim().removePrefix("/").substringBefore(" ").trim().lowercase()
+            val valid = raw.filter { it.isLetterOrDigit() || it == '_' }
+            if (valid.isNotEmpty() && valid.length <= 32 && seen.add(valid)) {
+                TelegramBotCommand(
+                    command = valid,
+                    description = entry.summary.trim().take(256).ifBlank { "Execute $valid command" }
+                )
+            } else null
+        }.take(maxCount)
     }
 }

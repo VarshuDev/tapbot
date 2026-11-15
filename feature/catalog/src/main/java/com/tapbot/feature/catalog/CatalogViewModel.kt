@@ -289,6 +289,26 @@ class CatalogViewModel(
         }
     }
 
+    fun startAllIdleBots() {
+        viewModelScope.launch {
+            val manager = botInstanceManager ?: return@launch
+            val instances = manager.instances.value
+            instances.filter { !it.status.isRunning }.forEach { inst ->
+                manager.start(inst.installationId)
+            }
+        }
+    }
+
+    fun stopAllActiveBots() {
+        viewModelScope.launch {
+            val manager = botInstanceManager ?: return@launch
+            val instances = manager.instances.value
+            instances.filter { it.status.isRunning }.forEach { inst ->
+                manager.stop(inst.installationId)
+            }
+        }
+    }
+
     fun uninstallBot(installationId: String) {
         viewModelScope.launch {
             val botId = botInstanceManager?.getInstance(installationId)?.botId

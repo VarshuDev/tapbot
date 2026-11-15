@@ -266,6 +266,8 @@ fun CatalogScreen(
                                     onRestartBot = viewModel::restartBot,
                                     onConfigureBot = onBotClick,
                                     onUninstallBot = viewModel::uninstallBot,
+                                    onStartAll = viewModel::startAllIdleBots,
+                                    onStopAll = viewModel::stopAllActiveBots,
                                     onEditCustomBot = onEditCustomBotClick,
                                     onUpdateBot = viewModel::updateBot,
                                     onCheckForUpdates = viewModel::checkForUpdates,

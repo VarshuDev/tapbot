@@ -4,6 +4,20 @@ import com.tapbot.core.model.BotLogEntry
 import com.tapbot.core.model.BotMetadata
 import com.tapbot.core.model.BotRunState
 import com.tapbot.core.model.CustomBotDefinition
+import java.util.UUID
+
+enum class SimulatorSender {
+    USER,
+    BOT,
+    SYSTEM
+}
+
+data class SimulatorChatMessage(
+    val id: String = UUID.randomUUID().toString(),
+    val sender: SimulatorSender,
+    val text: String,
+    val timestampMs: Long = System.currentTimeMillis()
+)
 
 sealed interface BotDetailUiState {
     object Loading : BotDetailUiState
@@ -27,7 +41,13 @@ sealed interface BotDetailUiState {
         val tokenVerifyError: String? = null,
         val customDefinition: CustomBotDefinition? = null,
         val activePairingCode: String? = null,
-        val pairingCodeExpiresAtMs: Long? = null
+        val pairingCodeExpiresAtMs: Long? = null,
+        val isSyncingCommands: Boolean = false,
+        val commandSyncMessage: String? = null,
+        val commandSyncError: String? = null,
+        val isSimulatorOpen: Boolean = false,
+        val simulatorMessages: List<SimulatorChatMessage> = emptyList(),
+        val isSimulatorRunning: Boolean = false
     ) : BotDetailUiState
     data class Error(val message: String) : BotDetailUiState
 }

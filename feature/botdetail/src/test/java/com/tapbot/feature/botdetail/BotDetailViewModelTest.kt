@@ -231,4 +231,81 @@ class BotDetailViewModelTest {
         assertEquals("Ops v2 Updated", refreshed.bot.name)
         assertEquals(2, refreshed.customDefinition?.rules?.size)
     }
+
+    @Test
+    fun `syncCommandsToTelegram pushes commands via TelegramApiClient and updates state`() = runTest {
+        var syncedCommandsCount = 0
+        val fakeTelegram = object : TelegramApiClient() {
+            override suspend fun setMyCommands(
+                token: String,
+                commands: List<com.tapbot.core.model.TelegramBotCommand>,
+                scope: com.tapbot.core.model.TelegramBotCommandScope?,
+                languageCode: String?
+            ): Result<Boolean> {
+                syncedCommandsCount = commands.size
+                return Result.success(true)
+            }
+        }
+
+        val credStore = FakeSecureCredentialStore()
+        credStore.saveCredential(testBot.id, "bot_token", "123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ")
+
+        val vm = BotDetailViewModel(
+            botId = testBot.id,
+            catalogRepository = FakeCatalogRepository(listOf(testBot)),
+            credentialStore = credStore,
+            botServiceController = FakeServiceController(),
+            logRepository = FakeLogRepository(),
+            telegramApiClient = fakeTelegram
+        )
+        advanceUntilIdle()
+
+        vm.syncCommandsToTelegram()
+        advanceUntilIdle()
+
+        val state = vm.uiState.value as BotDetailUiState.Success
+        assertFalse(state.isSyncingCommands)
+        assertNotNull(state.commandSyncMessage)
+        assertTrue(state.commandSyncMessage!!.contains("Synced"))
+        assertTrue(syncedCommandsCount > 0)
+    }
+
+    @Test
+    fun `simulator lifecycle open, send command, clear, and close works as expected`() = runTest {
+        val vm = BotDetailViewModel(
+            botId = testBot.id,
+            catalogRepository = FakeCatalogRepository(listOf(testBot)),
+            credentialStore = FakeSecureCredentialStore(),
+            botServiceController = FakeServiceController(),
+            logRepository = FakeLogRepository()
+        )
+        advanceUntilIdle()
+
+        // 1. Open simulator
+        vm.openSimulator()
+        var state = vm.uiState.value as BotDetailUiState.Success
+        assertTrue(state.isSimulatorOpen)
+        assertTrue(state.simulatorMessages.isNotEmpty())
+
+        // 2. Send command
+        vm.sendSimulatorCommand("/status")
+        advanceUntilIdle()
+
+        state = vm.uiState.value as BotDetailUiState.Success
+        assertFalse(state.isSimulatorRunning)
+        val lastMsg = state.simulatorMessages.last()
+        assertEquals(SimulatorSender.BOT, lastMsg.sender)
+        assertTrue(lastMsg.text.contains("Live Sandbox Status"))
+
+        // 3. Clear messages
+        vm.clearSimulatorMessages()
+        state = vm.uiState.value as BotDetailUiState.Success
+        assertEquals(1, state.simulatorMessages.size)
+        assertEquals(SimulatorSender.SYSTEM, state.simulatorMessages[0].sender)
+
+        // 4. Close simulator
+        vm.closeSimulator()
+        state = vm.uiState.value as BotDetailUiState.Success
+        assertFalse(state.isSimulatorOpen)
+    }
 }

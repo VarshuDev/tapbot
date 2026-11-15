@@ -4,6 +4,7 @@ import com.tapbot.core.model.InlineKeyboardButton
 import com.tapbot.core.model.InlineKeyboardMarkup
 import com.tapbot.core.model.PromoteChatMemberPayload
 import com.tapbot.core.model.RestrictChatPermissions
+import com.tapbot.core.model.TelegramBotCommand
 import kotlinx.coroutines.runBlocking
 import okhttp3.Interceptor
 import okhttp3.MediaType.Companion.toMediaType
@@ -12,6 +13,7 @@ import okhttp3.Protocol
 import okhttp3.Response
 import okhttp3.ResponseBody.Companion.toResponseBody
 import okio.Buffer
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -68,5 +70,58 @@ class TelegramApiClientTest {
 
         assertTrue(requests[5].first.endsWith("/promoteChatMember"))
         assertTrue(requests[5].second.contains("\"can_delete_messages\":true"))
+    }
+
+    @Test
+    fun `setMyCommands and getMyCommands serialize and parse commands correctly`() = runBlocking {
+        var lastPath = ""
+        var lastRequestBody = ""
+
+        val interceptor = Interceptor { chain ->
+            val request = chain.request()
+            val buf = Buffer()
+            request.body?.writeTo(buf)
+            lastPath = request.url.encodedPath
+            lastRequestBody = buf.readUtf8()
+
+            val jsonResponse = if (lastPath.endsWith("/setMyCommands")) {
+                """{"ok":true,"result":true}"""
+            } else {
+                """{"ok":true,"result":[{"command":"start","description":"Start bot"},{"command":"help","description":"Help menu"}]}"""
+            }
+
+            Response.Builder()
+                .request(request)
+                .protocol(Protocol.HTTP_1_1)
+                .code(200)
+                .message("OK")
+                .body(jsonResponse.toResponseBody("application/json".toMediaType()))
+                .build()
+        }
+
+        val client = OkHttpClient.Builder().addInterceptor(interceptor).build()
+        val api = TelegramApiClient(client)
+
+        val commands = listOf(
+            TelegramBotCommand("start", "Start bot"),
+            TelegramBotCommand("help", "Help menu"),
+            TelegramBotCommand("status", "Show status")
+        )
+
+        val setResult = api.setMyCommands("TEST_TOKEN", commands)
+        assertTrue(setResult.isSuccess)
+        assertTrue(setResult.getOrThrow())
+        assertTrue(lastPath.endsWith("/setMyCommands"))
+        assertTrue(lastRequestBody.contains("\"command\":\"start\""))
+        assertTrue(lastRequestBody.contains("\"description\":\"Start bot\""))
+        assertTrue(lastRequestBody.contains("\"command\":\"status\""))
+
+        val getResult = api.getMyCommands("TEST_TOKEN")
+        assertTrue(getResult.isSuccess)
+        val fetched = getResult.getOrThrow()
+        assertEquals(2, fetched.size)
+        assertEquals("start", fetched[0].command)
+        assertEquals("Start bot", fetched[0].description)
+        assertEquals("help", fetched[1].command)
     }
 }

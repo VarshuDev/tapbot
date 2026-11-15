@@ -6,7 +6,10 @@ import com.tapbot.core.model.InlineKeyboardMarkup
 import com.tapbot.core.model.PromoteChatMemberPayload
 import com.tapbot.core.model.SendAudioPayload
 import com.tapbot.core.model.SendMessagePayload
+import com.tapbot.core.model.SetMyCommandsPayload
 import com.tapbot.core.model.TelegramApiResponse
+import com.tapbot.core.model.TelegramBotCommand
+import com.tapbot.core.model.TelegramBotCommandScope
 import com.tapbot.core.model.TelegramChatMember
 import com.tapbot.core.model.TelegramUpdate
 import com.tapbot.core.model.TelegramUser
@@ -16,6 +19,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
@@ -748,6 +752,63 @@ open class TelegramApiClient(
                 apiResponse.result ?: true
             } else {
                 throw IOException(apiResponse.description ?: "sendChatAction error")
+            }
+        }
+    }
+
+    /**
+     * Updates the list of the bot's commands on Telegram servers.
+     */
+    open suspend fun setMyCommands(
+        token: String,
+        commands: List<TelegramBotCommand>,
+        scope: TelegramBotCommandScope? = null,
+        languageCode: String? = null
+    ): Result<Boolean> = safeTelegramCall {
+        withContext(Dispatchers.IO) {
+            val url = "$BASE_URL/bot$token/setMyCommands"
+            val payload = SetMyCommandsPayload(commands = commands, scope = scope, languageCode = languageCode)
+            val requestBody = json.encodeToString(payload).toRequestBody(jsonMediaType)
+            val request = Request.Builder().url(url).post(requestBody).build()
+
+            val body = client.newCall(request).execute().use { response ->
+                response.body?.string().orEmpty()
+            }
+            val apiResponse = json.decodeFromString<TelegramApiResponse<Boolean>>(body)
+            if (apiResponse.ok) {
+                apiResponse.result ?: true
+            } else {
+                throw IOException(apiResponse.description ?: "setMyCommands error")
+            }
+        }
+    }
+
+    /**
+     * Gets the current list of the bot's commands from Telegram servers.
+     */
+    open suspend fun getMyCommands(
+        token: String,
+        scope: TelegramBotCommandScope? = null,
+        languageCode: String? = null
+    ): Result<List<TelegramBotCommand>> = safeTelegramCall {
+        withContext(Dispatchers.IO) {
+            val urlBuilder = "$BASE_URL/bot$token/getMyCommands".toHttpUrlOrNull()?.newBuilder()
+                ?: throw IOException("Invalid Telegram URL")
+            if (scope != null) {
+                urlBuilder.addQueryParameter("scope", json.encodeToString(scope))
+            }
+            if (!languageCode.isNullOrBlank()) {
+                urlBuilder.addQueryParameter("language_code", languageCode)
+            }
+            val request = Request.Builder().url(urlBuilder.build()).get().build()
+            val body = client.newCall(request).execute().use { response ->
+                response.body?.string().orEmpty()
+            }
+            val apiResponse = json.decodeFromString<TelegramApiResponse<List<TelegramBotCommand>>>(body)
+            if (apiResponse.ok) {
+                apiResponse.result.orEmpty()
+            } else {
+                throw IOException(apiResponse.description ?: "getMyCommands error")
             }
         }
     }

@@ -42,6 +42,7 @@ import androidx.compose.material.icons.automirrored.rounded.VolumeDown
 import androidx.compose.material.icons.automirrored.rounded.VolumeUp
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Error
@@ -49,6 +50,7 @@ import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Sync
@@ -71,6 +73,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -129,6 +133,12 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import java.util.Locale
 
+enum class FleetStatusFilter {
+    ALL,
+    RUNNING,
+    STOPPED
+}
+
 @Composable
 fun MyBotsContent(
     instances: List<BotInstance>,
@@ -139,6 +149,8 @@ fun MyBotsContent(
     onRestartBot: (String) -> Unit,
     onConfigureBot: (String) -> Unit,
     onUninstallBot: (String) -> Unit,
+    onStartAll: () -> Unit = {},
+    onStopAll: () -> Unit = {},
     onEditCustomBot: (String) -> Unit = {},
     onUpdateBot: (String, BotVersion) -> Unit = { _, _ -> },
     onCheckForUpdates: () -> Unit = {},
@@ -207,6 +219,8 @@ fun MyBotsContent(
         onRestartBot = onRestartBot,
         onConfigureBot = onConfigureBot,
         onUninstallBot = onUninstallBot,
+        onStartAll = onStartAll,
+        onStopAll = onStopAll,
         onEditCustomBot = onEditCustomBot,
         onUpdateBot = onUpdateBot,
         onCheckForUpdates = onCheckForUpdates,
@@ -235,6 +249,8 @@ private fun MyBotsScreenBody(
     onRestartBot: (String) -> Unit,
     onConfigureBot: (String) -> Unit,
     onUninstallBot: (String) -> Unit,
+    onStartAll: () -> Unit = {},
+    onStopAll: () -> Unit = {},
     onEditCustomBot: (String) -> Unit,
     onUpdateBot: (String, BotVersion) -> Unit,
     onCheckForUpdates: () -> Unit,
@@ -265,6 +281,31 @@ private fun MyBotsScreenBody(
         1f
     }
 
+    var searchQuery by remember { mutableStateOf("") }
+    var selectedFilter by remember { mutableStateOf(FleetStatusFilter.ALL) }
+
+    val runningCount = remember(instances) { instances.count { it.status.isRunning } }
+    val stoppedCount = remember(instances) { instances.size - runningCount }
+
+    val filteredInstances = remember(instances, searchQuery, selectedFilter) {
+        instances.filter { inst ->
+            val matchesFilter = when (selectedFilter) {
+                FleetStatusFilter.ALL -> true
+                FleetStatusFilter.RUNNING -> inst.status.isRunning
+                FleetStatusFilter.STOPPED -> !inst.status.isRunning
+            }
+            val matchesSearch = if (searchQuery.isBlank()) {
+                true
+            } else {
+                val q = searchQuery.trim().lowercase()
+                inst.name.lowercase().contains(q) ||
+                    inst.botId.lowercase().contains(q) ||
+                    inst.version.lowercase().contains(q)
+            }
+            matchesFilter && matchesSearch
+        }
+    }
+
     if (instances.isEmpty()) {
         EmptyMyBotsView(
             hudTelemetry = hudTelemetry,
@@ -292,9 +333,25 @@ private fun MyBotsScreenBody(
                 item(key = "fleet_header") {
                     FleetHeaderBar(
                         instances = instances,
+                        runningCount = runningCount,
+                        stoppedCount = stoppedCount,
                         isCheckingUpdates = isCheckingUpdates,
+                        onStartAll = onStartAll,
+                        onStopAll = onStopAll,
                         onBuildCustomBotClick = onBuildCustomBotClick,
                         onCheckForUpdates = onCheckForUpdates
+                    )
+                }
+
+                item(key = "fleet_search_filters") {
+                    FleetSearchBarAndFilters(
+                        searchQuery = searchQuery,
+                        onSearchQueryChanged = { searchQuery = it },
+                        selectedFilter = selectedFilter,
+                        onFilterSelected = { selectedFilter = it },
+                        totalCount = instances.size,
+                        runningCount = runningCount,
+                        stoppedCount = stoppedCount
                     )
                 }
 
@@ -316,8 +373,18 @@ private fun MyBotsScreenBody(
                     }
                 }
 
-                if (isTabletWidth) {
-                    val rows = instances.chunked(2)
+                if (filteredInstances.isEmpty()) {
+                    item(key = "fleet_empty_filtered") {
+                        FleetFilteredEmptyCard(
+                            searchQuery = searchQuery,
+                            onReset = {
+                                searchQuery = ""
+                                selectedFilter = FleetStatusFilter.ALL
+                            }
+                        )
+                    }
+                } else if (isTabletWidth) {
+                    val rows = filteredInstances.chunked(2)
                     items(
                         items = rows,
                         key = { row -> row.joinToString("_") { it.installationId } }
@@ -354,7 +421,7 @@ private fun MyBotsScreenBody(
                         }
                     }
                 } else {
-                    items(instances, key = { it.installationId }) { instance ->
+                    items(filteredInstances, key = { it.installationId }) { instance ->
                         BotInstanceCard(
                             instance = instance,
                             verifiedUsername = botUsernames[instance.botId],
@@ -440,95 +507,309 @@ private fun rememberLivePulseAlpha(): Float {
 @Composable
 private fun FleetHeaderBar(
     instances: List<BotInstance>,
+    runningCount: Int,
+    stoppedCount: Int,
     isCheckingUpdates: Boolean,
+    onStartAll: () -> Unit,
+    onStopAll: () -> Unit,
     onBuildCustomBotClick: () -> Unit,
     onCheckForUpdates: () -> Unit
 ) {
-    val runningCount = instances.count { it.status.isRunning }
-
-    Row(
+    Column(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = "Installed Fleet",
-                color = TapBotColors.TextPrimary,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                text = "$runningCount of ${instances.size} running locally",
-                color = if (runningCount > 0) TapBotColors.SuccessText else TapBotColors.TextSecondary,
-                style = TabularMonoStyle.copy(fontSize = 12.sp)
-            )
-        }
-
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Box(
-                modifier = Modifier
-                    .heightIn(min = 48.dp)
-                    .clickable(role = Role.Button, onClick = onBuildCustomBotClick)
-                    .padding(vertical = 5.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Row(
-                    modifier = Modifier
-                        .height(36.dp)
-                        .clip(RoundedCornerShape(TapBotColors.RadiusPill))
-                        .background(TapBotColors.BrandCyanSurface)
-                        .border(1.dp, TapBotColors.BrandCyanBorder, RoundedCornerShape(TapBotColors.RadiusPill))
-                        .padding(horizontal = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = null,
-                        modifier = Modifier.size(15.dp),
-                        tint = TapBotColors.BrandCyan
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Build", color = TapBotColors.BrandCyan, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Installed Fleet",
+                    color = TapBotColors.TextPrimary,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "$runningCount of ${instances.size} running locally",
+                    color = if (runningCount > 0) TapBotColors.SuccessText else TapBotColors.TextSecondary,
+                    style = TabularMonoStyle.copy(fontSize = 12.sp)
+                )
             }
 
-            Box(
-                modifier = Modifier
-                    .heightIn(min = 48.dp)
-                    .clickable(enabled = !isCheckingUpdates, role = Role.Button, onClick = onCheckForUpdates)
-                    .padding(vertical = 5.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Row(
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Box(
                     modifier = Modifier
-                        .height(36.dp)
-                        .clip(RoundedCornerShape(TapBotColors.RadiusPill))
-                        .background(TapBotColors.SurfaceElevated)
-                        .border(1.dp, TapBotColors.Border, RoundedCornerShape(TapBotColors.RadiusPill))
-                        .padding(horizontal = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                        .heightIn(min = 48.dp)
+                        .clickable(role = Role.Button, onClick = onBuildCustomBotClick)
+                        .padding(vertical = 5.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    if (isCheckingUpdates) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(13.dp),
-                            strokeWidth = 2.dp,
-                            color = TapBotColors.BrandCyan
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Syncing", color = TapBotColors.TextSecondary, fontSize = 12.sp)
-                    } else {
+                    Row(
+                        modifier = Modifier
+                            .height(36.dp)
+                            .clip(RoundedCornerShape(TapBotColors.RadiusPill))
+                            .background(TapBotColors.BrandCyanSurface)
+                            .border(1.dp, TapBotColors.BrandCyanBorder, RoundedCornerShape(TapBotColors.RadiusPill))
+                            .padding(horizontal = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         Icon(
-                            imageVector = Icons.Default.Sync,
+                            imageVector = Icons.Default.Add,
                             contentDescription = null,
                             modifier = Modifier.size(15.dp),
-                            tint = TapBotColors.Info
+                            tint = TapBotColors.BrandCyan
                         )
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Updates", color = TapBotColors.TextPrimary, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                        Text("Build", color = TapBotColors.BrandCyan, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+
+                Box(
+                    modifier = Modifier
+                        .heightIn(min = 48.dp)
+                        .clickable(enabled = !isCheckingUpdates, role = Role.Button, onClick = onCheckForUpdates)
+                        .padding(vertical = 5.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .height(36.dp)
+                            .clip(RoundedCornerShape(TapBotColors.RadiusPill))
+                            .background(TapBotColors.SurfaceElevated)
+                            .border(1.dp, TapBotColors.Border, RoundedCornerShape(TapBotColors.RadiusPill))
+                            .padding(horizontal = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (isCheckingUpdates) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(13.dp),
+                                strokeWidth = 2.dp,
+                                color = TapBotColors.BrandCyan
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Syncing", color = TapBotColors.TextSecondary, fontSize = 12.sp)
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.Sync,
+                                contentDescription = null,
+                                modifier = Modifier.size(15.dp),
+                                tint = TapBotColors.Info
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Updates", color = TapBotColors.TextPrimary, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                        }
                     }
                 }
             }
+        }
+
+        // 1-Tap Fleet Batch Actions
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Button(
+                onClick = onStartAll,
+                enabled = stoppedCount > 0,
+                modifier = Modifier
+                    .weight(1f)
+                    .height(38.dp),
+                shape = RoundedCornerShape(TapBotColors.RadiusPill),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = TapBotColors.PlayInstallGreen,
+                    contentColor = Color.White,
+                    disabledContainerColor = TapBotColors.SurfaceElevated,
+                    disabledContentColor = TapBotColors.TextMuted
+                )
+            ) {
+                Icon(
+                    imageVector = Icons.Default.PlayArrow,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = "Start All Idle ($stoppedCount)",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1
+                )
+            }
+
+            OutlinedButton(
+                onClick = onStopAll,
+                enabled = runningCount > 0,
+                modifier = Modifier
+                    .weight(1f)
+                    .height(38.dp),
+                shape = RoundedCornerShape(TapBotColors.RadiusPill),
+                border = BorderStroke(
+                    1.dp,
+                    if (runningCount > 0) TapBotColors.ErrorBorder else TapBotColors.BorderSubtle
+                ),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    containerColor = if (runningCount > 0) TapBotColors.ErrorSurface else TapBotColors.SurfaceElevated,
+                    contentColor = if (runningCount > 0) TapBotColors.ErrorText else TapBotColors.TextMuted,
+                    disabledContainerColor = TapBotColors.SurfaceElevated,
+                    disabledContentColor = TapBotColors.TextMuted
+                )
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Stop,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = "Stop All ($runningCount)",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun FleetSearchBarAndFilters(
+    searchQuery: String,
+    onSearchQueryChanged: (String) -> Unit,
+    selectedFilter: FleetStatusFilter,
+    onFilterSelected: (FleetStatusFilter) -> Unit,
+    totalCount: Int,
+    runningCount: Int,
+    stoppedCount: Int
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = onSearchQueryChanged,
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = {
+                Text("Search fleet by bot name, ID, or version...", color = TapBotColors.TextMuted, fontSize = 13.sp)
+            },
+            leadingIcon = {
+                Icon(
+                    imageVector = Icons.Default.Search,
+                    contentDescription = "Search",
+                    tint = TapBotColors.TextSecondary,
+                    modifier = Modifier.size(18.dp)
+                )
+            },
+            trailingIcon = {
+                if (searchQuery.isNotBlank()) {
+                    IconButton(onClick = { onSearchQueryChanged("") }) {
+                        Icon(
+                            imageVector = Icons.Default.Clear,
+                            contentDescription = "Clear search",
+                            tint = TapBotColors.TextSecondary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+            },
+            singleLine = true,
+            shape = RoundedCornerShape(TapBotColors.RadiusPill),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedContainerColor = TapBotColors.SurfaceElevated,
+                unfocusedContainerColor = TapBotColors.SurfaceElevated,
+                focusedBorderColor = TapBotColors.BrandCyan,
+                unfocusedBorderColor = TapBotColors.BorderSubtle,
+                focusedTextColor = TapBotColors.TextPrimary,
+                unfocusedTextColor = TapBotColors.TextPrimary
+            )
+        )
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            val chips = listOf(
+                Triple(FleetStatusFilter.ALL, "All", totalCount),
+                Triple(FleetStatusFilter.RUNNING, "Running", runningCount),
+                Triple(FleetStatusFilter.STOPPED, "Stopped", stoppedCount)
+            )
+
+            chips.forEach { (filter, label, count) ->
+                val isSelected = selectedFilter == filter
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(TapBotColors.RadiusPill))
+                        .background(
+                            if (isSelected) TapBotColors.BrandCyanSurface else TapBotColors.SurfaceElevated
+                        )
+                        .border(
+                            width = 1.dp,
+                            color = if (isSelected) TapBotColors.BrandCyanBorder else TapBotColors.BorderSubtle,
+                            shape = RoundedCornerShape(TapBotColors.RadiusPill)
+                        )
+                        .clickable { onFilterSelected(filter) }
+                        .padding(horizontal = 14.dp, vertical = 6.dp)
+                ) {
+                    Text(
+                        text = "$label ($count)",
+                        color = if (isSelected) TapBotColors.BrandCyan else TapBotColors.TextSecondary,
+                        fontSize = 12.sp,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FleetFilteredEmptyCard(
+    searchQuery: String,
+    onReset: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(TapBotColors.RadiusMd))
+            .background(TapBotColors.SurfaceElevated)
+            .border(1.dp, TapBotColors.BorderSubtle, RoundedCornerShape(TapBotColors.RadiusMd))
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            imageVector = Icons.Default.Search,
+            contentDescription = null,
+            tint = TapBotColors.TextMuted,
+            modifier = Modifier.size(32.dp)
+        )
+        Spacer(modifier = Modifier.height(10.dp))
+        Text(
+            text = if (searchQuery.isNotBlank()) "No bots found matching \"$searchQuery\"" else "No bots found for selected filter",
+            color = TapBotColors.TextPrimary,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center
+        )
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            text = "Try adjusting your search query or reset status filters.",
+            color = TapBotColors.TextSecondary,
+            fontSize = 12.sp,
+            textAlign = TextAlign.Center
+        )
+        Spacer(modifier = Modifier.height(14.dp))
+        OutlinedButton(
+            onClick = onReset,
+            shape = RoundedCornerShape(TapBotColors.RadiusPill),
+            colors = ButtonDefaults.outlinedButtonColors(
+                contentColor = TapBotColors.BrandCyan
+            ),
+            border = BorderStroke(1.dp, TapBotColors.BrandCyanBorder)
+        ) {
+            Text("Reset Filters", fontSize = 12.sp, fontWeight = FontWeight.Bold)
         }
     }
 }

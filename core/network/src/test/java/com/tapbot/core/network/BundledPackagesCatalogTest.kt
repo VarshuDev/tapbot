@@ -26,7 +26,7 @@ class BundledPackagesCatalogTest {
         val validator = ManifestValidator(appVersionCode = 230)
 
         val bots = mockApi.getBots().getOrThrow()
-        assertTrue("Expected built-in bots in MockCatalogApi", bots.size >= 8)
+        assertTrue("Expected built-in bots in MockCatalogApi", bots.size >= 20)
 
         for (bot in bots) {
             val pkgFilename = bot.packageInfo.packageUrl.substringAfterLast('/')

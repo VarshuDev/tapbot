@@ -258,6 +258,230 @@ const specs = [
         credentials: [
             { key: 'bot_token', label: 'Telegram Bot Token', required: true, secret: true, inputType: 'password' }
         ]
+    },
+    // --- 15 New Daily-Usage Flagship Bots ---
+    {
+        filename: 'bot_habit_forge_1.0.0.botpkg',
+        id: 'bot_habit_forge',
+        name: 'HabitForge Daily Tracker',
+        version: '1.0.0',
+        category: 'lifestyle',
+        runtime: 'native_art',
+        entrypoint: 'com.tapbot.core.runner.runtime.DailyLifestyleBotRuntime',
+        description: 'Daily habit tracking with streak preservation, scheduled check-in reminders, and progress analytics.',
+        permissions: ['INTERNET', 'FOREGROUND_SERVICE'],
+        credentials: [
+            { key: 'bot_token', label: 'Telegram Bot Token', required: true, secret: true, inputType: 'password' },
+            { key: 'daily_reminder_time', label: 'Daily Check-in Reminder Time', required: false, secret: false, inputType: 'text' }
+        ]
+    },
+    {
+        filename: 'bot_penny_wise_1.0.0.botpkg',
+        id: 'bot_penny_wise',
+        name: 'PennyWise Expense Tracker',
+        version: '1.0.0',
+        category: 'finance',
+        runtime: 'native_art',
+        entrypoint: 'com.tapbot.core.runner.runtime.PersonalFinanceBotRuntime',
+        description: '3-second expense logging, daily spend limits, monthly budget analytics, and CSV transaction export.',
+        permissions: ['INTERNET', 'FOREGROUND_SERVICE'],
+        credentials: [
+            { key: 'bot_token', label: 'Telegram Bot Token', required: true, secret: true, inputType: 'password' },
+            { key: 'currency_symbol', label: 'Currency Symbol', required: false, secret: false, inputType: 'text' },
+            { key: 'monthly_budget_target', label: 'Default Monthly Budget', required: false, secret: false, inputType: 'number' }
+        ]
+    },
+    {
+        filename: 'bot_pomo_focus_1.0.0.botpkg',
+        id: 'bot_pomo_focus',
+        name: 'PomoFocus Deep Work Timer',
+        version: '1.0.0',
+        category: 'productivity',
+        runtime: 'native_art',
+        entrypoint: 'com.tapbot.core.runner.runtime.ProductivityBotRuntime',
+        description: '25/5 Pomodoro intervals, task sprint logging, phone haptic vibration alerts, and focus analytics.',
+        permissions: ['INTERNET', 'FOREGROUND_SERVICE', 'VIBRATE'],
+        credentials: [
+            { key: 'bot_token', label: 'Telegram Bot Token', required: true, secret: true, inputType: 'password' },
+            { key: 'default_work_minutes', label: 'Default Work Sprint Minutes', required: false, secret: false, inputType: 'number' }
+        ]
+    },
+    {
+        filename: 'bot_tap_note_1.0.0.botpkg',
+        id: 'bot_tap_note',
+        name: 'TapNote Scratchpad',
+        version: '1.0.0',
+        category: 'productivity',
+        runtime: 'native_art',
+        entrypoint: 'com.tapbot.core.runner.runtime.ProductivityBotRuntime',
+        description: 'Rapid thought capture, todo checklists, daily micro-journaling, search, and Markdown export.',
+        permissions: ['INTERNET', 'FOREGROUND_SERVICE'],
+        credentials: [
+            { key: 'bot_token', label: 'Telegram Bot Token', required: true, secret: true, inputType: 'password' }
+        ]
+    },
+    {
+        filename: 'bot_sky_pulse_1.0.0.botpkg',
+        id: 'bot_sky_pulse',
+        name: 'SkyPulse Weather Radar',
+        version: '1.0.0',
+        category: 'utilities',
+        runtime: 'native_art',
+        entrypoint: 'com.tapbot.core.runner.runtime.DailyUtilityBotRuntime',
+        description: 'Live weather radar, 7 AM morning briefing, multi-day forecasts, and severe storm alerts.',
+        permissions: ['INTERNET', 'FOREGROUND_SERVICE'],
+        credentials: [
+            { key: 'bot_token', label: 'Telegram Bot Token', required: true, secret: true, inputType: 'password' },
+            { key: 'weather_city', label: 'Default City / Region', required: false, secret: false, inputType: 'text' },
+            { key: 'weather_api_key', label: 'Optional OpenWeatherMap API Key', required: false, secret: true, inputType: 'password' }
+        ]
+    },
+    {
+        filename: 'bot_remind_me_1.0.0.botpkg',
+        id: 'bot_remind_me',
+        name: 'RemindMe Health & Pill Alarms',
+        version: '1.0.0',
+        category: 'lifestyle',
+        runtime: 'native_art',
+        entrypoint: 'com.tapbot.core.runner.runtime.DailyLifestyleBotRuntime',
+        description: 'Natural language reminders, water alarms, recurring medication pill schedules, and snooze controls.',
+        permissions: ['INTERNET', 'FOREGROUND_SERVICE', 'POST_NOTIFICATIONS', 'VIBRATE'],
+        credentials: [
+            { key: 'bot_token', label: 'Telegram Bot Token', required: true, secret: true, inputType: 'password' }
+        ]
+    },
+    {
+        filename: 'bot_link_drop_1.0.0.botpkg',
+        id: 'bot_link_drop',
+        name: 'LinkDrop Link & Clipboard Vault',
+        version: '1.0.0',
+        category: 'utilities',
+        runtime: 'native_art',
+        entrypoint: 'com.tapbot.core.runner.runtime.DailyUtilityBotRuntime',
+        description: 'Save articles and URLs from PC to phone, tag bookmarks, and copy directly to Android clipboard.',
+        permissions: ['INTERNET', 'FOREGROUND_SERVICE'],
+        credentials: [
+            { key: 'bot_token', label: 'Telegram Bot Token', required: true, secret: true, inputType: 'password' }
+        ]
+    },
+    {
+        filename: 'bot_poly_glot_1.0.0.botpkg',
+        id: 'bot_poly_glot',
+        name: 'PolyGlot Instant Translator',
+        version: '1.0.0',
+        category: 'utilities',
+        runtime: 'native_art',
+        entrypoint: 'com.tapbot.core.runner.runtime.DailyUtilityBotRuntime',
+        description: 'Instant multi-language translation in chat, language auto-detection, and daily vocabulary learning.',
+        permissions: ['INTERNET', 'FOREGROUND_SERVICE'],
+        credentials: [
+            { key: 'bot_token', label: 'Telegram Bot Token', required: true, secret: true, inputType: 'password' },
+            { key: 'default_target_lang', label: 'Default Target Language Code', required: false, secret: false, inputType: 'text' }
+        ]
+    },
+    {
+        filename: 'bot_coin_radar_1.0.0.botpkg',
+        id: 'bot_coin_radar',
+        name: 'CoinRadar Crypto & Stock Watcher',
+        version: '1.0.0',
+        category: 'finance',
+        runtime: 'native_art',
+        entrypoint: 'com.tapbot.core.runner.runtime.PersonalFinanceBotRuntime',
+        description: 'Live crypto and stock quotes, 7-day ASCII sparklines, local portfolio P&L, and price trigger alerts.',
+        permissions: ['INTERNET', 'FOREGROUND_SERVICE'],
+        credentials: [
+            { key: 'bot_token', label: 'Telegram Bot Token', required: true, secret: true, inputType: 'password' },
+            { key: 'crypto_currency', label: 'Quote Currency', required: false, secret: false, inputType: 'text' }
+        ]
+    },
+    {
+        filename: 'bot_fit_track_1.0.0.botpkg',
+        id: 'bot_fit_track',
+        name: 'FitTrack Hydration & Workouts',
+        version: '1.0.0',
+        category: 'lifestyle',
+        runtime: 'native_art',
+        entrypoint: 'com.tapbot.core.runner.runtime.DailyLifestyleBotRuntime',
+        description: 'Daily water intake tracker, workout activity logger, active calorie burn tally, and body weight logs.',
+        permissions: ['INTERNET', 'FOREGROUND_SERVICE'],
+        credentials: [
+            { key: 'bot_token', label: 'Telegram Bot Token', required: true, secret: true, inputType: 'password' },
+            { key: 'daily_water_target_ml', label: 'Daily Water Target (ml)', required: false, secret: false, inputType: 'number' }
+        ]
+    },
+    {
+        filename: 'bot_parcel_track_1.0.0.botpkg',
+        id: 'bot_parcel_track',
+        name: 'ParcelTrack Delivery Watcher',
+        version: '1.0.0',
+        category: 'utilities',
+        runtime: 'native_art',
+        entrypoint: 'com.tapbot.core.runner.runtime.DailyUtilityBotRuntime',
+        description: 'Multi-carrier shipment tracking (FedEx, UPS, DHL, USPS, Amazon) with milestone event timeline alerts.',
+        permissions: ['INTERNET', 'FOREGROUND_SERVICE'],
+        credentials: [
+            { key: 'bot_token', label: 'Telegram Bot Token', required: true, secret: true, inputType: 'password' }
+        ]
+    },
+    {
+        filename: 'bot_git_notifier_1.0.0.botpkg',
+        id: 'bot_git_notifier',
+        name: 'GitNotifier Repo Watcher',
+        version: '1.0.0',
+        category: 'devtools',
+        runtime: 'native_art',
+        entrypoint: 'com.tapbot.core.runner.runtime.DeveloperBotRuntime',
+        description: 'Monitors GitHub and GitLab repositories for commits, pull requests, issues, and CI/CD workflow status.',
+        permissions: ['INTERNET', 'FOREGROUND_SERVICE'],
+        credentials: [
+            { key: 'bot_token', label: 'Telegram Bot Token', required: true, secret: true, inputType: 'password' },
+            { key: 'github_token', label: 'GitHub Personal Access Token', required: false, secret: true, inputType: 'password' }
+        ]
+    },
+    {
+        filename: 'bot_cam_sentry_1.0.0.botpkg',
+        id: 'bot_cam_sentry',
+        name: 'CamSentry Hardware Security',
+        version: '1.0.0',
+        category: 'automation',
+        runtime: 'native_art',
+        entrypoint: 'com.tapbot.core.runner.runtime.DailyUtilityBotRuntime',
+        description: 'Remote phone camera photo capture (front/back), LED flash snap, security watchdog, and hardware status.',
+        permissions: ['INTERNET', 'FOREGROUND_SERVICE', 'CAMERA', 'FLASHLIGHT'],
+        credentials: [
+            { key: 'bot_token', label: 'Telegram Bot Token', required: true, secret: true, inputType: 'password' },
+            { key: 'authorized_user_id', label: 'Authorized Commander User ID', required: false, secret: false, inputType: 'text' }
+        ]
+    },
+    {
+        filename: 'bot_whisper_box_1.0.0.botpkg',
+        id: 'bot_whisper_box',
+        name: 'WhisperBox Anonymous Mailbox',
+        version: '1.0.0',
+        category: 'social',
+        runtime: 'native_art',
+        entrypoint: 'com.tapbot.core.runner.runtime.DailyUtilityBotRuntime',
+        description: 'Shareable anonymous question and feedback inbox for group members, followers, and creator channels.',
+        permissions: ['INTERNET', 'FOREGROUND_SERVICE'],
+        credentials: [
+            { key: 'bot_token', label: 'Telegram Bot Token', required: true, secret: true, inputType: 'password' },
+            { key: 'inbox_owner_id', label: 'Owner User ID', required: false, secret: false, inputType: 'text' }
+        ]
+    },
+    {
+        filename: 'bot_trivia_master_1.0.0.botpkg',
+        id: 'bot_trivia_master',
+        name: 'TriviaMaster Daily Brain Quiz',
+        version: '1.0.0',
+        category: 'entertainment',
+        runtime: 'native_art',
+        entrypoint: 'com.tapbot.core.runner.runtime.DailyUtilityBotRuntime',
+        description: 'Daily 5-question trivia challenge, topic selection, interactive inline quiz polls, and streak leaderboards.',
+        permissions: ['INTERNET', 'FOREGROUND_SERVICE'],
+        credentials: [
+            { key: 'bot_token', label: 'Telegram Bot Token', required: true, secret: true, inputType: 'password' },
+            { key: 'difficulty_level', label: 'Difficulty Level', required: false, secret: false, inputType: 'text' }
+        ]
     }
 ];
 

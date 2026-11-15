@@ -43,11 +43,15 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SmartToy
+import androidx.compose.material.icons.rounded.AccountBalanceWallet
 import androidx.compose.material.icons.rounded.AccountTree
 import androidx.compose.material.icons.rounded.Bolt
+import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.CloudOff
+import androidx.compose.material.icons.rounded.Code
 import androidx.compose.material.icons.rounded.SearchOff
 import androidx.compose.material.icons.rounded.Terminal
+import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material.icons.rounded.WifiOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -852,6 +856,93 @@ internal fun CatalogStoreContent(
                             }
                         }
 
+                        // Shelf 6: Daily Life, Habits & Wellness
+                        item(key = "shelf_lifestyle") {
+                            val lifestyleBots = state.bots.filter {
+                                it.category.equals("Lifestyle", ignoreCase = true)
+                            }
+                            if (lifestyleBots.isNotEmpty()) {
+                                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                    PlayStoreShelfHeader(
+                                        title = "Daily Life, Habits & Wellness",
+                                        subtitle = "Streak trackers, scheduled alarms & hydration logs",
+                                        onActionClick = {
+                                            onCategorySelected("Lifestyle")
+                                            selectedSubTab = 1
+                                        }
+                                    )
+                                    LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                        items(lifestyleBots, key = { it.id }) { bot ->
+                                            PlayStoreShelfCard(
+                                                bot = bot,
+                                                isInstalled = installedBotIds.contains(bot.id),
+                                                isRunning = runningBotIds.contains(bot.id),
+                                                onClick = { onBotClick(bot.id) }
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // Shelf 7: Personal Finance & Market Watchers
+                        item(key = "shelf_finance") {
+                            val financeBots = state.bots.filter {
+                                it.category.equals("Finance", ignoreCase = true)
+                            }
+                            if (financeBots.isNotEmpty()) {
+                                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                    PlayStoreShelfHeader(
+                                        title = "Personal Finance & Market Watchers",
+                                        subtitle = "Expense logs, monthly budgets & live market radar",
+                                        onActionClick = {
+                                            onCategorySelected("Finance")
+                                            selectedSubTab = 1
+                                        }
+                                    )
+                                    LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                        items(financeBots, key = { it.id }) { bot ->
+                                            PlayStoreShelfCard(
+                                                bot = bot,
+                                                isInstalled = installedBotIds.contains(bot.id),
+                                                isRunning = runningBotIds.contains(bot.id),
+                                                onClick = { onBotClick(bot.id) }
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // Shelf 8: Deep Work & Thought Scratchpad
+                        item(key = "shelf_productivity") {
+                            val prodBots = state.bots.filter {
+                                it.category.equals("Productivity", ignoreCase = true)
+                            }
+                            if (prodBots.isNotEmpty()) {
+                                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                    PlayStoreShelfHeader(
+                                        title = "Deep Work & Thought Scratchpad",
+                                        subtitle = "25/5 Pomodoro intervals, checklists & markdown notes",
+                                        onActionClick = {
+                                            onCategorySelected("Productivity")
+                                            selectedSubTab = 1
+                                        }
+                                    )
+                                    LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                        items(prodBots, key = { it.id }) { bot ->
+                                            PlayStoreShelfCard(
+                                                bot = bot,
+                                                isInstalled = installedBotIds.contains(bot.id),
+                                                isRunning = runningBotIds.contains(bot.id),
+                                                onClick = { onBotClick(bot.id) }
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
                         item(key = "studio_promo") {
                             CustomBuilderPromoCard(onClick = onBuildCustomBotClick)
                         }
@@ -953,6 +1044,50 @@ internal fun CatalogStoreContent(
                                     count = state.bots.count { it.category.equals("Moderation", ignoreCase = true) },
                                     onClick = {
                                         onCategorySelected("Moderation")
+                                        selectedSubTab = 1
+                                    }
+                                )
+                                PlayStoreCategoryRow(
+                                    title = "Lifestyle & Wellness",
+                                    description = "Streak habit trackers, health reminders, water & workout logs",
+                                    icon = Icons.Rounded.CheckCircle,
+                                    accentColor = TapBotColors.Success,
+                                    count = state.bots.count { it.category.equals("Lifestyle", ignoreCase = true) },
+                                    onClick = {
+                                        onCategorySelected("Lifestyle")
+                                        selectedSubTab = 1
+                                    }
+                                )
+                                PlayStoreCategoryRow(
+                                    title = "Personal Finance",
+                                    description = "Expense ledgers, monthly budget burn rates, crypto market quotes",
+                                    icon = Icons.Rounded.AccountBalanceWallet,
+                                    accentColor = TapBotColors.Warning,
+                                    count = state.bots.count { it.category.equals("Finance", ignoreCase = true) },
+                                    onClick = {
+                                        onCategorySelected("Finance")
+                                        selectedSubTab = 1
+                                    }
+                                )
+                                PlayStoreCategoryRow(
+                                    title = "Productivity & Focus",
+                                    description = "25/5 Pomodoro intervals, task checklists & markdown scratchpad",
+                                    icon = Icons.Rounded.Timer,
+                                    accentColor = Color(0xFFF43F5E),
+                                    count = state.bots.count { it.category.equals("Productivity", ignoreCase = true) },
+                                    onClick = {
+                                        onCategorySelected("Productivity")
+                                        selectedSubTab = 1
+                                    }
+                                )
+                                PlayStoreCategoryRow(
+                                    title = "Developer Tools",
+                                    description = "GitHub repository event monitoring, CI/CD status, PR reviews",
+                                    icon = Icons.Rounded.Code,
+                                    accentColor = Color(0xFF64748B),
+                                    count = state.bots.count { it.category.equals("Developer Tools", ignoreCase = true) },
+                                    onClick = {
+                                        onCategorySelected("Developer Tools")
                                         selectedSubTab = 1
                                     }
                                 )

@@ -371,7 +371,7 @@ class PhoneBotSimulator {
       if (this.simBotName) this.simBotName.textContent = 'TapBot Commander 2.0';
       if (this.simBotStatusText) this.simBotStatusText.textContent = 'Hardware Node · Watchdog Active';
       this.resetChatFeed(
-        '<b>TapBot Commander v2.4.0 Online</b><br/>' +
+        '<b>TapBot Commander v2.5.0 Online</b><br/>' +
         'Native hardware controller + interactive inline HUD bound to Android ART.<br/>' +
         'Click a command chip or type <code>/status</code>, <code>/tts</code>, <code>/wifi</code>, <code>/schedule</code>, or <code>/apk</code>.'
       );
@@ -410,7 +410,7 @@ class PhoneBotSimulator {
       if (this.simBotName) this.simBotName.textContent = 'Exon Guardian 2.0';
       if (this.simBotStatusText) this.simBotStatusText.textContent = 'Persisted Store · Anti-Flood + Inline UI';
       this.resetChatFeed(
-        '<b>Exon Guardian v2.4.0 Active</b><br/>' +
+        '<b>Exon Guardian v2.5.0 Active</b><br/>' +
         'Supergroup protection with disk-persisted rules, warns, and locks.<br/>' +
         'Try <code>/tmute 10m @spambot</code>, <code>/lock links</code>, <code>/setwelcome</code>, or <code>/rules</code>.'
       );
@@ -538,7 +538,7 @@ class PhoneBotSimulator {
     // ─── COMMANDER 2.0 BOT COMMANDS ───
     if (cmd === '/status') {
       this.appendBotMessage(
-        `<b>TELEMETRY // TAPBOT v2.4.0 (BUILD 240)</b><br/>` +
+        `<b>TELEMETRY // TAPBOT v2.5.0 (BUILD 250)</b><br/>` +
         `BATTERY: <b>88% [CHARGING_AC]</b> &middot; THERMAL: <b>31.4°C</b><br/>` +
         `HEAP RAM: <b>14.2 MB / 8 GB (0.17%)</b><br/>` +
         `STORAGE: <b>0 Bytes/hr [RAM_RING_BUFFER]</b><br/>` +
@@ -608,14 +608,14 @@ class PhoneBotSimulator {
     } else if (cmd === '/apk' || cmd === '/download') {
       this.appendBotMessage(
         `<b>DELIVERY // ApkDeliveryService</b><br/>` +
-        `PACKAGE: <code>tapbot-v2.4.0.apk</code><br/>` +
-        `SIZE: <b>8.0 MB</b> &middot; Android 8.0 &ndash; 15+<br/>` +
-        `SHA-256: <code>a65dc2b4...ba0863</code><br/>` +
+        `PACKAGE: <code>tapbot-v2.5.0.apk</code><br/>` +
+        `SIZE: <b>8.1 MB</b> &middot; Android 8.0 &ndash; 15+<br/>` +
+        `SHA-256: <code>4895583b...b2d8fc</code><br/>` +
         `STATUS: Streaming signed binary directly to Telegram document pipe.`
       );
     } else if (cmd === '/fleet') {
       this.appendBotMessage(
-        `<b>FLEET // Active On-Device Bots (v2.4.0)</b><br/>` +
+        `<b>FLEET // Active On-Device Bots (v2.5.0)</b><br/>` +
         `1. <b>Commander 2.0</b> &middot; <span style="color:#10b981">ONLINE</span> (2.6 MB)<br/>` +
         `2. <b>TapStream 2.0</b> &middot; <span style="color:#10b981">ONLINE</span> (4.4 MB)<br/>` +
         `3. <b>Gemini 2.5 AI</b> &middot; <span style="color:#10b981">ONLINE</span> (2.8 MB)<br/>` +

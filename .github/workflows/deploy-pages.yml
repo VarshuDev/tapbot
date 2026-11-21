@@ -27,6 +27,9 @@ jobs:
       - name: Ensure Releases in Website
         run: |
           mkdir -p website/releases
+          if [ -f "releases/tapbot-v2.5.0.apk" ]; then
+            cp -f releases/tapbot-v2.5.0.apk website/releases/
+          fi
           if [ -f "releases/tapbot-v2.4.0.apk" ]; then
             cp -f releases/tapbot-v2.4.0.apk website/releases/
           fi

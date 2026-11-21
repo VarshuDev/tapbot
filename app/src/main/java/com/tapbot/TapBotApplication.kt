@@ -88,6 +88,9 @@ class TapBotApplication : Application() {
     lateinit var customBotRepository: CustomBotRepository
         private set
 
+    lateinit var appUpdateManager: com.tapbot.core.network.AppUpdateManager
+        private set
+
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override fun onCreate() {
@@ -179,6 +182,15 @@ class TapBotApplication : Application() {
         ServiceLocator.telegramApiClient = telegramApiClient
         ServiceLocator.appPreferencesRepository = appPreferencesRepository
         ServiceLocator.customBotRepository = customBotRepository
+
+        // 9. Initialize remote version control and OTA update manager
+        val updateChecker = com.tapbot.core.network.AppUpdateChecker(
+            client = okHttpClient
+        )
+        appUpdateManager = com.tapbot.core.network.AppUpdateManager(
+            checker = updateChecker,
+            scope = appScope
+        )
     }
 
     fun getCacheSizeBytes(): Long {
@@ -220,9 +232,9 @@ class TapBotApplication : Application() {
 
     fun getAppVersionName(): String {
         return try {
-            packageManager.getPackageInfo(packageName, 0).versionName ?: "2.4.0"
+            packageManager.getPackageInfo(packageName, 0).versionName ?: "2.6.0"
         } catch (_: Exception) {
-            "2.4.0"
+            "2.6.0"
         }
     }
 
@@ -236,18 +248,18 @@ class TapBotApplication : Application() {
                 pInfo.versionCode
             }
         } catch (_: Exception) {
-            230
+            260
         }
     }
 
     fun buildDiagnosticsReport(): String {
         val pInfo = try { packageManager.getPackageInfo(packageName, 0) } catch (_: Exception) { null }
-        val vName = pInfo?.versionName ?: "2.4.0"
+        val vName = pInfo?.versionName ?: "2.6.0"
         val vCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            pInfo?.longVersionCode ?: 240L
+            pInfo?.longVersionCode ?: 260L
         } else {
             @Suppress("DEPRECATION")
-            pInfo?.versionCode?.toLong() ?: 240L
+            pInfo?.versionCode?.toLong() ?: 260L
         }
         val instances = botInstanceManager.instances.value
         val prefs = appPreferencesRepository.preferences.value

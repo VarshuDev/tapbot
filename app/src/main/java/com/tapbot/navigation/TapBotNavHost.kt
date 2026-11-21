@@ -1,12 +1,17 @@
 package com.tapbot.navigation
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -14,6 +19,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.tapbot.TapBotApplication
+import com.tapbot.core.network.AppUpdateUiState
+import com.tapbot.core.ui.components.ForceUpdateDialog
 import com.tapbot.core.ui.motion.TapBotMotion
 import com.tapbot.core.ui.motion.rememberReducedMotion
 import com.tapbot.feature.botdetail.BotDetailScreen
@@ -30,6 +37,18 @@ fun TapBotNavHost(
     modifier: Modifier = Modifier
 ) {
     val reducedMotion = rememberReducedMotion()
+    val context = LocalContext.current
+    val currentVersionCode = app.getAppVersionCode().toLong()
+    val currentVersionName = app.getAppVersionName()
+    val updateState by app.appUpdateManager.updateState.collectAsState()
+
+    // Autonomous background check on application launch
+    LaunchedEffect(Unit) {
+        app.appUpdateManager.checkForUpdates(
+            currentVersionCode = currentVersionCode,
+            isManualCheck = false
+        )
+    }
 
     NavHost(
         navController = navController,
@@ -113,8 +132,14 @@ fun TapBotNavHost(
                 onClearCache = { app.clearAppCache() },
                 onRefreshCacheSizeBytes = { app.getCacheSizeBytes() },
                 onBuildDiagnosticsReport = { app.buildDiagnosticsReport() },
-                appVersionName = app.getAppVersionName(),
-                appVersionCode = app.getAppVersionCode().toLong()
+                appVersionName = currentVersionName,
+                appVersionCode = currentVersionCode,
+                onCheckForAppUpdate = {
+                    app.appUpdateManager.checkForUpdates(
+                        currentVersionCode = currentVersionCode,
+                        isManualCheck = true
+                    )
+                }
             )
         }
 
@@ -199,5 +224,35 @@ fun TapBotNavHost(
             )
             com.tapbot.poc.ProofOfConceptScreen(viewModel = pocViewModel)
         }
+    }
+
+    // Modal OTA Update Dialog enforcing mandatory or optional updates
+    val availableUpdate = updateState as? AppUpdateUiState.UpdateAvailable
+    if (availableUpdate != null) {
+        ForceUpdateDialog(
+            manifest = availableUpdate.manifest,
+            currentVersionCode = currentVersionCode,
+            currentVersionName = currentVersionName,
+            isForceUpdate = availableUpdate.isForceUpdate,
+            onDownloadClick = { downloadUrl ->
+                try {
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(downloadUrl)).apply {
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    }
+                    context.startActivity(intent)
+                } catch (_: Exception) {}
+            },
+            onOpenReleasePageClick = { pageUrl ->
+                try {
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(pageUrl)).apply {
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    }
+                    context.startActivity(intent)
+                } catch (_: Exception) {}
+            },
+            onDismiss = {
+                app.appUpdateManager.dismissUpdate()
+            }
+        )
     }
 }

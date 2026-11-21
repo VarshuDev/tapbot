@@ -26,3 +26,6 @@ website/releases/*.apk
 # AI Agents & scratch
 .agents/
 
+# Video output artifacts
+video-output/
+

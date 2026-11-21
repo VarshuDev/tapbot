@@ -1330,7 +1330,7 @@ class CommanderBotRuntime(
             val fallback = """
                 🚀 *TapBot APK Information*
                 ━━━━━━━━━━━━━━━━━━━━━━
-                • Version: *v2.5.0*
+                • Version: *v2.6.0*
                 • Runtime: *Native Android ART Coroutine Engine*
                 • Target: *Android 10+ (API 29–35)*
                 
@@ -1348,12 +1348,12 @@ class CommanderBotRuntime(
             null
         }
 
-        val vName = pInfo?.versionName ?: "2.5.0"
+        val vName = pInfo?.versionName ?: "2.6.0"
         val vCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            pInfo?.longVersionCode ?: 250L
+            pInfo?.longVersionCode ?: 260L
         } else {
             @Suppress("DEPRECATION")
-            (pInfo?.versionCode?.toLong() ?: 250L)
+            (pInfo?.versionCode?.toLong() ?: 260L)
         }
 
         val text = """

@@ -135,8 +135,9 @@ fun CatalogScreen(
     onClearCache: () -> Long = { 0L },
     onRefreshCacheSizeBytes: () -> Long = { 0L },
     onBuildDiagnosticsReport: (() -> String)? = null,
-    appVersionName: String = "2.3.0",
-    appVersionCode: Long = 230L
+    appVersionName: String = "2.6.0",
+    appVersionCode: Long = 260L,
+    onCheckForAppUpdate: (() -> Unit)? = null
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val appPreferences by viewModel.appPreferences.collectAsState()
@@ -292,7 +293,8 @@ fun CatalogScreen(
                                     onStopAllBots = viewModel::stopAllRunningBots,
                                     onClearCache = onClearCache,
                                     onRefreshCacheSizeBytes = onRefreshCacheSizeBytes,
-                                    onBuildDiagnosticsReport = onBuildDiagnosticsReport
+                                    onBuildDiagnosticsReport = onBuildDiagnosticsReport,
+                                    onCheckForAppUpdate = onCheckForAppUpdate
                                 )
                             }
                         }

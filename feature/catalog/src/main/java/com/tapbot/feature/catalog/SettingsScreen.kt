@@ -36,6 +36,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BatteryChargingFull
+import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
@@ -129,7 +130,8 @@ fun SettingsScreen(
     onStopAllBots: () -> Unit = {},
     onClearCache: () -> Long = { 0L },
     onRefreshCacheSizeBytes: () -> Long = { initialCacheSizeBytes },
-    onBuildDiagnosticsReport: (() -> String)? = null
+    onBuildDiagnosticsReport: (() -> String)? = null,
+    onCheckForAppUpdate: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
     val isPreview = LocalInspectionMode.current
@@ -624,6 +626,35 @@ fun SettingsScreen(
                     SettingsInfoRow("Runtimes", "Commander v2, TapStream, Exon, Gemini, RSS, Workflow")
                     SettingsInfoRow("Catalog Edge", preferences.customCatalogUrl.ifBlank { defaultCatalogUrl })
                     SettingsInfoRow("License", "Apache-2.0")
+
+                    if (onCheckForAppUpdate != null) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedButton(
+                            onClick = onCheckForAppUpdate,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 46.dp),
+                            shape = RoundedCornerShape(TapBotColors.RadiusMd),
+                            border = BorderStroke(1.dp, TapBotColors.BorderFocus),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                containerColor = TapBotColors.SurfaceElevated,
+                                contentColor = TapBotColors.BrandCyan
+                            )
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.CloudDownload,
+                                contentDescription = null,
+                                tint = TapBotColors.BrandCyan,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Check for App Updates",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
                 }
             }
         }

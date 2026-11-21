@@ -1,0 +1,13 @@
+{
+  "latestVersionCode": 260,
+  "latestVersionName": "2.6.0",
+  "minRequiredVersionCode": 260,
+  "forceUpdate": true,
+  "title": "TapBot v2.6.0 Fleet & Security Upgrade",
+  "releaseNotes": "• Autonomous In-App Force Update & Remote Version Control\n• 20 Flagship Daily-Usage Bot Runtimes with Android ART native execution\n• In-App Interactive Bot Simulator Sandbox for direct in-app command testing\n• My Fleet 2.0 1-Tap Batch Start & Stop Controls + Search & Status Filtering\n• Telegram setMyCommands automated menu sync & clipboard token auto-detection",
+  "releaseDate": "2026-11-21",
+  "apkUrl": "https://raw.githubusercontent.com/VarshuDev/tapbot/main/releases/tapbot-v2.6.0.apk",
+  "downloadUrl": "https://varshudev.github.io/tapbot/releases/tapbot-v2.6.0.apk",
+  "githubReleaseUrl": "https://github.com/VarshuDev/tapbot/releases",
+  "sha256": "BF4EB083E7294CED9E861234337E42A5A9506DE420F54BDE6FBCBD4689B8F8BA"
+}

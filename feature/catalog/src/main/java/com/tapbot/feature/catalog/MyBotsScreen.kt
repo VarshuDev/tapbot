@@ -109,6 +109,7 @@ import com.tapbot.core.model.BotInstance
 import com.tapbot.core.model.BotInstanceStatus
 import com.tapbot.core.model.BotUpdateProgress
 import com.tapbot.core.model.BotVersion
+import com.tapbot.core.model.FleetAnalyticsSummary
 import com.tapbot.core.model.UpdateState
 import com.tapbot.core.runner.BotForegroundService
 import com.tapbot.core.runner.ServiceLocator
@@ -144,6 +145,7 @@ fun MyBotsContent(
     instances: List<BotInstance>,
     availableUpdates: Map<String, BotVersion> = emptyMap(),
     updateProgress: Map<String, BotUpdateProgress> = emptyMap(),
+    fleetAnalytics: FleetAnalyticsSummary = FleetAnalyticsSummary(),
     onStartBot: (String) -> Unit,
     onStopBot: (String) -> Unit,
     onRestartBot: (String) -> Unit,
@@ -203,6 +205,7 @@ fun MyBotsContent(
     MyBotsScreenBody(
         instances = instances,
         hudTelemetry = hudTelemetry,
+        fleetAnalytics = fleetAnalytics,
         botUsernames = botUsernames,
         availableUpdates = availableUpdates,
         updateProgress = updateProgress,
@@ -237,6 +240,7 @@ fun MyBotsContent(
 private fun MyBotsScreenBody(
     instances: List<BotInstance>,
     hudTelemetry: SystemHudTelemetry,
+    fleetAnalytics: FleetAnalyticsSummary = FleetAnalyticsSummary(),
     botUsernames: Map<String, String>,
     availableUpdates: Map<String, BotVersion>,
     updateProgress: Map<String, BotUpdateProgress>,
@@ -360,6 +364,10 @@ private fun MyBotsScreenBody(
                         telemetry = hudTelemetry,
                         onRequestDozeWhitelist = onRequestDozeWhitelist
                     )
+                }
+
+                item(key = "fleet_analytics_hud") {
+                    FleetAnalyticsHudCard(analytics = fleetAnalytics)
                 }
 
                 if (playbackState != null) {
@@ -1220,6 +1228,13 @@ fun BotInstanceCard(
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     MonospaceBadge(text = "v${instance.version}")
+                    if (isRunning && instance.status is BotInstanceStatus.Running) {
+                        val runStatus = instance.status as BotInstanceStatus.Running
+                        MonospaceBadge(
+                            text = "${runStatus.messageCount} msgs",
+                            color = TapBotColors.BrandCyan
+                        )
+                    }
                     Text(
                         text = identity.categoryLabel,
                         color = identity.accentColor,
@@ -1910,6 +1925,150 @@ private fun MyBotsEmptyLargeFontPreview() {
             onRequestDozeWhitelist = {},
             onBrowseStoreClick = {},
             onBuildCustomBotClick = {}
+        )
+    }
+}
+
+@Composable
+fun FleetAnalyticsHudCard(
+    analytics: FleetAnalyticsSummary,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(TapBotColors.RadiusLg))
+            .background(TapBotColors.SurfacePrimary)
+            .premiumCardBorder(borderColorTop = TapBotColors.BrandCyan)
+            .padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.GraphicEq,
+                    contentDescription = null,
+                    tint = TapBotColors.BrandCyan,
+                    modifier = Modifier.size(16.dp)
+                )
+                Text(
+                    text = "Fleet Telemetry & Throughput",
+                    color = TapBotColors.TextPrimary,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            MonospaceBadge(
+                text = "${String.format(Locale.US, "%.1f", analytics.uptimePercentage)}% Uptime",
+                color = if (analytics.uptimePercentage >= 99.0) TapBotColors.SuccessText else TapBotColors.WarningText,
+                backgroundColor = if (analytics.uptimePercentage >= 99.0) TapBotColors.SuccessSurface else TapBotColors.WarningSurface
+            )
+        }
+
+        // 4 Key metric tiles in a Row
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            FleetMetricTile(
+                modifier = Modifier.weight(1f),
+                label = "Today",
+                value = "${analytics.messagesProcessedToday}",
+                sub = "msgs"
+            )
+            FleetMetricTile(
+                modifier = Modifier.weight(1f),
+                label = "All-Time",
+                value = "${analytics.totalMessagesProcessed}",
+                sub = "processed"
+            )
+            FleetMetricTile(
+                modifier = Modifier.weight(1f),
+                label = "Commands",
+                value = "${analytics.commandsExecutedToday}",
+                sub = "executed"
+            )
+            FleetMetricTile(
+                modifier = Modifier.weight(1f),
+                label = "Active Fleet",
+                value = "${analytics.runningBotsCount}/${analytics.totalBotsCount}",
+                sub = "nodes"
+            )
+        }
+
+        // 24-hour hourly distribution bar chart
+        if (analytics.hourlyMessageThroughput.isNotEmpty()) {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = "24h Activity Distribution (Hourly)",
+                    color = TapBotColors.TextMuted,
+                    fontSize = 10.sp,
+                    style = TabularMonoStyle
+                )
+                val maxHourly = (analytics.hourlyMessageThroughput.maxOrNull() ?: 1).coerceAtLeast(1)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(28.dp),
+                    horizontalArrangement = Arrangement.spacedBy(2.dp),
+                    verticalAlignment = Alignment.Bottom
+                ) {
+                    for (count in analytics.hourlyMessageThroughput) {
+                        val barHeightFraction = (count.toFloat() / maxHourly.toFloat()).coerceIn(0.1f, 1f)
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(28.dp * barHeightFraction)
+                                .clip(RoundedCornerShape(2.dp))
+                                .background(
+                                    if (count > 0) TapBotColors.BrandCyan else TapBotColors.SurfaceElevated
+                                )
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FleetMetricTile(
+    label: String,
+    value: String,
+    sub: String,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(TapBotColors.RadiusMd))
+            .background(TapBotColors.SurfaceElevated)
+            .border(1.dp, TapBotColors.BorderSubtle, RoundedCornerShape(TapBotColors.RadiusMd))
+            .padding(8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = label,
+            color = TapBotColors.TextSecondary,
+            fontSize = 10.sp
+        )
+        Text(
+            text = value,
+            color = TapBotColors.TextPrimary,
+            fontSize = 15.sp,
+            fontWeight = FontWeight.Bold,
+            style = TabularNumberStyle
+        )
+        Text(
+            text = sub,
+            color = TapBotColors.TextMuted,
+            fontSize = 9.sp
         )
     }
 }

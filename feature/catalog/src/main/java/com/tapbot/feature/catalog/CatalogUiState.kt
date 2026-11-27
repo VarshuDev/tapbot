@@ -4,6 +4,7 @@ import com.tapbot.core.model.BotInstance
 import com.tapbot.core.model.BotMetadata
 import com.tapbot.core.model.BotUpdateProgress
 import com.tapbot.core.model.BotVersion
+import com.tapbot.core.model.FleetAnalyticsSummary
 
 sealed interface CatalogUiState {
     object Loading : CatalogUiState
@@ -20,7 +21,10 @@ sealed interface CatalogUiState {
         val availableUpdates: Map<String, BotVersion> = emptyMap(),
         val updateProgress: Map<String, BotUpdateProgress> = emptyMap(),
         val isCheckingUpdates: Boolean = false,
-        val customBotCount: Int = 0
+        val customBotCount: Int = 0,
+        val fleetAnalytics: FleetAnalyticsSummary = FleetAnalyticsSummary(),
+        val backupStatusMessage: String? = null,
+        val isBackupInProgress: Boolean = false
     ) : CatalogUiState
     data class Error(val message: String) : CatalogUiState
 }

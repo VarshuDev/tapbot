@@ -113,6 +113,9 @@ class CatalogViewModelTest {
         private val _updateProgress = kotlinx.coroutines.flow.MutableStateFlow<Map<String, com.tapbot.core.model.BotUpdateProgress>>(emptyMap())
         override val updateProgress: kotlinx.coroutines.flow.StateFlow<Map<String, com.tapbot.core.model.BotUpdateProgress>> = _updateProgress
 
+        val _fleetAnalytics = kotlinx.coroutines.flow.MutableStateFlow(com.tapbot.core.model.FleetAnalyticsSummary())
+        override val fleetAnalytics: kotlinx.coroutines.flow.StateFlow<com.tapbot.core.model.FleetAnalyticsSummary> = _fleetAnalytics
+
         override val activeState: kotlinx.coroutines.flow.StateFlow<com.tapbot.core.runner.runtime.BotRuntimeState> =
             kotlinx.coroutines.flow.MutableStateFlow(com.tapbot.core.runner.runtime.BotRuntimeState.Stopped)
 
@@ -446,5 +449,47 @@ class CatalogViewModelTest {
         testDispatcher.scheduler.advanceUntilIdle()
 
         assertEquals(listOf("inst_running_1"), fakeManager.stoppedIds)
+    }
+
+    @Test
+    fun fleetAnalytics_updatesInCatalogUiState() = runTest(testDispatcher) {
+        val repo = FakeCatalogRepository(Result.success(listOf(sampleBot1)))
+        val fakeManager = FakeBotInstanceManager()
+
+        val viewModel = CatalogViewModel(
+            catalogRepository = repo,
+            botInstanceManager = fakeManager
+        )
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        fakeManager._fleetAnalytics.value = com.tapbot.core.model.FleetAnalyticsSummary(
+            totalMessagesProcessed = 42L,
+            messagesProcessedToday = 10L,
+            runningBotsCount = 2,
+            totalBotsCount = 5
+        )
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val state = viewModel.uiState.value as CatalogUiState.Success
+        assertEquals(42L, state.fleetAnalytics.totalMessagesProcessed)
+        assertEquals(10L, state.fleetAnalytics.messagesProcessedToday)
+        assertEquals(2, state.fleetAnalytics.runningBotsCount)
+    }
+
+    @Test
+    fun exportFleetBackup_withoutCredentialStore_failsGracefully() = runTest(testDispatcher) {
+        val repo = FakeCatalogRepository(Result.success(listOf(sampleBot1)))
+        val viewModel = CatalogViewModel(catalogRepository = repo)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        var callbackResult: Result<com.tapbot.core.model.FleetBackupArchive>? = null
+        viewModel.exportFleetBackup("password123", java.io.File("test.tapbotbackup")) {
+            callbackResult = it
+        }
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertTrue(callbackResult?.isFailure == true)
+        val state = viewModel.uiState.value as CatalogUiState.Success
+        assertEquals("Credential store not available", state.backupStatusMessage)
     }
 }

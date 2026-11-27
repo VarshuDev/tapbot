@@ -38,6 +38,20 @@
             </intent-filter>
         </activity>
 
+        <receiver
+            android:name=".widget.TapBotFleetAppWidgetProvider"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.tapbot.widget.ACTION_START_ALL" />
+                <action android:name="com.tapbot.widget.ACTION_STOP_ALL" />
+                <action android:name="com.tapbot.widget.ACTION_REFRESH" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_tapbot_fleet_info" />
+        </receiver>
+
     </application>
 
 </manifest>

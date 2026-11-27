@@ -1,0 +1,47 @@
+# TapBot v2.3.0 - Ralph Multi-Phase Execution Progress
+
+## Codebase Patterns
+- Multi-module Android architecture: `:app`, `:feature:catalog`, `:feature:botdetail`, `:core:runner`, `:core:model`, `:core:network`, `:core:security`, `:core:logging`.
+- Pure JVM unit tests in `:core:runner` use `unitTests.isReturnDefaultValues = true` (no Robolectric) — always support `context: Context? = null` fallbacks and standard JDK APIs (`DocumentBuilderFactory`, `java.io.File`) for new services.
+- Keep existing constructors and `TelegramApiClient` / `BotDetailViewModel` / `CatalogViewModel` / `BotInstanceManager` signatures backward-compatible via defaults or overloads so existing unit tests compile cleanly.
+- Bot runtimes extend `BotRuntime` with `initialize()`, `start()`, `stop()`, and `state: StateFlow<BotRuntimeState>`.
+- Keystore credentials stored via Android Keystore AES-256-GCM in `KeystoreSecureCredentialStore`.
+- UI built with Jetpack Compose following OLED Dark Mode (`BotHubTheme`).
+
+---
+
+## Milestone 3: TapBot v2.3.0 Feature & Architecture Upgrade (Phases 1-4)
+- Branch: `ralph/tapbot-v230`
+- PRD: `tasks/prd-tapbot-v230-all-phases.md`
+- Previous Milestone 2 archived under `archive/2026-11-04-music-streamer-bot/`.
+
+
+### Phase 1 Completed — US-P1-01, US-P1-02, US-P1-03
+- **US-P1-01**: Synchronized `BotDetailViewModel` install/start/stop/load with `BotInstanceManager` and `CatalogViewModel` uninstall with `LocalBotInstallationManager`, injected both in `TapBotNavHost`, enabled `"built-in"`/`"custom"` runtime installation alongside `"native_art"`, and fixed `BotForegroundService` to resolve `effectiveInstallationId` when launched via `EXTRA_BOT_ID`.
+- **US-P1-02**: Added `GeminiApiClient` (`core:network`) supporting multi-turn `generateContent` + `systemInstruction`, added optional `gemini_model`/`system_prompt` catalog credential fields, and upgraded `AIBotRuntime` with real Gemini inference, sliding-window per-chat history, `/ask`, `/summarize`, `/code`, `/model`, `/system`, `/clear`, `/status`, PM natural chat, and 4000-char chunking.
+- **US-P1-03**: Added JVM-safe `RssFeedParser` (RSS 2.0, RDF, Atom 1.0) and `RssNotifierBotRuntime` with JSON persisted seen-GUID deduplication, multi-feed subscriptions, and interactive commands; mapped `"rss"`, `"feed"`, `"notifier"` in `BotRuntimeFactory`.
+- **Verified**: Full `./gradlew.bat test` passed across all 8 Gradle modules (exit code 0).
+
+
+### Phase 2 Completed — US-P2-01, US-P2-02, US-P2-03, US-P2-04
+- **US-P2-01**: Extended `core:model` (`InlineKeyboardMarkup`, `InlineKeyboardButton`, `TelegramCallbackQuery`, `AnswerCallbackQueryPayload`, `EditMessageTextPayload`, `PromoteChatMemberPayload`, `TelegramMessage` media/join/entity fields) and `TelegramApiClient` (`replyMarkup`, `answerCallbackQuery`, `editMessageText`, timed `banChatMember`/`restrictChatMember`, `promoteChatMember`).
+- **US-P2-02**: Added atomic JSON `ExonModerationStore` and upgraded `ExonBotRuntime` with `/tmute`, `/tban`, `/promote`, `/demote`, `/setwelcome`, `/welcome`, `/clearwelcome`, `new_chat_members` auto-greetings & anti-bot ban, `/antiflood` 10s sliding window, active `/lock` enforcement (`deleteMessage`), and inline keyboard `/help`/`/rules` callbacks.
+- **US-P2-03**: Added `ACCESS_WIFI_STATE` and location permissions; extended `DeviceActionController` (`speakText`, `getWifiDetails`, `getLastKnownLocation`); upgraded `CommanderBotRuntime` with `/tts`, `/wifi`, `/location`, `/schedule`, `/schedules`, `/cancelschedule`, inline HUD keyboards (`cmd:*`), and persistent owner-checked callbacks.
+- **US-P2-04**: Added `FOREGROUND_SERVICE_MEDIA_PLAYBACK` and `dataSync|mediaPlayback` foregroundServiceType; upgraded `DeviceAudioPlayer` with `AudioManager` focus negotiation + 1s `elapsedMs` ticker; upgraded `MusicBotRuntime` with `LoopMode`, `/shuffle`, `/loop`, `/seek`, `/remove`, and `music:*` inline player controls.
+- **Verified**: Full `./gradlew.bat test` passed across all 8 modules with 0 failures.
+
+
+### Phase 3 Completed — US-P3-01, US-P3-02, US-P3-03
+- **US-P3-01**: Bumped `app` version to `2.3.0` (`versionCode = 230`) and synced `ApkDeliveryService` / `CommanderBotRuntime`; added `AppPreferencesRepository` + dynamic `baseUrlProvider` in `CloudflareCatalogApi`/`CloudflareRemoteBotDataSource`; updated `BootCompletedReceiver` and `BotForegroundService` (`ACTION_RECOVER_ACTIVE`) to honor `autoStartOnBoot` and restart all active running bots; implemented full interactive dark OLED `SettingsScreen` dialogs (`Account`, `Preferences`, `Security`, `Storage & Cache` diagnostics export, `Background Execution`, `About v2.3.0`).
+- **US-P3-02**: Added `CustomBotDefinition`/`CommandRule`/`CustomHttpMethod` (`core:model`), `CustomBotRepository` JSON persistence, `CustomWorkflowBotRuntime` (variable substitution `{user}`, `{username}`, `{user_id}`, `{chat_id}`, `{args}`, `{date}`, `{webhook_response}`, OkHttp GET/POST webhooks, inline button callbacks, built-in `/start`/`/help`), and dynamic routing in `BotRuntimeFactory`.
+- **US-P3-03**: Built `CustomBotBuilderScreen` + `CustomBotBuilderViewModel`, preserved `bot_custom_` entries in `LocalCatalogCache`, live-merged custom bots into `CatalogViewModel` (`Custom` category filter + Settings handlers), and wired `Screen.CustomBotBuilder` + Fleet/Store build actions in `TapBotNavHost`, `CatalogScreen`, and `MyBotsScreen`.
+- **Verified**: `AppPreferencesRepositoryTest`, `BootCompletedReceiverTest`, `CustomBotRepositoryTest`, `CustomWorkflowBotRuntimeTest`, `CustomBotBuilderViewModelTest`, `CatalogViewModelTest`, and full 8-module `./gradlew.bat test` passed cleanly (0 failures).
+
+
+
+### Phase 4 Completed — US-P4-01, US-P4-02
+- **US-P4-01**: Created deterministic `tools/package_all_bots.mjs` generating valid ZIP `.botpkg` archives in `app/src/main/assets/packages/` for `bot_exon`, `bot_echo`, `bot_rss` (`bot_rss_notifier` 1.2.0), `bot_ai_assistant` (2.1.0), `bot_music` (1.0.0 & 1.4.0), `bot_ai` (1.0.0 & 1.2.0), `bot_utility` (1.0.0 & 1.1.0), and `bot_ping_pong` (1.0.0), while preserving flagship `tapbot-commander_1.0.0.botpkg` and `tapstream-music-1.0.0.botpkg` archives; updated `TapBotApplication.seedBundledPackages` to refresh stale cached `.botpkg` files by byte comparison; synchronized `MockCatalogApi` URLs/SHA-256 checksums/sizes and `ManifestValidator` flagship slug aliases; added `BundledPackagesCatalogTest` verifying SHA-256 + manifest + offline cache downloads for every catalog bot and version; added `backend/migrations/0008_v230_catalog_sync.sql`.
+- **US-P4-02**: Passed full `./gradlew.bat test` across all 8 Gradle modules (0 failures), `backend` `tsc --noEmit` & `vitest run` (20/20 passed), `./gradlew.bat assembleDebug`, and signed `./gradlew.bat assembleRelease` (verified via `apksigner` v2 scheme). Copied signed APK to `releases/tapbot-v2.3.0.apk` (12.22 MB / 12,817,107 bytes, SHA-256 `55B367181A706F483E14F1148E4C4867D427AFFB2628CD0F030DF2E592F29E91`), updated `releases/README.md`, marked all 12 `prd.json` stories `passes: true`, and merged `ralph/tapbot-v230` cleanly into `main`.
+
+## Milestone 3 Complete — TapBot v2.3.0 (`versionCode = 230`)
+All 12 user stories (`US-P1-01` .. `US-P4-02`) complete and verified on `main`.

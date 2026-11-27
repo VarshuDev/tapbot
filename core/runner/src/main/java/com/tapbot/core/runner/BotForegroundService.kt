@@ -98,7 +98,7 @@ class BotForegroundService : Service() {
         val targetInstallationId = intent?.getStringExtra(EXTRA_INSTALLATION_ID)
             ?: intent?.getStringExtra(EXTRA_BOT_ID)
 
-        if (action == ACTION_START_BOT || action == ACTION_RESTART_BOT || action == ACTION_RECOVER_ACTIVE) {
+        if (action == ACTION_START_BOT || action == ACTION_RESTART_BOT || action == ACTION_RECOVER_ACTIVE || action == ACTION_START_ALL) {
             val count = maxOf(activeExecutions.size, 1)
             val names = activeExecutions.values.map { it.botName }.ifEmpty { listOf(targetInstallationId ?: "Bot") }
             val notification = notificationHelper.buildForegroundNotification(count, names)
@@ -106,6 +106,11 @@ class BotForegroundService : Service() {
         }
 
         when (action) {
+            ACTION_START_ALL -> {
+                serviceScope.launch {
+                    startAllInstances()
+                }
+            }
             ACTION_START_BOT -> {
                 serviceScope.launch {
                     startBotInstance(targetInstallationId ?: DEFAULT_BOT_ID)
@@ -310,7 +315,10 @@ class BotForegroundService : Service() {
             isNetworkAvailable = { _networkState.value },
             networkState = _networkState.asStateFlow(),
             androidContext = this,
-            credentials = allCreds
+            credentials = allCreds,
+            onMessageProcessed = { isCmd ->
+                manager?.recordMessageProcessed(botId, isCmd)
+            }
         )
 
         try {
@@ -381,6 +389,16 @@ class BotForegroundService : Service() {
 
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
+        notifyAppWidgetUpdate()
+    }
+
+    private suspend fun startAllInstances() {
+        val manager = ServiceLocator.botInstanceManager ?: return
+        val allIds = manager.instances.value.map { it.installationId }
+        for (instId in allIds) {
+            startBotInstance(instId)
+        }
+        notifyAppWidgetUpdate()
     }
 
     private suspend fun recoverActiveInstances(explicitIds: List<String> = emptyList()) {
@@ -392,6 +410,7 @@ class BotForegroundService : Service() {
         for (instId in allIds) {
             startBotInstance(instId)
         }
+        notifyAppWidgetUpdate()
     }
 
     /**
@@ -402,6 +421,7 @@ class BotForegroundService : Service() {
         val count = activeExecutions.size
         if (count == 0) {
             lastNotifiedNames = null
+            notifyAppWidgetUpdate()
             return
         }
 
@@ -413,6 +433,7 @@ class BotForegroundService : Service() {
 
         val notification = notificationHelper.buildForegroundNotification(count, currentNames.toList())
         startForeground(NotificationHelper.NOTIFICATION_ID, notification)
+        notifyAppWidgetUpdate()
     }
 
     /**
@@ -430,7 +451,14 @@ class BotForegroundService : Service() {
             _botUsernames.value = emptyMap()
             stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()
+            notifyAppWidgetUpdate()
         }
+    }
+
+    private fun notifyAppWidgetUpdate() {
+        try {
+            sendBroadcast(Intent("com.tapbot.widget.ACTION_REFRESH").setPackage(packageName))
+        } catch (_: Exception) {}
     }
 
     private fun getOrCreateWakeLock(): PowerManager.WakeLock? {
@@ -481,6 +509,7 @@ class BotForegroundService : Service() {
         releaseMessageWakeLock()
         serviceJob.cancel()
         networkCallback?.let { connectivityManager?.unregisterNetworkCallback(it) }
+        notifyAppWidgetUpdate()
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -488,6 +517,7 @@ class BotForegroundService : Service() {
     companion object {
         const val ACTION_START_BOT = "com.tapbot.action.START_BOT"
         const val ACTION_STOP_BOT = "com.tapbot.action.STOP_BOT"
+        const val ACTION_START_ALL = "com.tapbot.action.START_ALL"
         const val ACTION_STOP_ALL = "com.tapbot.action.STOP_ALL"
         const val ACTION_RESTART_BOT = "com.tapbot.action.RESTART_BOT"
         const val ACTION_RECOVER_ACTIVE = "com.tapbot.action.RECOVER_ACTIVE"

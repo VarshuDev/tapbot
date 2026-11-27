@@ -1,13 +1,13 @@
 {
-  "latestVersionCode": 260,
-  "latestVersionName": "2.6.0",
-  "minRequiredVersionCode": 260,
+  "latestVersionCode": 270,
+  "latestVersionName": "2.7.0",
+  "minRequiredVersionCode": 270,
   "forceUpdate": true,
-  "title": "TapBot v2.6.0 Fleet & Security Upgrade",
-  "releaseNotes": "• Autonomous In-App Force Update & Remote Version Control\n• 20 Flagship Daily-Usage Bot Runtimes with Android ART native execution\n• In-App Interactive Bot Simulator Sandbox for direct in-app command testing\n• My Fleet 2.0 1-Tap Batch Start & Stop Controls + Search & Status Filtering\n• Telegram setMyCommands automated menu sync & clipboard token auto-detection",
-  "releaseDate": "2026-11-21",
-  "apkUrl": "https://raw.githubusercontent.com/VarshuDev/tapbot/main/releases/tapbot-v2.6.0.apk",
-  "downloadUrl": "https://varshudev.github.io/tapbot/releases/tapbot-v2.6.0.apk",
+  "title": "TapBot v2.7.0 Fleet Telemetry & Backup Upgrade",
+  "releaseNotes": "• Fleet Telemetry & Live Performance Engine with 24h message throughput and rolling sparklines\n• Encrypted Fleet Backup & Migration (.tapbotbackup) with PBKDF2 + AES-256-GCM authenticated encryption\n• Android Home Screen Quick Fleet AppWidget with 1-tap Start/Stop emergency controls\n• 20 Flagship Daily-Usage Bot Runtimes with native Android ART coroutine execution\n• Autonomous In-App Force Update & Remote Version Control",
+  "releaseDate": "2026-11-27",
+  "apkUrl": "https://raw.githubusercontent.com/VarshuDev/tapbot/main/releases/tapbot-v2.7.0.apk",
+  "downloadUrl": "https://varshudev.github.io/tapbot/releases/tapbot-v2.7.0.apk",
   "githubReleaseUrl": "https://github.com/VarshuDev/tapbot/releases",
-  "sha256": "BF4EB083E7294CED9E861234337E42A5A9506DE420F54BDE6FBCBD4689B8F8BA"
+  "sha256": "6A5F5365A6747FAECE2CB74C4E48A379CA0B03DBA57F0BF4DE320C986A8645A9"
 }

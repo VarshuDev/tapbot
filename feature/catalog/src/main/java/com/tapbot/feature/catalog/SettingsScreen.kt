@@ -101,6 +101,7 @@ import com.tapbot.core.ui.theme.TabularMonoStyle
 import com.tapbot.core.ui.theme.TapBotColors
 import com.tapbot.core.ui.theme.TapBotTheme
 import com.tapbot.core.ui.theme.premiumCardBorder
+import java.io.File
 import java.util.Locale
 
 private enum class SettingsSection {
@@ -109,6 +110,7 @@ private enum class SettingsSection {
     IDENTITY,
     SECURITY,
     STORAGE,
+    BACKUP,
     ABOUT
 }
 
@@ -131,7 +133,12 @@ fun SettingsScreen(
     onClearCache: () -> Long = { 0L },
     onRefreshCacheSizeBytes: () -> Long = { initialCacheSizeBytes },
     onBuildDiagnosticsReport: (() -> String)? = null,
-    onCheckForAppUpdate: (() -> Unit)? = null
+    onCheckForAppUpdate: (() -> Unit)? = null,
+    onExportBackup: ((passphrase: String, targetFile: File) -> Unit)? = null,
+    onRestoreBackup: ((passphrase: String, sourceFile: File) -> Unit)? = null,
+    backupStatusMessage: String? = null,
+    isBackupInProgress: Boolean = false,
+    onClearBackupStatusMessage: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val isPreview = LocalInspectionMode.current
@@ -147,6 +154,10 @@ fun SettingsScreen(
     var showCustomUrlSheet by remember { mutableStateOf(false) }
     var showConfirmClearCache by remember { mutableStateOf(false) }
     var showConfirmStopAll by remember { mutableStateOf(false) }
+    var showExportBackupDialog by remember { mutableStateOf(false) }
+    var showRestoreBackupDialog by remember { mutableStateOf(false) }
+    var backupPassphraseInput by remember { mutableStateOf("") }
+    var restoreFilePathInput by remember { mutableStateOf("") }
 
     var isDozeWhitelisted by remember {
         mutableStateOf(
@@ -557,7 +568,97 @@ fun SettingsScreen(
                 }
             }
 
-            // 6. Emergency Fleet Control
+            // 6. Fleet Backup & Migration (.tapbotbackup)
+            item(key = "sec_backup") {
+                ExpandableSettingsSectionCard(
+                    icon = Icons.Default.Security,
+                    iconColor = TapBotColors.BrandCyan,
+                    title = "Fleet Backup & Migration",
+                    subtitle = "PBKDF2 + AES-256-GCM encrypted .tapbotbackup archive",
+                    badgeText = ".tapbotbackup",
+                    badgeColor = TapBotColors.BrandCyan,
+                    badgeBg = TapBotColors.InfoSurface,
+                    badgeBorder = TapBotColors.InfoBorder,
+                    expanded = SettingsSection.BACKUP in expandedSections,
+                    onToggleExpand = { toggleSection(SettingsSection.BACKUP) }
+                ) {
+                    Text(
+                        text = "Export an encrypted archive of your installed bots, custom no-code definitions, and hardware Keystore credentials for phone migration or off-site backups.",
+                        color = TapBotColors.TextSecondary,
+                        fontSize = 12.sp,
+                        lineHeight = 17.sp
+                    )
+
+                    if (backupStatusMessage != null) {
+                        val isErr = backupStatusMessage.contains("failed", ignoreCase = true) || backupStatusMessage.contains("error", ignoreCase = true)
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(TapBotColors.RadiusMd))
+                                .background(if (isErr) TapBotColors.ErrorSurface else TapBotColors.SuccessSurface)
+                                .border(1.dp, if (isErr) TapBotColors.ErrorBorder else TapBotColors.SuccessBorder, RoundedCornerShape(TapBotColors.RadiusMd))
+                                .padding(10.dp)
+                        ) {
+                            Text(
+                                text = backupStatusMessage,
+                                color = if (isErr) TapBotColors.ErrorText else TapBotColors.SuccessText,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = {
+                                backupPassphraseInput = ""
+                                showExportBackupDialog = true
+                            },
+                            enabled = !isBackupInProgress && installedInstances.isNotEmpty(),
+                            modifier = Modifier
+                                .weight(1f)
+                                .heightIn(min = 46.dp),
+                            shape = RoundedCornerShape(TapBotColors.RadiusMd),
+                            border = BorderStroke(1.dp, TapBotColors.BorderFocus),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                containerColor = TapBotColors.SurfaceElevated,
+                                contentColor = TapBotColors.BrandCyan
+                            )
+                        ) {
+                            Icon(Icons.Default.CloudDownload, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Export Backup", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
+
+                        OutlinedButton(
+                            onClick = {
+                                backupPassphraseInput = ""
+                                restoreFilePathInput = ""
+                                showRestoreBackupDialog = true
+                            },
+                            enabled = !isBackupInProgress,
+                            modifier = Modifier
+                                .weight(1f)
+                                .heightIn(min = 46.dp),
+                            shape = RoundedCornerShape(TapBotColors.RadiusMd),
+                            border = BorderStroke(1.dp, TapBotColors.SuccessBorder),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                containerColor = TapBotColors.SurfaceElevated,
+                                contentColor = TapBotColors.SuccessText
+                            )
+                        ) {
+                            Icon(Icons.Default.Security, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Restore Backup", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+
+            // 7. Emergency Fleet Control
             item(key = "sec_emergency_stop") {
                 Column(
                     modifier = Modifier
@@ -744,6 +845,130 @@ fun SettingsScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showConfirmStopAll = false }) {
+                    Text("Cancel", color = TapBotColors.TextSecondary)
+                }
+            }
+        )
+    }
+
+    if (showExportBackupDialog) {
+        AlertDialog(
+            onDismissRequest = { showExportBackupDialog = false },
+            containerColor = TapBotColors.SurfacePrimary,
+            title = { Text("Export Encrypted Backup", color = TapBotColors.TextPrimary, fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "Set a passphrase to encrypt your bot configurations, custom workflows, and API keys with AES-256-GCM:",
+                        color = TapBotColors.TextSecondary,
+                        fontSize = 13.sp
+                    )
+                    OutlinedTextField(
+                        value = backupPassphraseInput,
+                        onValueChange = { backupPassphraseInput = it },
+                        label = { Text("Backup Passphrase (min 4 chars)") },
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = TapBotColors.BrandCyan,
+                            unfocusedBorderColor = TapBotColors.Border,
+                            focusedTextColor = TapBotColors.TextPrimary,
+                            unfocusedTextColor = TapBotColors.TextPrimary
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val pass = backupPassphraseInput.trim()
+                        if (pass.length >= 4) {
+                            val backupDir = context.getExternalFilesDir("backups") ?: File(context.filesDir, "backups")
+                            backupDir.mkdirs()
+                            val targetFile = File(backupDir, "tapbot_backup_${System.currentTimeMillis()}.tapbotbackup")
+                            onExportBackup?.invoke(pass, targetFile)
+                            showExportBackupDialog = false
+                        }
+                    },
+                    enabled = backupPassphraseInput.trim().length >= 4,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = TapBotColors.BrandCyan,
+                        contentColor = Color.Black
+                    )
+                ) {
+                    Text("Export", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showExportBackupDialog = false }) {
+                    Text("Cancel", color = TapBotColors.TextSecondary)
+                }
+            }
+        )
+    }
+
+    if (showRestoreBackupDialog) {
+        AlertDialog(
+            onDismissRequest = { showRestoreBackupDialog = false },
+            containerColor = TapBotColors.SurfacePrimary,
+            title = { Text("Restore Fleet Backup", color = TapBotColors.TextPrimary, fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "Enter the backup file path and passphrase to decrypt and restore credentials into Android Keystore:",
+                        color = TapBotColors.TextSecondary,
+                        fontSize = 13.sp
+                    )
+                    OutlinedTextField(
+                        value = restoreFilePathInput,
+                        onValueChange = { restoreFilePathInput = it },
+                        label = { Text("Backup File Path (.tapbotbackup)") },
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = TapBotColors.SuccessText,
+                            unfocusedBorderColor = TapBotColors.Border,
+                            focusedTextColor = TapBotColors.TextPrimary,
+                            unfocusedTextColor = TapBotColors.TextPrimary
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = backupPassphraseInput,
+                        onValueChange = { backupPassphraseInput = it },
+                        label = { Text("Passphrase") },
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = TapBotColors.SuccessText,
+                            unfocusedBorderColor = TapBotColors.Border,
+                            focusedTextColor = TapBotColors.TextPrimary,
+                            unfocusedTextColor = TapBotColors.TextPrimary
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val pass = backupPassphraseInput.trim()
+                        val path = restoreFilePathInput.trim()
+                        val file = File(path)
+                        if (pass.isNotBlank() && file.exists()) {
+                            onRestoreBackup?.invoke(pass, file)
+                            showRestoreBackupDialog = false
+                        }
+                    },
+                    enabled = backupPassphraseInput.isNotBlank() && restoreFilePathInput.isNotBlank(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = TapBotColors.SuccessText,
+                        contentColor = Color.Black
+                    )
+                ) {
+                    Text("Restore", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRestoreBackupDialog = false }) {
                     Text("Cancel", color = TapBotColors.TextSecondary)
                 }
             }

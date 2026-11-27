@@ -7,6 +7,7 @@ import com.tapbot.core.model.BotInstance
 import com.tapbot.core.model.BotMetadata
 import com.tapbot.core.model.BotUpdateProgress
 import com.tapbot.core.model.BotVersion
+import com.tapbot.core.model.FleetBackupArchive
 import com.tapbot.core.network.AppPreferences
 import com.tapbot.core.network.AppPreferencesRepository
 import com.tapbot.core.network.BotPackageDownloader
@@ -17,11 +18,14 @@ import com.tapbot.core.network.ManifestValidator
 import com.tapbot.core.network.OfflineFirstCatalogRepository
 import com.tapbot.core.runner.custom.CustomBotRepository
 import com.tapbot.core.runner.manager.BotInstanceManager
+import com.tapbot.core.security.CredentialStore
+import com.tapbot.core.security.FleetBackupManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.io.File
 
 class CatalogViewModel(
     private val catalogRepository: CatalogRepository,
@@ -30,7 +34,9 @@ class CatalogViewModel(
     private val manifestValidator: ManifestValidator? = null,
     private val installationManager: LocalBotInstallationManager? = null,
     private val appPreferencesRepository: AppPreferencesRepository? = null,
-    private val customBotRepository: CustomBotRepository? = null
+    private val customBotRepository: CustomBotRepository? = null,
+    private val credentialStore: CredentialStore? = null,
+    private val fleetBackupManager: FleetBackupManager = FleetBackupManager()
 ) : ViewModel() {
 
     // Secondary constructor accepting CatalogApi for backward compatibility
@@ -65,6 +71,20 @@ class CatalogViewModel(
         observeInstalledBots()
         observeUpdateProgress()
         observeCustomBots()
+        observeFleetAnalytics()
+    }
+
+    private fun observeFleetAnalytics() {
+        val manager = botInstanceManager ?: return
+        viewModelScope.launch {
+            manager.fleetAnalytics.collect { analytics ->
+                _uiState.update { current ->
+                    if (current is CatalogUiState.Success) {
+                        current.copy(fleetAnalytics = analytics)
+                    } else current
+                }
+            }
+        }
     }
 
     private fun observeCustomBots() {
@@ -363,6 +383,103 @@ class CatalogViewModel(
         }
     }
 
+    fun exportFleetBackup(
+        passphrase: String,
+        targetFile: File,
+        onComplete: ((Result<FleetBackupArchive>) -> Unit)? = null
+    ) {
+        val store = credentialStore
+        if (store == null) {
+            val err = "Credential store not available"
+            _uiState.update { current ->
+                if (current is CatalogUiState.Success) current.copy(backupStatusMessage = err, isBackupInProgress = false) else current
+            }
+            onComplete?.invoke(Result.failure(IllegalStateException(err)))
+            return
+        }
+
+        val current = _uiState.value as? CatalogUiState.Success
+        if (current == null) {
+            onComplete?.invoke(Result.failure(IllegalStateException("Catalog not loaded")))
+            return
+        }
+
+        _uiState.update { if (it is CatalogUiState.Success) it.copy(isBackupInProgress = true, backupStatusMessage = null) else it }
+        viewModelScope.launch {
+            val customBots = customBotRepository?.getAll() ?: emptyList()
+            val result = fleetBackupManager.exportToFile(
+                passphrase = passphrase,
+                instances = current.installedInstances,
+                customBots = customBots,
+                credentialStore = store,
+                targetFile = targetFile
+            )
+            _uiState.update { state ->
+                if (state is CatalogUiState.Success) {
+                    state.copy(
+                        isBackupInProgress = false,
+                        backupStatusMessage = if (result.isSuccess) "Backup exported successfully (${current.installedInstances.size} bots)" else "Export failed: ${result.exceptionOrNull()?.message}"
+                    )
+                } else state
+            }
+            onComplete?.invoke(result)
+        }
+    }
+
+    fun restoreFleetBackup(
+        passphrase: String,
+        sourceFile: File,
+        onComplete: ((Result<FleetBackupArchive>) -> Unit)? = null
+    ) {
+        val store = credentialStore
+        if (store == null) {
+            val err = "Credential store not available"
+            _uiState.update { current ->
+                if (current is CatalogUiState.Success) current.copy(backupStatusMessage = err, isBackupInProgress = false) else current
+            }
+            onComplete?.invoke(Result.failure(IllegalStateException(err)))
+            return
+        }
+
+        _uiState.update { if (it is CatalogUiState.Success) it.copy(isBackupInProgress = true, backupStatusMessage = null) else it }
+        viewModelScope.launch {
+            val result = fleetBackupManager.restoreFromFile(
+                passphrase = passphrase,
+                sourceFile = sourceFile,
+                credentialStore = store
+            )
+            if (result.isSuccess) {
+                val archive = result.getOrThrow()
+                // Restore custom bots
+                for (def in archive.customBots) {
+                    customBotRepository?.saveDefinition(def)
+                }
+                _uiState.update { state ->
+                    if (state is CatalogUiState.Success) {
+                        state.copy(
+                            isBackupInProgress = false,
+                            backupStatusMessage = "Restored ${archive.instances.size} bots and ${archive.customBots.size} custom workflows"
+                        )
+                    } else state
+                }
+            } else {
+                _uiState.update { state ->
+                    if (state is CatalogUiState.Success) {
+                        state.copy(
+                            isBackupInProgress = false,
+                            backupStatusMessage = "Restore failed: ${result.exceptionOrNull()?.message}"
+                        )
+                    } else state
+                }
+            }
+            onComplete?.invoke(result)
+        }
+    }
+
+    fun clearBackupStatusMessage() {
+        _uiState.update { if (it is CatalogUiState.Success) it.copy(backupStatusMessage = null) else it }
+    }
+
     companion object {
         fun provideFactory(
             catalogRepository: CatalogRepository,
@@ -371,7 +488,8 @@ class CatalogViewModel(
             manifestValidator: ManifestValidator? = null,
             installationManager: LocalBotInstallationManager? = null,
             appPreferencesRepository: AppPreferencesRepository? = null,
-            customBotRepository: CustomBotRepository? = null
+            customBotRepository: CustomBotRepository? = null,
+            credentialStore: CredentialStore? = null
         ): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
@@ -383,7 +501,8 @@ class CatalogViewModel(
                         manifestValidator = manifestValidator,
                         installationManager = installationManager,
                         appPreferencesRepository = appPreferencesRepository,
-                        customBotRepository = customBotRepository
+                        customBotRepository = customBotRepository,
+                        credentialStore = credentialStore
                     ) as T
                 }
             }

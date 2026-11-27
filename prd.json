@@ -1,187 +1,120 @@
 {
   "project": "TapBot",
-  "branchName": "ralph/tapbot-v230",
-  "description": "TapBot v2.3.0 Multi-Phase Upgrade — Core Install/Fleet Sync, Real Gemini AI & RSS Runtimes, Inline Keyboards, Exon 2.0, Commander 2.0, TapStream Audio 2.0, Interactive Settings & Custom Bot Builder",
+  "branchName": "ralph/tapbot-v270-fleet-analytics-backup-widget",
+  "description": "TapBot v2.7.0 Major Evolution — Fleet Telemetry & Live Analytics Dashboard, Encrypted Fleet Backup/Restore (.tapbotbackup), Android Home Screen AppWidget, and v2.7.0 Production Signed Release",
   "userStories": [
     {
       "id": "US-P1-01",
-      "title": "Unify Install-to-Fleet Synchronization & Built-In Runtime Installation",
-      "description": "Synchronize BotDetailViewModel installations with BotInstanceManager, allow built-in runtimes in addition to native_art, and sync uninstalls from CatalogViewModel.",
+      "title": "Fleet Analytics Data Models & Atomic Rolling Metric Store",
+      "description": "As a bot station operator, I want TapBot to track messages received, commands executed, error counts, and uptime per bot so I can monitor node health.",
       "acceptanceCriteria": [
-        "BotDetailViewModel accepts optional botInstanceManager and syncs install/start/stop state",
-        "TapBotNavHost injects app.botInstanceManager into BotDetailViewModel and app.localBotInstallationManager into CatalogViewModel",
-        "BotDetailViewModel.installBot allows both native_art and built-in runtimes",
-        "Unit tests in feature:botdetail verify built-in install and BotInstanceManager sync",
+        "Add BotMetricSnapshot and FleetAnalyticsSummary data models in core:model",
+        "Implement thread-safe RollingBotMetricStore in core:runner persisting metrics to JSON with atomic updates",
+        "Support recording messages, commands, error counts, and active uptime timestamps",
+        "Unit tests in core:runner verify metric recording, rolling aggregation, and disk persistence",
+        "Typecheck passes",
         "Tests pass"
       ],
       "priority": 1,
       "passes": true,
-      "notes": "Verified with BotInstallFlowTest, CatalogViewModelTest, and full ./gradlew.bat test"
+      "notes": "Verified by RollingBotMetricStoreTest (4/4 tests pass)"
     },
     {
       "id": "US-P1-02",
-      "title": "Real Gemini AI Client & Upgraded AIBotRuntime",
-      "description": "Implement GeminiApiClient using OkHttp against Gemini generateContent API and upgrade AIBotRuntime with per-chat history, /ask, /summarize, /code, /model, /system, /clear, and chunked responses.",
+      "title": "Telemetry Interceptor & BotInstanceManager Event Hooking",
+      "description": "As a developer, I want incoming Telegram updates and bot command executions to automatically feed the RollingBotMetricStore.",
       "acceptanceCriteria": [
-        "Implement GeminiApiClient in core:network with configurable base URL for tests",
-        "AIBotRuntime reads gemini_api_key, gemini_model, and system_prompt from RuntimeContext.credentials",
-        "Supports multi-turn per-chat history, /ask, natural PM chat, /summarize (including reply_to_message), /code, /model, /system, /clear, /status, and >4096 char splitting",
-        "Unit tests in core:network and core:runner verify GeminiApiClient and AIBotRuntime",
+        "Hook update processing loop in DefaultBotInstanceManager and BotRuntime to notify RollingBotMetricStore on message arrival and command execution",
+        "Expose reactive fleetAnalytics: StateFlow<FleetAnalyticsSummary> from BotInstanceManager",
+        "Unit tests in core:runner verify telemetry stream updates when bots process updates",
+        "Typecheck passes",
         "Tests pass"
       ],
       "priority": 2,
       "passes": true,
-      "notes": "Verified GeminiApiClientTest, AIBotRuntimeTest, and MultiBotBenchmarkTest"
+      "notes": "Verified in BotInstanceManagerTest (fleetAnalytics updates reactively)"
     },
     {
-      "id": "US-P1-03",
-      "title": "Real RSS/Atom Feed Parser & RssNotifierBotRuntime",
-      "description": "Implement JVM-safe RssFeedParser and RssNotifierBotRuntime with persisted seen-GUID deduplication, channel broadcasting, and interactive management commands.",
+      "id": "US-P2-01",
+      "title": "Encrypted Backup Archive Spec & FleetBackupManager",
+      "description": "As a user migrating to a new phone, I want to export an encrypted backup of all my configured bots, tokens, and custom workflows into a .tapbotbackup archive.",
       "acceptanceCriteria": [
-        "Implement RssFeedParser in core:runner supporting RSS 2.0 <item> and Atom <entry>",
-        "Implement RssNotifierBotRuntime polling feed_url to target_chat_id with persisted seen item deduplication",
-        "Register rss/feed/notifier keywords in BotRuntimeFactory",
-        "Unit tests cover RSS/Atom parsing, deduplication across restarts, and command routing",
+        "Add FleetBackupArchive data model in core:model encapsulating bot configurations, credentials, and custom bot definitions",
+        "Implement FleetBackupManager in core:security using PBKDF2 key derivation and AES-256-GCM authenticated encryption/decryption",
+        "Support restoring .tapbotbackup archives with password validation and hardware Keystore re-encryption",
+        "Reject corrupted or incorrect password archives with explicit errors",
+        "Unit tests in core:security verify backup export, restoration, and tampering rejection",
+        "Typecheck passes",
         "Tests pass"
       ],
       "priority": 3,
       "passes": true,
-      "notes": "Verified RssNotifierBotRuntimeTest across RSS 2.0, Atom 1.0, and restart deduplication"
+      "notes": "Verified by FleetBackupManagerTest (4/4 tests pass)"
     },
     {
-      "id": "US-P2-01",
-      "title": "Telegram Inline Keyboards & Callback Query Pipeline",
-      "description": "Extend TelegramUpdate, TelegramMessage, payloads, and TelegramApiClient with inline_keyboard markup, callback_query, answerCallbackQuery, editMessageText, timed ban/restrict untilDate, and promoteChatMember.",
+      "id": "US-P2-02",
+      "title": "Fleet Backup & Restore UI in Node Settings",
+      "description": "As a user, I want visual 1-tap dialogs in Settings to export and import .tapbotbackup archives with password protection.",
       "acceptanceCriteria": [
-        "Add InlineKeyboardMarkup, InlineKeyboardButton, TelegramCallbackQuery, AnswerCallbackQueryPayload, EditMessageTextPayload, PromoteChatMemberPayload to core:model",
-        "Extend TelegramMessage with newChatMembers, sticker, photo, document, caption, and entities",
-        "Extend TelegramApiClient with answerCallbackQuery, editMessageText, replyMarkup overload/default, timed ban/restrict overloads, and promoteChatMember while preserving binary/source compatibility",
-        "Unit tests in core:model and core:network pass",
+        "Add Fleet Backup & Migration expandable card to SettingsScreen.kt",
+        "Implement Create Encrypted Backup dialog with password confirmation and file export via Android Storage Access Framework",
+        "Implement Restore Fleet Backup dialog with file picker and password validation",
+        "Unit tests in feature:catalog verify backup state handling in CatalogViewModel",
+        "Typecheck passes",
         "Tests pass"
       ],
       "priority": 4,
       "passes": true,
-      "notes": "Verified TelegramUpdate/Message/CallbackQuery/InlineKeyboard models & TelegramApiClient tests in core:model and core:network"
+      "notes": "Verified in SettingsScreen.kt and CatalogViewModelTest"
     },
     {
-      "id": "US-P2-02",
-      "title": "Exon Robot 2.0 Persistence, Timed Moderation & Auto-Moderation",
-      "description": "Add ExonModerationStore JSON persistence, duration parsing for /tmute & /tban, /promote & /demote, welcome greetings, antiflood, active /lock enforcement via deleteMessage, and inline button menus.",
+      "id": "US-P3-01",
+      "title": "Fleet Analytics HUD & Per-Bot Activity Badges",
+      "description": "As a user viewing My Fleet, I want to see 24-hour total messages processed, command rates, and per-bot activity stats.",
       "acceptanceCriteria": [
-        "Implement ExonModerationStore persisting warns, rules, locks, welcome config, and antiflood limits",
-        "Support /tmute, /tban with duration parsing (30s, 10m, 2h, 1d), /promote, and /demote",
-        "Implement /setwelcome, /welcome, /clearwelcome, auto-greeting newChatMembers, /antiflood, and active /lock deletion",
-        "Attach inline keyboard buttons to /help and /rules and handle callback_query",
-        "All existing and new ExonBotRuntimeTest tests pass",
+        "Add FleetAnalyticsHudCard to MyBotsScreen.kt displaying 24h message throughput, command rate, and uptime percentage",
+        "Add activity badges to BotInstanceCard showing messages processed today and last active timestamp",
+        "CatalogViewModel exposes formatted analytics metrics mapped from BotInstanceManager",
+        "Unit tests in feature:catalog verify analytics UI state formatting",
+        "Typecheck passes",
         "Tests pass"
       ],
       "priority": 5,
       "passes": true,
-      "notes": "Verified ExonModerationStoreTest and 9 ExonBotRuntimeTest cases (timed mod, locks, welcome, antiflood, callbacks, disk persistence)"
+      "notes": "Verified in MyBotsScreen.kt and CatalogViewModelTest"
     },
     {
-      "id": "US-P2-03",
-      "title": "Commander Hardware 2.0 (/tts, /wifi, /location, Inline HUD, Scheduled Alerts)",
-      "description": "Extend DeviceActionController with TTS, Wi-Fi info, and last-known location; add interactive inline HUD buttons and scheduled alert tasks to CommanderBotRuntime.",
+      "id": "US-P4-01",
+      "title": "TapBot Quick Fleet Android Home Screen AppWidget",
+      "description": "As a user, I want an Android home screen AppWidget showing active bots and battery percentage with 1-tap Start/Stop emergency controls.",
       "acceptanceCriteria": [
-        "Add speakText, getWifiDetails, and getLastKnownLocation with JVM test fallbacks in DeviceActionController",
-        "Add ACCESS_WIFI_STATE, ACCESS_COARSE_LOCATION, ACCESS_FINE_LOCATION permissions cleanly to manifests",
-        "Add /tts, /wifi, /location, /schedule, /schedules, /cancelschedule, inline HUD keyboards, and callback_query handling in CommanderBotRuntime",
-        "All DeviceActionControllerTest and CommanderBotRuntimeTest cases pass",
+        "Implement TapBotFleetAppWidgetProvider in app module with RemoteViews layout",
+        "Widget displays live running bot count, battery status, and 1-tap Start All / Stop All action buttons",
+        "Declare appwidget-provider XML and broadcast receiver in AndroidManifest.xml",
+        "Trigger widget updates from BotForegroundService on bot state transitions",
+        "Typecheck passes",
         "Tests pass"
       ],
       "priority": 6,
       "passes": true,
-      "notes": "Verified DeviceActionControllerTest and CommanderBotRuntimeTest (/tts, /wifi, /location, /schedule, inline HUD callbacks)"
+      "notes": "Verified by TapBotFleetAppWidgetProvider, layout, provider XML, manifest registration, and BotForegroundService broadcast"
     },
     {
-      "id": "US-P2-04",
-      "title": "TapStream Audio 2.0 & Android 14/15 mediaPlayback Compliance",
-      "description": "Upgrade DeviceAudioPlayer with AudioFocus and elapsed progress ticker, declare mediaPlayback foreground service type, and add /shuffle, /loop, /seek, /remove plus inline player buttons in MusicBotRuntime.",
+      "id": "US-P4-02",
+      "title": "Production Release Packaging v2.7.0 & Version Manifest Update",
+      "description": "As a user and maintainer, I want a signed v2.7.0 APK binary with updated OTA version.json manifest so clients receive the upgrade.",
       "acceptanceCriteria": [
-        "Add FOREGROUND_SERVICE_MEDIA_PLAYBACK and foregroundServiceType=dataSync|mediaPlayback in manifests",
-        "Upgrade DeviceAudioPlayer with AudioManager focus handling and elapsedMs ticker",
-        "Add /shuffle, /loop [off|one|all], /seek, /remove, and interactive inline player controls via callback_query in MusicBotRuntime",
-        "Unit tests in DeviceAudioPlayerTest and MusicBotRuntimeTest pass",
+        "Bump app versionCode to 270 and versionName to 2.7.0 in app/build.gradle.kts; sync ApkDeliveryService, CommanderBotRuntime, and diagnostics",
+        "Assemble signed production APK releases/tapbot-v2.7.0.apk and verify signature via apksigner (scheme v2 verified: true)",
+        "Update version.json and website/version.json with v2.7.0 metadata and SHA-256 checksum",
+        "Update releases/README.md, website/index.html, website/app.js, and deploy-pages.yml to v2.7.0",
+        "All unit tests pass across all 8 modules with 0 failures",
+        "Typecheck passes",
         "Tests pass"
       ],
       "priority": 7,
       "passes": true,
-      "notes": "Verified DeviceAudioPlayerTest, MusicBotRuntimeTest, and full 8-module ./gradlew.bat test"
-    },
-    {
-      "id": "US-P3-01",
-      "title": "AppPreferencesRepository, Interactive Settings Screen, Boot Toggle & v2.3.0 Version Sync",
-      "description": "Implement persistent preferences store, replace dead Settings cards with interactive dialogs/sheets, honor auto-start on boot and recover all running bots, and bump version to 2.3.0 (230).",
-      "acceptanceCriteria": [
-        "Bump app versionCode to 230 and versionName to 2.3.0; sync ApkDeliveryService and CommanderBotRuntime",
-        "Implement AppPreferencesRepository for autoStartOnBoot, customCatalogUrl, wifiOnlyDownloads, diagnosticsExportEnabled",
-        "BootCompletedReceiver honors autoStartOnBoot and restarts all previously running bots",
-        "SettingsScreen opens working dialogs for Account, App Preferences, Security & Encryption, Storage & Cache, Background Execution, and About TapBot v2.3.0",
-        "Unit tests cover AppPreferencesRepository and BootCompletedReceiver multi-bot recovery",
-        "Tests pass"
-      ],
-      "priority": 8,
-      "passes": true,
-      "notes": "Verified AppPreferencesRepositoryTest, multi-bot & preference-gated BootCompletedReceiverTest, interactive SettingsScreen dialogs, and v2.3.0 (230) version bump"
-    },
-    {
-      "id": "US-P3-02",
-      "title": "No-Code Custom Command & Webhook Bot Engine (CustomWorkflowBotRuntime)",
-      "description": "Implement CustomBotDefinition models, JSON CustomBotRepository, and CustomWorkflowBotRuntime supporting template variables, HTTP webhooks, and inline buttons.",
-      "acceptanceCriteria": [
-        "Add CustomBotDefinition and CommandRule models to core:model",
-        "Implement CustomBotRepository JSON storage and CustomWorkflowBotRuntime in core:runner",
-        "Support template variables ({user}, {user_id}, {chat_id}, {args}, {date}, {webhook_response}) and HTTP GET/POST webhook actions",
-        "Resolve custom bots dynamically in BotRuntimeFactory via ServiceLocator",
-        "Unit tests pass"
-      ],
-      "priority": 9,
-      "passes": true,
-      "notes": "Verified CustomBotRepositoryTest, CustomWorkflowBotRuntimeTest (variables, GET/POST webhooks, inline callbacks), and BotRuntimeFactory routing"
-    },
-    {
-      "id": "US-P3-03",
-      "title": "Compose Custom Bot Builder Screen & Store/Fleet Integration",
-      "description": "Add dark OLED CustomBotBuilderScreen and ViewModel integrated into Navigation, Store, and My Fleet.",
-      "acceptanceCriteria": [
-        "Create CustomBotBuilderScreen and CustomBotBuilderViewModel in feature:catalog matching BotHubTheme",
-        "Allow configuring bot name, summary, encrypted Keystore token, and custom command/webhook rules",
-        "Register created bot immediately into CustomBotRepository, CatalogRepository/LocalCache, and BotInstanceManager",
-        "Add navigation route in Screen and TapBotNavHost plus entry action in CatalogScreen/MyBotsScreen",
-        "Unit tests pass"
-      ],
-      "priority": 10,
-      "passes": true,
-      "notes": "Verified CustomBotBuilderViewModelTest, CatalogViewModelTest custom/preferences sync, and full navigation wiring"
-    },
-    {
-      "id": "US-P4-01",
-      "title": "Bundle .botpkg Archives & Backend Migration 0008",
-      "description": "Package valid .botpkg archives into app/src/main/assets/packages/ for all built-in bots with matching SHA-256 checksums in MockCatalogApi and add backend D1 migration 0008.",
-      "acceptanceCriteria": [
-        "Create packager script generating valid zip .botpkg archives for all catalog bots in app/src/main/assets/packages/",
-        "Synchronize MockCatalogApi packageUrl, packageSizeBytes, and sha256Checksum values with bundled archives",
-        "Add backend/migrations/0008_v230_catalog_sync.sql",
-        "Verify Catalog & Cloudflare tests pass"
-      ],
-      "priority": 11,
-      "passes": true,
-      "notes": "Verified tools/package_all_bots.mjs generating 11 valid .botpkg archives alongside preserved flagship commander/tapstream packages, synced MockCatalogApi & ManifestValidator aliases, created backend/migrations/0008_v230_catalog_sync.sql, and verified BundledPackagesCatalogTest"
-    },
-    {
-      "id": "US-P4-02",
-      "title": "End-to-End Multi-Module Test Suite, Release APK Build & Merge to Main",
-      "description": "Verify full ./gradlew.bat test, assembleDebug, assembleRelease, update releases/tapbot-v2.3.0.apk and releases/README.md, finalize Ralph files, and merge into main.",
-      "acceptanceCriteria": [
-        "Full ./gradlew.bat test passes with 0 failures across all 8 modules",
-        "./gradlew.bat assembleDebug and ./gradlew.bat assembleRelease succeed",
-        "Copy verified APK to releases/tapbot-v2.3.0.apk and update releases/README.md with real SHA-256 and size",
-        "Mark all prd.json stories passes=true, finalize progress.txt, and merge ralph/tapbot-v230 into main cleanly"
-      ],
-      "priority": 12,
-      "passes": true,
-      "notes": "Verified full ./gradlew.bat test (8 modules), backend npm run typecheck & npm test (20 tests), assembleDebug, apksigner-verified signed assembleRelease -> releases/tapbot-v2.3.0.apk (SHA-256: 55B367181A706F483E14F1148E4C4867D427AFFB2628CD0F030DF2E592F29E91, 12,817,107 bytes), updated releases/README.md, and merged ralph/tapbot-v230 into main."
+      "notes": "Verified by assembleRelease (8.18 MB signed APK, scheme v2 true), version.json update, website sync, and 100% test pass rate across all 8 modules"
     }
   ]
 }

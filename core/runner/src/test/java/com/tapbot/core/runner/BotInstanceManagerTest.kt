@@ -327,4 +327,28 @@ class BotInstanceManagerTest {
         assertTrue(downgradeResult.isFailure)
         assertTrue(downgradeResult.exceptionOrNull() is SecurityException)
     }
+
+    @Test
+    fun `fleetAnalytics updates reactively on bot telemetry events`() = runBlocking {
+        val credStore = FakeCredentialStore()
+        val api = FakeTelegramApiClient()
+        val manager = DefaultBotInstanceManager(credentialStore = credStore, telegramApi = api)
+        val tempPkg = File.createTempFile("test", ".botpkg")
+
+        val bot = manager.install(sampleBot("bot_ping", "Ping Bot"), tempPkg).getOrThrow()
+        manager.updateInstanceStatus(bot.installationId, BotInstanceStatus.Running(pollCount = 1, messageCount = 0))
+
+        assertEquals(1, manager.fleetAnalytics.value.runningBotsCount)
+        assertEquals(1, manager.fleetAnalytics.value.totalBotsCount)
+
+        manager.recordMessageProcessed("bot_ping", isCommand = true)
+        manager.recordMessageProcessed("bot_ping", isCommand = false)
+
+        val summary = manager.fleetAnalytics.value
+        assertEquals(2L, summary.totalMessagesProcessed)
+        assertEquals(1L, summary.totalCommandsExecuted)
+
+        manager.updateInstanceStatus(bot.installationId, BotInstanceStatus.Stopped)
+        assertEquals(0, manager.fleetAnalytics.value.runningBotsCount)
+    }
 }

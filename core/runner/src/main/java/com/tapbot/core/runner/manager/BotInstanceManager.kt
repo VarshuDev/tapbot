@@ -9,6 +9,7 @@ import com.tapbot.core.model.BotMetadata
 import com.tapbot.core.model.BotUpdateProgress
 import com.tapbot.core.model.BotVersion
 import com.tapbot.core.model.CrashState
+import com.tapbot.core.model.FleetAnalyticsSummary
 import com.tapbot.core.model.TelegramUser
 import com.tapbot.core.model.UpdateState
 import com.tapbot.core.network.BotPackageDownloader
@@ -18,6 +19,7 @@ import com.tapbot.core.network.Sha256PackageVerifier
 import com.tapbot.core.network.TelegramApiClient
 import com.tapbot.core.runner.BotForegroundService
 import com.tapbot.core.runner.runtime.BotRuntimeState
+import com.tapbot.core.runner.telemetry.RollingBotMetricStore
 import com.tapbot.core.security.CredentialStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -45,6 +47,12 @@ import java.io.File
 interface BotInstanceManager {
     val instances: StateFlow<List<BotInstance>>
     val updateProgress: StateFlow<Map<String, BotUpdateProgress>>
+    val fleetAnalytics: StateFlow<FleetAnalyticsSummary>
+        get() = MutableStateFlow(FleetAnalyticsSummary()).asStateFlow()
+
+    fun recordMessageProcessed(botId: String, isCommand: Boolean = false) {}
+    fun recordBotError(botId: String, reason: String? = null) {}
+    val metricStore: RollingBotMetricStore? get() = null
 
     // Phase 3 backwards-compatibility contract
     val activeState: StateFlow<BotRuntimeState>
@@ -85,7 +93,11 @@ class DefaultBotInstanceManager(
     private val installDir: File? = null,
     private val credentialStore: CredentialStore,
     private val telegramApi: TelegramApiClient,
-    private val serviceLauncher: ((action: String, installationId: String?) -> Unit)? = null
+    private val serviceLauncher: ((action: String, installationId: String?) -> Unit)? = null,
+    override val metricStore: RollingBotMetricStore = RollingBotMetricStore(
+        storageFile = storageFile?.parentFile?.let { File(it, "bot_metrics.json") }
+            ?: context?.filesDir?.let { File(it, "bot_metrics.json") }
+    )
 ) : BotInstanceManager {
 
     // Secondary constructor for single-action launcher backwards-compatibility
@@ -117,6 +129,15 @@ class DefaultBotInstanceManager(
     override val updateProgress: StateFlow<Map<String, BotUpdateProgress>> = _updateProgress.asStateFlow()
 
     override val activeState: StateFlow<BotRuntimeState> = BotForegroundService.runtimeState
+    override val fleetAnalytics: StateFlow<FleetAnalyticsSummary> = metricStore.fleetAnalytics
+
+    override fun recordMessageProcessed(botId: String, isCommand: Boolean) {
+        metricStore.recordMessage(botId, isCommand)
+    }
+
+    override fun recordBotError(botId: String, reason: String?) {
+        metricStore.recordError(botId, reason)
+    }
 
     init {
         loadFromDisk()
@@ -582,6 +603,7 @@ class DefaultBotInstanceManager(
 
     override fun recordCrash(installationId: String, reason: String) {
         val current = _instances.value.find { it.installationId == installationId } ?: return
+        metricStore.recordError(current.botId, reason)
         val count = (current.crashState?.crashCount ?: 0) + 1
         val newCrashState = CrashState(
             crashCount = count,
@@ -598,6 +620,10 @@ class DefaultBotInstanceManager(
                 it.copy(status = crashedStatus, crashState = newCrashState)
             } else it
         }
+        metricStore.updateFleetCounts(
+            runningCount = _instances.value.count { it.status.isRunning },
+            totalCount = _instances.value.size
+        )
         saveToDisk()
     }
 
@@ -608,25 +634,45 @@ class DefaultBotInstanceManager(
 
     private fun updateStatusInternal(installationId: String, status: BotInstanceStatus) {
         var isStructuralChange = false
-        _instances.value = _instances.value.map {
-            if (it.installationId == installationId) {
-                val previousStatus = it.status
+        _instances.value = _instances.value.map { instance ->
+            if (instance.installationId == installationId) {
+                val previousStatus = instance.status
+                if (previousStatus is BotInstanceStatus.Running && status is BotInstanceStatus.Running) {
+                    if (status.messageCount > previousStatus.messageCount) {
+                        val diff = (status.messageCount - previousStatus.messageCount).coerceAtMost(100L)
+                        repeat(diff.toInt()) {
+                            metricStore.recordMessage(instance.botId, isCommand = false)
+                        }
+                    }
+                }
                 // Only write to flash disk on structural lifecycle transitions, never on live telemetry ticks
                 isStructuralChange = when {
                     previousStatus::class != status::class -> true
                     status !is BotInstanceStatus.Running -> true
                     else -> false
                 }
-                val startedAt = if (status.isRunning && it.startedAt == null) {
+                val startedAt = if (status.isRunning && instance.startedAt == null) {
                     System.currentTimeMillis()
                 } else if (status.isStopped) {
                     null
                 } else {
-                    it.startedAt
+                    instance.startedAt
                 }
-                it.copy(status = status, startedAt = startedAt)
-            } else it
+                instance.copy(status = status, startedAt = startedAt)
+            } else instance
         }
+        val target = _instances.value.find { it.installationId == installationId }
+        if (target != null) {
+            if (status.isRunning) {
+                metricStore.recordBotStarted(target.botId)
+            } else if (status.isStopped) {
+                metricStore.recordBotStopped(target.botId)
+            }
+        }
+        metricStore.updateFleetCounts(
+            runningCount = _instances.value.count { it.status.isRunning },
+            totalCount = _instances.value.size
+        )
         if (isStructuralChange) {
             saveToDisk()
         }
@@ -682,6 +728,10 @@ class DefaultBotInstanceManager(
             if (text.isNotBlank()) {
                 val list = json.decodeFromString(ListSerializer(BotInstance.serializer()), text)
                 _instances.value = list
+                metricStore.updateFleetCounts(
+                    runningCount = list.count { it.status.isRunning },
+                    totalCount = list.size
+                )
             }
         } catch (_: Exception) {}
     }

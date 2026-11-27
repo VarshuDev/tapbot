@@ -135,8 +135,8 @@ fun CatalogScreen(
     onClearCache: () -> Long = { 0L },
     onRefreshCacheSizeBytes: () -> Long = { 0L },
     onBuildDiagnosticsReport: (() -> String)? = null,
-    appVersionName: String = "2.6.0",
-    appVersionCode: Long = 260L,
+    appVersionName: String = "2.7.0",
+    appVersionCode: Long = 270L,
     onCheckForAppUpdate: (() -> Unit)? = null
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -262,6 +262,7 @@ fun CatalogScreen(
                                     instances = state.installedInstances,
                                     availableUpdates = state.availableUpdates,
                                     updateProgress = state.updateProgress,
+                                    fleetAnalytics = state.fleetAnalytics,
                                     onStartBot = viewModel::startBot,
                                     onStopBot = viewModel::stopBot,
                                     onRestartBot = viewModel::restartBot,
@@ -294,7 +295,16 @@ fun CatalogScreen(
                                     onClearCache = onClearCache,
                                     onRefreshCacheSizeBytes = onRefreshCacheSizeBytes,
                                     onBuildDiagnosticsReport = onBuildDiagnosticsReport,
-                                    onCheckForAppUpdate = onCheckForAppUpdate
+                                    onCheckForAppUpdate = onCheckForAppUpdate,
+                                    onExportBackup = { passphrase, file ->
+                                        viewModel.exportFleetBackup(passphrase, file)
+                                    },
+                                    onRestoreBackup = { passphrase, file ->
+                                        viewModel.restoreFleetBackup(passphrase, file)
+                                    },
+                                    backupStatusMessage = state.backupStatusMessage,
+                                    isBackupInProgress = state.isBackupInProgress,
+                                    onClearBackupStatusMessage = viewModel::clearBackupStatusMessage
                                 )
                             }
                         }

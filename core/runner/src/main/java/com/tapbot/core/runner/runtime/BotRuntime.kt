@@ -18,7 +18,8 @@ data class RuntimeContext(
     val isNetworkAvailable: () -> Boolean = { true },
     val networkState: StateFlow<Boolean>? = null,
     val androidContext: Context? = null,
-    val credentials: Map<String, String> = emptyMap()
+    val credentials: Map<String, String> = emptyMap(),
+    val onMessageProcessed: ((isCommand: Boolean) -> Unit)? = null
 )
 
 /**
